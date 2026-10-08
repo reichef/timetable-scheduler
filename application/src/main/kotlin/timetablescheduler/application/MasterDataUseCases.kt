@@ -39,6 +39,7 @@ import timetablescheduler.application.port.RoomRepository
 import timetablescheduler.application.port.SchoolClassRepository
 import timetablescheduler.application.port.SchoolRepository
 import timetablescheduler.application.port.SubjectRepository
+import timetablescheduler.application.port.TeacherRepository
 import timetablescheduler.application.port.TimeSlotUsage
 import timetablescheduler.application.port.TransactionRunner
 import timetablescheduler.application.port.UserAccountRepository
@@ -62,6 +63,14 @@ import timetablescheduler.application.school.SetSlotExclusions
 import timetablescheduler.application.school.SetTeachingDays
 import timetablescheduler.application.school.TimeGridUseCases
 import timetablescheduler.application.school.UpdateTimeSlot
+import timetablescheduler.application.teacher.CreateTeacher
+import timetablescheduler.application.teacher.DeleteTeacher
+import timetablescheduler.application.teacher.GetTeacher
+import timetablescheduler.application.teacher.ListTeachers
+import timetablescheduler.application.teacher.TeacherUseCases
+import timetablescheduler.application.teacher.UpdateQualifications
+import timetablescheduler.application.teacher.UpdateTeacher
+import timetablescheduler.application.teacher.UpdateUnavailability
 import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SubjectId
@@ -79,6 +88,7 @@ class MasterDataPorts(
     val subjects: SubjectRepository,
     val classLevels: ClassLevelRepository,
     val schoolClasses: SchoolClassRepository,
+    val teachers: TeacherRepository,
 )
 
 /** Wires every use case from the ports in one place, so production and tests use identical wiring. */
@@ -102,11 +112,13 @@ class MasterDataUseCases(ports: MasterDataPorts) {
         )
     }
 
-    /** US3 adds teacher qualifications as a further source. */
     private val subjectDependantSources: List<DependantSource<SubjectId>> = with(ports) {
         listOf(
             DependantSource { subjectId ->
                 classLevels.findUsingSubject(subjectId).map { DependantRef(DependantType.CLASS_LEVEL, it.identifier, setOf(it.schoolId)) }
+            },
+            DependantSource { subjectId ->
+                teachers.findQualifiedFor(subjectId).map { DependantRef(DependantType.TEACHER, it.displayName, setOf(it.schoolId)) }
             },
         )
     }
@@ -170,6 +182,18 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             updateSchoolClass = UpdateSchoolClass(transactions, access, classLevels, schoolClasses),
             deleteSchoolClass = DeleteSchoolClass(transactions, access, classLevels, schoolClasses),
             getSchoolClass = GetSchoolClass(transactions, access, classLevels, schoolClasses, subjects),
+        )
+    }
+
+    val teachers = with(ports) {
+        TeacherUseCases(
+            create = CreateTeacher(transactions, access, schools, teachers),
+            update = UpdateTeacher(transactions, access, schools, teachers),
+            updateQualifications = UpdateQualifications(transactions, access, subjects, teachers),
+            updateUnavailability = UpdateUnavailability(transactions, access, schools, teachers),
+            delete = DeleteTeacher(transactions, access, teachers),
+            list = ListTeachers(transactions, access, teachers),
+            get = GetTeacher(transactions, access, schools, subjects, teachers),
         )
     }
 

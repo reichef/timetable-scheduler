@@ -6,6 +6,7 @@ import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.curriculum.ClassLevel
 import timetablescheduler.domain.curriculum.CurriculumEntry
 import timetablescheduler.domain.curriculum.SchoolClass
@@ -15,6 +16,8 @@ import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.school.School
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.school.TimeSlot
+import timetablescheduler.domain.teacher.Teacher
+import timetablescheduler.domain.teacher.Unavailability
 import timetablescheduler.domain.validation.ValidationResult
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -30,13 +33,14 @@ class MasterDataWorld {
     val hasher = PlainTextTestPasswordHasher()
     val rooms = InMemoryRoomRepository()
     val roomFeatures = InMemoryRoomFeatureRepository()
-    val timeSlotUsage = InMemoryTimeSlotUsage()
+    val teachers = InMemoryTeacherRepository()
+    val timeSlotUsage = InMemoryTimeSlotUsage(teachers)
     val subjects = InMemorySubjectRepository()
     val classLevels = InMemoryClassLevelRepository()
     val schoolClasses = InMemorySchoolClassRepository(classLevels)
 
     val ports = MasterDataPorts(
-        transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage, subjects, classLevels, schoolClasses,
+        transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage, subjects, classLevels, schoolClasses, teachers,
     )
     val useCases = MasterDataUseCases(ports)
 
@@ -93,6 +97,28 @@ class MasterDataWorld {
 
     fun schoolClass(level: ClassLevel, suffix: String, priorityWeight: Int = SchoolClass.DEFAULT_PRIORITY_WEIGHT): SchoolClass =
         SchoolClass.create(level.id, suffix, priorityWeight).valid().also(schoolClasses::insert)
+
+    fun excludeOn(schoolId: SchoolId, slot: TimeSlot, vararg days: DayOfWeek) {
+        schools.saveTimeGrid(schoolId, schools.findTimeGrid(schoolId).withExclusions(slot.id, days.toSet()).valid())
+    }
+
+    /** A teacher stored directly; the load is not checked against the grid here. */
+    fun teacher(
+        schoolId: SchoolId,
+        name: String,
+        shortCode: String,
+        weeklyLoad: Int = 0,
+        qualifiedSubjects: Set<SubjectId> = emptySet(),
+    ): Teacher =
+        Teacher.create(schoolId, name, shortCode, weeklyLoad, teachingSlotsPerWeek = Int.MAX_VALUE).valid()
+            .withQualifications(qualifiedSubjects, qualifiedSubjects).valid()
+            .also(teachers::insert)
+
+    /** Stores unavailability without checking it against the grid. */
+    fun markUnavailable(teacher: Teacher, vararg entries: Unavailability) {
+        val stored = teachers.findById(teacher.id)!!
+        teachers.update(stored.copy(unavailability = stored.unavailability + entries))
+    }
 
     fun bumpSchoolVersion(schoolId: SchoolId) {
         schools.update(schools.findById(schoolId)!!)

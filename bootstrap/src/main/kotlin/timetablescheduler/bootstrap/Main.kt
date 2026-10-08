@@ -13,6 +13,8 @@ import timetablescheduler.adapters.persistence.curriculum.ExposedSubjectReposito
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
+import timetablescheduler.adapters.persistence.teacher.ExposedTeacherRepository
+import timetablescheduler.adapters.persistence.teacher.ExposedTimeSlotUsage
 import timetablescheduler.adapters.web.WebDependencies
 import timetablescheduler.adapters.web.WebSettings
 import timetablescheduler.adapters.web.webModule
@@ -21,8 +23,6 @@ import timetablescheduler.application.MasterDataUseCases
 import timetablescheduler.application.account.InstallationOutcome
 import timetablescheduler.application.account.InstallationUseCase
 import timetablescheduler.application.error.UseCaseResult
-import timetablescheduler.application.port.TimeSlotUsage
-import timetablescheduler.domain.common.TimeSlotId
 
 private val log = LoggerFactory.getLogger("timetablescheduler.bootstrap.Main")
 
@@ -48,10 +48,11 @@ fun main() {
         hasher = hasher,
         rooms = ExposedRoomRepository(),
         roomFeatures = ExposedRoomFeatureRepository(),
-        timeSlotUsage = NoTeacherUnavailabilitiesYet,
+        timeSlotUsage = ExposedTimeSlotUsage(),
         subjects = ExposedSubjectRepository(),
         classLevels = ExposedClassLevelRepository(),
         schoolClasses = ExposedSchoolClassRepository(),
+        teachers = ExposedTeacherRepository(),
     )
     val dependencies = WebDependencies(MasterDataUseCases(ports))
     embeddedServer(Netty, port = 8080) {
@@ -71,10 +72,4 @@ private fun ensureInstalled(installation: InstallationUseCase, config: AppConfig
         is UseCaseResult.Failure ->
             throw MissingConfiguration("Initial setup rejected (${result.error.javaClass.simpleName}); check TTS_INITIAL_* values")
     }
-}
-
-/** Placeholder until teacher unavailabilities exist (US3). */
-private object NoTeacherUnavailabilitiesYet : TimeSlotUsage {
-    override fun countUnavailabilities(slotId: TimeSlotId): Int = 0
-    override fun deleteUnavailabilities(slotId: TimeSlotId) = Unit
 }

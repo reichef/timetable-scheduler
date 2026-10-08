@@ -228,20 +228,20 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T093 [P] [US3] Write `DOM_T/teacher/TeacherTest.kt` covering every hard constraint: name "String (1–120)" "Not unique"; shortCode "String (2–8, upper case letters/digits)"; weeklyLoad "Int ≥ 0" and "≤ teachingSlotsPerWeek of the school" when saved (FR-018); qualifications "Subjects of the same school" (FR-017); unavailability "Slot of the same school that exists on that day when entered" (FR-021)
-- [ ] T094 [P] [US3] Write `APP_T/teacher/TeacherUseCasesTest.kt`: shortCode "Unique in installation" (acceptance 3.2); load 40 with 38 teaching slots rejected (acceptance 3.4); qualifications and unavailability saved with version check; teacher of a foreign `schoolId` → `NotFound`; `DeleteSubject` blocked by a qualification naming the teacher; `DeleteTimeSlot` removes the teacher unavailabilities of the slot and reports their count; deleting a teacher removes its qualifications and unavailabilities
-- [ ] T095 [P] [US3] Write `PER_T/teacher/TeacherRepositoryIT.kt` (round trip incl. qualifications/unavailability, optimistic locking, unique short code, `ExposedTimeSlotUsage` count/delete) and `WEB_T/teacher/TeacherRoutesTest.kt` (create → 303; duplicate short code → 422; unavailability grid saved; delete → 303)
+- [X] T093 [P] [US3] Write `DOM_T/teacher/TeacherTest.kt` covering every hard constraint: name "String (1–120)" "Not unique"; shortCode "String (2–8, upper case letters/digits)"; weeklyLoad "Int ≥ 0" and "≤ teachingSlotsPerWeek of the school" when saved (FR-018); qualifications "Subjects of the same school" (FR-017); unavailability "Slot of the same school that exists on that day when entered" (FR-021)
+- [X] T094 [P] [US3] Write `APP_T/teacher/TeacherUseCasesTest.kt`: shortCode "Unique in installation" (acceptance 3.2); load 40 with 38 teaching slots rejected (acceptance 3.4); qualifications and unavailability saved with version check; teacher of a foreign `schoolId` → `NotFound`; `DeleteSubject` blocked by a qualification naming the teacher; `DeleteTimeSlot` removes the teacher unavailabilities of the slot and reports their count; deleting a teacher removes its qualifications and unavailabilities
+- [X] T095 [P] [US3] Write `PER_T/teacher/TeacherRepositoryIT.kt` (round trip incl. qualifications/unavailability, optimistic locking, unique short code, `ExposedTimeSlotUsage` count/delete) and `WEB_T/teacher/TeacherRoutesTest.kt` (create → 303; duplicate short code → 422; unavailability grid saved; delete → 303)
 
 ### Implementation for User Story 3
 
-- [ ] T096 [US3] Create `Teacher` aggregate (`schoolId`, name, shortCode, weeklyLoad, `qualifiedSubjectIds`, `unavailability`, `version`) with `Unavailability(dayOfWeek, slotId)` and a commented load-limit check in `DOM/teacher/Teacher.kt` and `DOM/teacher/Unavailability.kt`
-- [ ] T097 [US3] Create port `TeacherRepository` (incl. `findByShortCode`, `findBySchool`, `findQualifiedFor(subjectId)`) in `APP/port/TeacherRepository.kt`; add a subject dependant source for teacher qualifications in `MasterDataUseCases`
-- [ ] T098 [US3] Implement use cases `CreateTeacher`, `UpdateTeacher`, `UpdateQualifications`, `UpdateUnavailability`, `DeleteTeacher`, `ListTeachers`, `GetTeacher` and a `TeacherUseCases` bundle in `APP/teacher/`
-- [ ] T099 [P] [US3] Add `InMemoryTeacherRepository` in `APP_F/fakes/TeacherFakes.kt`; make `InMemoryTimeSlotUsage` count real unavailabilities of the fake teacher repository
-- [ ] T100 [US3] Create migration `PER_R/V4__teachers.sql`: `teacher` (`school_id` fk, unique `short_code`, check `weekly_load >= 0`, `version`), `teacher_qualification` (pk `(teacher_id, subject_id)`), `teacher_unavailability` (pk `(teacher_id, day_of_week, slot_id)`, fk `slot_id` on delete cascade)
-- [ ] T101 [US3] Implement Exposed tables, `ExposedTeacherRepository` and `ExposedTimeSlotUsage` in `PER/teacher/`; replace the placeholder `NoTeacherUnavailabilitiesYet` in `BOOT/Main.kt`
-- [ ] T102 [US3] Implement routes and views `/schools/{schoolId}/teachers` and `/schools/{schoolId}/teachers/{teacherId}` (general data, qualifications, unavailability grid days × teaching slots, delete) in `WEB/teacher/TeacherRoutes.kt` and `WEB/teacher/TeacherViews.kt` per contracts "Teachers"; add dashboard link
-- [ ] T103 [US3] Wire US3 in `BOOT/Main.kt` and `WEB/WebModule.kt`
+- [X] T096 [US3] Create `Teacher` aggregate (`schoolId`, name, shortCode, weeklyLoad, `qualifiedSubjectIds`, `unavailability`, `version`) with `Unavailability(dayOfWeek, slotId)` and a commented load-limit check in `DOM/teacher/Teacher.kt` and `DOM/teacher/Unavailability.kt`
+- [X] T097 [US3] Create port `TeacherRepository` (incl. `findByShortCode`, `findBySchool`, `findQualifiedFor(subjectId)`) in `APP/port/TeacherRepository.kt`; add a subject dependant source for teacher qualifications in `MasterDataUseCases`
+- [X] T098 [US3] Implement use cases `CreateTeacher`, `UpdateTeacher`, `UpdateQualifications`, `UpdateUnavailability`, `DeleteTeacher`, `ListTeachers`, `GetTeacher` and a `TeacherUseCases` bundle in `APP/teacher/`
+- [X] T099 [P] [US3] Add `InMemoryTeacherRepository` in `APP_F/fakes/TeacherFakes.kt`; make `InMemoryTimeSlotUsage` count real unavailabilities of the fake teacher repository
+- [X] T100 [US3] Create migration `PER_R/V4__teachers.sql`: `teacher` (`school_id` fk, unique `short_code`, check `weekly_load >= 0`, `version`), `teacher_qualification` (pk `(teacher_id, subject_id)`), `teacher_unavailability` (pk `(teacher_id, day_of_week, slot_id)`, fk `slot_id` on delete cascade)
+- [X] T101 [US3] Implement Exposed tables, `ExposedTeacherRepository` and `ExposedTimeSlotUsage` in `PER/teacher/`; replace the placeholder `NoTeacherUnavailabilitiesYet` in `BOOT/Main.kt`
+- [X] T102 [US3] Implement routes and views `/schools/{schoolId}/teachers` and `/schools/{schoolId}/teachers/{teacherId}` (general data, qualifications, unavailability grid days × teaching slots, delete) in `WEB/teacher/TeacherRoutes.kt` and `WEB/teacher/TeacherViews.kt` per contracts "Teachers"; add dashboard link
+- [X] T103 [US3] Wire US3 in `BOOT/Main.kt` and `WEB/WebModule.kt`
 
 **Checkpoint**: Quickstart scenarios 10–12, 14 and the confirmation part of 14a pass; earlier stories still work
 

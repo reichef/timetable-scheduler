@@ -48,5 +48,6 @@ private fun FlowContent.sectionLinks(school: School, dashboard: SchoolDashboard)
         li { a(href = "${schoolPath(school)}/time-grid") { +"Zeitraster (${dashboard.teachingSlotsPerWeek} Unterrichtsstunden pro Woche)" } }
         li { a(href = "${schoolPath(school)}/subjects") { +"Fächer" } }
         li { a(href = "${schoolPath(school)}/class-levels") { +"Klassenstufen und Klassen" } }
+        li { a(href = "${schoolPath(school)}/teachers") { +"Lehrkräfte" } }
     }
 }
