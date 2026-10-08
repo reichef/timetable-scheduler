@@ -49,13 +49,6 @@ internal object TimeGridStore {
         saveExclusions(timeGrid)
     }
 
-    fun deleteAll(schoolId: SchoolId) {
-        val slotIds = existingSlotIds(schoolId)
-        if (slotIds.isNotEmpty()) SlotDayExclusionTable.deleteWhere { SlotDayExclusionTable.slotId inList slotIds }
-        TimeSlotTable.deleteWhere { TimeSlotTable.schoolId eq schoolId.value }
-        TeachingDayTable.deleteWhere { TeachingDayTable.schoolId eq schoolId.value }
-    }
-
     private fun saveTeachingDays(schoolId: SchoolId, teachingDays: Set<DayOfWeek>) {
         TeachingDayTable.deleteWhere { TeachingDayTable.schoolId eq schoolId.value }
         TeachingDayTable.batchInsert(teachingDays) { day ->

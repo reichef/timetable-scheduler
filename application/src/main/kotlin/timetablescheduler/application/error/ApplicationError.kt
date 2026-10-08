@@ -16,7 +16,7 @@ sealed interface ApplicationError {
     data class DeletionBlocked(val visibleDependants: List<Dependant>, val hiddenDependantCount: Int) : ApplicationError
 }
 
-enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLASS, TIME_SLOT, TEACHER, USER_ACCOUNT }
+enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLASS, TIME_SLOT, TEACHER }
 
 /** An entry that prevents a deletion (FR-023). */
 data class Dependant(val type: DependantType, val displayName: String)

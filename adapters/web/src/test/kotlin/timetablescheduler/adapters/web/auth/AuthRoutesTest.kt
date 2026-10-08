@@ -42,7 +42,7 @@ class AuthRoutesTest {
     }
 
     @Test
-    fun `successful planner login redirects to school list`() = testApplication {
+    fun `successful planner login redirects to the school`() = testApplication {
         val client = startWith(TestSystem().installed())
 
         val response = client.login()

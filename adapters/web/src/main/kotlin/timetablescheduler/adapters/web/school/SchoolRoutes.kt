@@ -11,35 +11,28 @@ import timetablescheduler.adapters.web.auth.SESSION_AUTH
 import timetablescheduler.adapters.web.auth.actor
 import timetablescheduler.adapters.web.layout.idParameter
 import timetablescheduler.adapters.web.layout.receiveCheckedForm
+import timetablescheduler.adapters.web.layout.respondBusinessFailure
 import timetablescheduler.adapters.web.layout.respondFormResult
 import timetablescheduler.adapters.web.layout.respondResult
 import timetablescheduler.adapters.web.layout.seeOther
 import timetablescheduler.adapters.web.layout.text
 import timetablescheduler.adapters.web.layout.version
+import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.domain.common.SchoolId
 
 /** Reads `{schoolId}`; answers 404 itself and returns null when it is malformed. */
 suspend fun ApplicationCall.schoolIdParameter(): SchoolId? = idParameter("schoolId")?.let(::SchoolId)
 
+/** The installation has exactly one school (FR-001): `/schools` leads to it, only renaming is offered. */
 fun Route.schoolRoutes(dependencies: WebDependencies) {
     val schools = dependencies.useCases.schools
 
     authenticate(SESSION_AUTH) {
         get("/schools") {
-            call.respondResult(schools.list.execute(call.actor)) { call.respondSchoolList(it) }
-        }
-
-        post("/schools") {
-            val name = call.receiveCheckedForm().text("name")
-            call.respondFormResult(
-                schools.create.execute(call.actor, name),
-                backLink = "/schools",
-                onInvalid = { errors ->
-                    call.respondResult(schools.list.execute(call.actor)) {
-                        call.respondSchoolList(it, errors, name, HttpStatusCode.UnprocessableEntity)
-                    }
-                },
-            ) { call.seeOther(schoolPath(it)) }
+            call.respondResult(schools.list.execute(call.actor)) { accessible ->
+                val school = accessible.firstOrNull()
+                if (school == null) call.respondBusinessFailure(ApplicationError.NotFound) else call.seeOther(schoolPath(school))
+            }
         }
 
         get("/schools/{schoolId}") {
@@ -60,14 +53,6 @@ fun Route.schoolRoutes(dependencies: WebDependencies) {
                     }
                 },
             ) { call.seeOther(schoolPath(it)) }
-        }
-
-        post("/schools/{schoolId}/delete") {
-            val schoolId = call.schoolIdParameter() ?: return@post
-            val form = call.receiveCheckedForm()
-            call.respondResult(schools.delete.execute(call.actor, schoolId, form.version()), "/schools/${schoolId.value}") {
-                call.seeOther("/schools")
-            }
         }
     }
 }

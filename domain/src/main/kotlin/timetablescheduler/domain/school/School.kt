@@ -5,7 +5,7 @@ import timetablescheduler.domain.validation.ValidationCollector
 import timetablescheduler.domain.validation.ValidationResult
 import timetablescheduler.domain.validation.requiredText
 
-/** A location at which lessons take place (FR-001). Name uniqueness is checked by the use case. */
+/** The school whose timetables are planned; exactly one per installation in this version (FR-001, FR-036). */
 data class School(
     val id: SchoolId,
     val name: String,

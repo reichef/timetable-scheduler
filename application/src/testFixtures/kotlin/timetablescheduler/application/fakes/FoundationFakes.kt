@@ -55,11 +55,6 @@ class InMemorySchoolRepository : VersionedInMemoryStore<SchoolId, School>(
 
     private val timeGrids = mutableMapOf<SchoolId, TimeGrid>()
 
-    override fun delete(schoolId: SchoolId) {
-        entries.remove(schoolId)
-        timeGrids.remove(schoolId)
-    }
-
     override fun findTimeGrid(schoolId: SchoolId): TimeGrid = timeGrids[schoolId] ?: TimeGrid.empty()
 
     override fun saveTimeGrid(schoolId: SchoolId, timeGrid: TimeGrid) {
@@ -80,13 +75,6 @@ class InMemoryUserAccountRepository : VersionedInMemoryStore<AccountId, UserAcco
     override fun existsAny(): Boolean = entries.isNotEmpty()
     override fun findActivePlannerIdsOfSchool(schoolId: SchoolId): Set<AccountId> =
         entries.values.filter { it.isActivePlannerOf(schoolId) }.map { it.id }.toSet()
-
-    override fun findAccountsWithOnlySchool(schoolId: SchoolId): List<UserAccount> =
-        entries.values.filter { it.schoolIds == setOf(schoolId) }
-
-    override fun removeSchoolAssignments(schoolId: SchoolId) {
-        entries.replaceAll { _, account -> account.copy(schoolIds = account.schoolIds - schoolId) }
-    }
 }
 
 class InMemoryPasswordCredentialRepository : PasswordCredentialRepository {

@@ -48,7 +48,7 @@ fun Route.authRoutes(dependencies: WebDependencies) {
         get("/home") {
             call.respondPage("Start") {
                 p { +Messages.TEACHER_HOME }
-                p { a(href = "/schools") { +"Planer: zu den Schulen" } }
+                p { a(href = "/schools") { +"Planer: zur Schule" } }
             }
         }
 

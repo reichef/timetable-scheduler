@@ -29,12 +29,10 @@ object Messages {
         "periodsPerWeek" to "Wochenstunden",
         "shortCode" to "Kürzel",
         "weeklyLoad" to "Deputat",
-        "minutes" to "Pendelzeit",
         "startTime" to "Beginn",
         "endTime" to "Ende",
         "features" to "Ausstattung",
         "subjects" to "Fächer",
-        "schools" to "Schulen",
         "dayOfWeek" to "Wochentag",
         "slot" to "Zeitfenster",
     )
@@ -64,7 +62,6 @@ object Messages {
         DependantType.SCHOOL_CLASS -> "Klasse"
         DependantType.TIME_SLOT -> "Zeitfenster"
         DependantType.TEACHER -> "Lehrkraft"
-        DependantType.USER_ACCOUNT -> "Benutzerkonto"
     }
 
     fun hiddenDependants(count: Int): String = "und $count Einträge anderer Schulen"

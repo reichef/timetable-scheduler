@@ -7,7 +7,6 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.lowerCase
-import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
@@ -51,11 +50,6 @@ class ExposedSchoolRepository : SchoolRepository {
     override fun findByNameIgnoreCase(name: String): School? =
         SchoolTable.selectAll().where { SchoolTable.name.lowerCase() eq name.trim().lowercase() }
             .singleOrNull()?.toSchool()
-
-    override fun delete(schoolId: SchoolId) {
-        TimeGridStore.deleteAll(schoolId)
-        SchoolTable.deleteWhere { SchoolTable.id eq schoolId.value }
-    }
 
     override fun findTimeGrid(schoolId: SchoolId): TimeGrid = TimeGridStore.load(schoolId)
 

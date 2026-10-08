@@ -9,7 +9,6 @@ import kotlinx.html.button
 import kotlinx.html.form
 import kotlinx.html.h2
 import kotlinx.html.li
-import kotlinx.html.p
 import kotlinx.html.ul
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.hiddenField
@@ -21,24 +20,6 @@ import timetablescheduler.domain.school.School
 import timetablescheduler.domain.validation.ValidationError
 
 fun schoolPath(school: School) = "/schools/${school.id.value}"
-
-suspend fun ApplicationCall.respondSchoolList(
-    schools: List<School>,
-    errors: List<ValidationError> = emptyList(),
-    enteredName: String? = null,
-    status: HttpStatusCode = HttpStatusCode.OK,
-) {
-    respondPage("Schulen", status) { session ->
-        ul { schools.forEach { school -> li { a(href = schoolPath(school)) { +school.name } } } }
-        h2 { +"Weitere Schule anlegen" }
-        validationErrors(errors)
-        form(action = "/schools", method = FormMethod.post) {
-            csrfField(session)
-            textField("name", "Name", enteredName)
-            button { +"Anlegen" }
-        }
-    }
-}
 
 suspend fun ApplicationCall.respondSchoolDashboard(
     dashboard: SchoolDashboard,
@@ -57,12 +38,6 @@ suspend fun ApplicationCall.respondSchoolDashboard(
             textField("name", "Name", enteredName ?: school.name)
             button { +"Speichern" }
         }
-        h2 { +"Schule löschen" }
-        form(action = "${schoolPath(school)}/delete", method = FormMethod.post) {
-            csrfField(session)
-            hiddenField("version", "${school.version}")
-            button(classes = "danger") { +"Löschen" }
-        }
     }
 }
 
@@ -72,5 +47,4 @@ private fun FlowContent.sectionLinks(school: School, dashboard: SchoolDashboard)
         li { a(href = "${schoolPath(school)}/rooms") { +"Räume (${dashboard.roomCount})" } }
         li { a(href = "${schoolPath(school)}/time-grid") { +"Zeitraster (${dashboard.teachingSlotsPerWeek} Unterrichtsstunden pro Woche)" } }
     }
-    p { a(href = "/schools") { +"Zur Schulliste" } }
 }

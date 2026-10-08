@@ -23,8 +23,6 @@ import timetablescheduler.application.room.ListRooms
 import timetablescheduler.application.room.RoomUseCases
 import timetablescheduler.application.room.UpdateRoom
 import timetablescheduler.application.school.AddTimeSlot
-import timetablescheduler.application.school.CreateSchool
-import timetablescheduler.application.school.DeleteSchool
 import timetablescheduler.application.school.DeleteTimeSlot
 import timetablescheduler.application.school.GetSchoolDashboard
 import timetablescheduler.application.school.GetTimeGrid
@@ -37,7 +35,6 @@ import timetablescheduler.application.school.SetTeachingDays
 import timetablescheduler.application.school.TimeGridUseCases
 import timetablescheduler.application.school.UpdateTimeSlot
 import timetablescheduler.domain.common.RoomFeatureId
-import timetablescheduler.domain.common.SchoolId
 
 /** All ports the use cases need; implemented by the persistence adapter or by in-memory fakes in tests. */
 class MasterDataPorts(
@@ -61,21 +58,6 @@ class MasterDataUseCases(ports: MasterDataPorts) {
         ports.accounts,
     )
 
-    private val schoolDependantSources: List<DependantSource<SchoolId>> = with(ports) {
-        listOf(
-            DependantSource { schoolId -> rooms.findBySchool(schoolId).map { DependantRef(DependantType.ROOM, it.identifier, setOf(schoolId)) } },
-            DependantSource { schoolId ->
-                roomFeatures.findBySchool(schoolId).map { DependantRef(DependantType.ROOM_FEATURE, it.name, setOf(schoolId)) }
-            },
-            DependantSource { schoolId ->
-                schools.findTimeGrid(schoolId).slots.map { DependantRef(DependantType.TIME_SLOT, it.label, setOf(schoolId)) }
-            },
-            DependantSource { schoolId ->
-                accounts.findAccountsWithOnlySchool(schoolId).map { DependantRef(DependantType.USER_ACCOUNT, it.username, it.schoolIds) }
-            },
-        )
-    }
-
     private val roomFeatureDependantSources: List<DependantSource<RoomFeatureId>> = with(ports) {
         listOf(
             DependantSource { featureId ->
@@ -87,9 +69,7 @@ class MasterDataUseCases(ports: MasterDataPorts) {
     val schools = with(ports) {
         SchoolUseCases(
             list = ListAccessibleSchools(transactions, access, schools),
-            create = CreateSchool(transactions, access, schools, accounts),
             rename = RenameSchool(transactions, access, schools),
-            delete = DeleteSchool(transactions, access, schools, accounts, schoolDependantSources),
             dashboard = GetSchoolDashboard(transactions, access, schools, rooms, roomFeatures),
         )
     }

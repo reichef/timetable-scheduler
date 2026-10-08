@@ -16,9 +16,6 @@ interface SchoolRepository {
 
     fun findByNameIgnoreCase(name: String): School?
 
-    /** Deletes the school with its (empty) time grid; callers check dependants first (FR-023). */
-    fun delete(schoolId: SchoolId)
-
     fun findTimeGrid(schoolId: SchoolId): TimeGrid
 
     /** Stores teaching days, slots and exclusions; existing slots keep their identity. */

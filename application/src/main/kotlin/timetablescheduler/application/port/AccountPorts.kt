@@ -17,11 +17,6 @@ interface UserAccountRepository {
     fun existsAny(): Boolean
 
     fun findActivePlannerIdsOfSchool(schoolId: SchoolId): Set<AccountId>
-
-    /** Accounts for which [schoolId] is the only assigned school; they block deleting it (FR-031a). */
-    fun findAccountsWithOnlySchool(schoolId: SchoolId): List<UserAccount>
-
-    fun removeSchoolAssignments(schoolId: SchoolId)
 }
 
 /** Password credentials, kept apart from accounts so single sign-on can be added beside them (FR-035). */
