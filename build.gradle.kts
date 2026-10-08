@@ -1,27 +1,28 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+
 plugins {
-    kotlin("jvm") version "2.0.21"
-    application
+    alias(libs.plugins.kotlin.jvm) apply false
 }
 
-group = "de.reichef"
-version = "0.1.0"
+allprojects {
+    group = "de.reichef"
+    version = "0.1.0"
 
-repositories {
-    mavenCentral()
+    repositories {
+        mavenCentral()
+    }
 }
 
-dependencies {
-    testImplementation(kotlin("test"))
-}
-
-application {
-    mainClass.set("timetablescheduler.MainKt")
-}
-
-kotlin {
-    jvmToolchain(21)
-}
-
-tasks.test {
-    useJUnitPlatform()
+subprojects {
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        extensions.configure<KotlinJvmProjectExtension> {
+            jvmToolchain(21)
+        }
+        dependencies {
+            "testImplementation"(kotlin("test"))
+        }
+        tasks.withType<Test>().configureEach {
+            useJUnitPlatform()
+        }
+    }
 }

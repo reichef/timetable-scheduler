@@ -1,0 +1,68 @@
+:root {
+    --text: #1f2933;
+    --muted: #616e7c;
+    --accent: #1d4ed8;
+    --surface: #ffffff;
+    --background: #f5f7fa;
+    --border: #d9e2ec;
+    --error: #b91c1c;
+    --break: #fef3c7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text);
+    background: var(--background);
+    line-height: 1.5;
+}
+
+header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+header .brand { font-weight: 600; color: var(--text); text-decoration: none; }
+
+nav { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+
+a { color: var(--accent); }
+
+main { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+
+form { display: grid; gap: 0.75rem; max-width: 32rem; margin-bottom: 1.5rem; }
+form.inline { display: inline; margin: 0; }
+
+label { display: grid; gap: 0.25rem; font-weight: 500; }
+
+input, select { font: inherit; padding: 0.4rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
+
+button {
+    font: inherit;
+    padding: 0.4rem 0.9rem;
+    border: none;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    justify-self: start;
+}
+
+button.link { background: none; color: var(--accent); padding: 0; text-decoration: underline; }
+button.danger { background: var(--error); }
+
+.errors { border-left: 4px solid var(--error); background: #fef2f2; padding: 0.5rem 1rem; margin-bottom: 1rem; }
+.warning { border-left: 4px solid #d97706; background: #fffbeb; padding: 0.5rem 1rem; margin-bottom: 1rem; }
+
+table { border-collapse: collapse; width: 100%; background: var(--surface); }
+th, td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+tr.break td { background: var(--break); font-style: italic; }
+
+fieldset { border: 1px solid var(--border); border-radius: 4px; }
