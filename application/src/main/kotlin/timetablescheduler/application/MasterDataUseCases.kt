@@ -32,6 +32,7 @@ import timetablescheduler.application.curriculum.UpdateClassLevel
 import timetablescheduler.application.curriculum.UpdateSchoolClass
 import timetablescheduler.application.curriculum.UpdateSubject
 import timetablescheduler.application.port.ClassLevelRepository
+import timetablescheduler.application.readiness.GetSchoolReadiness
 import timetablescheduler.application.port.PasswordCredentialRepository
 import timetablescheduler.application.port.PasswordHasher
 import timetablescheduler.application.port.RoomFeatureRepository
@@ -195,6 +196,10 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             list = ListTeachers(transactions, access, teachers),
             get = GetTeacher(transactions, access, schools, subjects, teachers),
         )
+    }
+
+    val readiness = with(ports) {
+        GetSchoolReadiness(transactions, access, schools, rooms, roomFeatures, subjects, classLevels, schoolClasses, teachers)
     }
 
     val timeGrid = with(ports) {

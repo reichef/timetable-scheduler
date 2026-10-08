@@ -19,6 +19,7 @@ import timetablescheduler.adapters.web.layout.text
 import timetablescheduler.adapters.web.layout.version
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.validation.ValidationError
 
 /** Reads `{schoolId}`; answers 404 itself and returns null when it is malformed. */
 suspend fun ApplicationCall.schoolIdParameter(): SchoolId? = idParameter("schoolId")?.let(::SchoolId)
@@ -26,6 +27,21 @@ suspend fun ApplicationCall.schoolIdParameter(): SchoolId? = idParameter("school
 /** The installation has exactly one school (FR-001): `/schools` leads to it, only renaming is offered. */
 fun Route.schoolRoutes(dependencies: WebDependencies) {
     val schools = dependencies.useCases.schools
+    val readiness = dependencies.useCases.readiness
+
+    /** The dashboard shows the school's sections and how many readiness issues are open (US4). */
+    suspend fun ApplicationCall.respondDashboard(
+        schoolId: SchoolId,
+        errors: List<ValidationError> = emptyList(),
+        enteredName: String? = null,
+        status: HttpStatusCode = HttpStatusCode.OK,
+    ) {
+        respondResult(schools.dashboard.execute(actor, schoolId)) { dashboard ->
+            respondResult(readiness.execute(actor, schoolId)) { report ->
+                respondSchoolDashboard(dashboard, report.issues.size, errors, enteredName, status)
+            }
+        }
+    }
 
     authenticate(SESSION_AUTH) {
         get("/schools") {
@@ -37,7 +53,7 @@ fun Route.schoolRoutes(dependencies: WebDependencies) {
 
         get("/schools/{schoolId}") {
             val schoolId = call.schoolIdParameter() ?: return@get
-            call.respondResult(schools.dashboard.execute(call.actor, schoolId)) { call.respondSchoolDashboard(it) }
+            call.respondDashboard(schoolId)
         }
 
         post("/schools/{schoolId}") {
@@ -47,11 +63,7 @@ fun Route.schoolRoutes(dependencies: WebDependencies) {
             call.respondFormResult(
                 schools.rename.execute(call.actor, schoolId, name, form.version()),
                 backLink = "/schools/${schoolId.value}",
-                onInvalid = { errors ->
-                    call.respondResult(schools.dashboard.execute(call.actor, schoolId)) {
-                        call.respondSchoolDashboard(it, errors, name, HttpStatusCode.UnprocessableEntity)
-                    }
-                },
+                onInvalid = { errors -> call.respondDashboard(schoolId, errors, name, HttpStatusCode.UnprocessableEntity) },
             ) { call.seeOther(schoolPath(it)) }
         }
     }

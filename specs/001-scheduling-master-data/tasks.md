@@ -255,14 +255,14 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ### Tests for User Story 4 (write first, must fail)
 
-- [ ] T104 [P] [US4] Write `DOM_T/readiness/ReadinessCheckTest.kt` with one test per code: `SUBJECT_NO_SUITABLE_ROOM` (names missing features), `SUBJECT_NO_QUALIFIED_TEACHER`, `SUBJECT_TEACHER_CAPACITY_SHORTFALL` (required periods via `ClassCurriculumResolver`; acceptance 4.2: 40 required vs 30 offered → shortfall 10), `LEVEL_EXCEEDS_GRID`, `TEACHER_WITHOUT_QUALIFICATION`, `TEACHER_ZERO_LOAD`, `TEACHER_LOAD_EXCEEDS_GRID` ("weeklyLoad > teachingSlotsPerWeek"); consistent data → no issues (acceptance 4.3)
-- [ ] T105 [P] [US4] Write `WEB_T/readiness/ReadinessRoutesTest.kt`: issues grouped by code with links; "Keine blockierenden Probleme gefunden" when empty; foreign `schoolId` → 404
+- [X] T104 [P] [US4] Write `DOM_T/readiness/ReadinessCheckTest.kt` with one test per code: `SUBJECT_NO_SUITABLE_ROOM` (names missing features), `SUBJECT_NO_QUALIFIED_TEACHER`, `SUBJECT_TEACHER_CAPACITY_SHORTFALL` (required periods via `ClassCurriculumResolver`; acceptance 4.2: 40 required vs 30 offered → shortfall 10), `LEVEL_EXCEEDS_GRID`, `TEACHER_WITHOUT_QUALIFICATION`, `TEACHER_ZERO_LOAD`, `TEACHER_LOAD_EXCEEDS_GRID` ("weeklyLoad > teachingSlotsPerWeek"); consistent data → no issues (acceptance 4.3)
+- [X] T105 [P] [US4] Write `WEB_T/readiness/ReadinessRoutesTest.kt`: issues grouped by code with links; "Keine blockierenden Probleme gefunden" when empty; foreign `schoolId` → 404
 
 ### Implementation for User Story 4
 
-- [ ] T106 [US4] Implement `ReadinessCheck` with one commented function per rule (reusing `LevelExceedsGridRule`; KDoc notes capacity is an upper-bound estimate) in `DOM/readiness/ReadinessCheck.kt`
-- [ ] T107 [US4] Implement `GetSchoolReadiness` in `APP/readiness/GetSchoolReadiness.kt` and add it to `MasterDataUseCases`
-- [ ] T108 [US4] Implement route and view `/schools/{schoolId}/readiness` and a readiness summary on the dashboard in `WEB/readiness/ReadinessRoutes.kt`, `WEB/readiness/ReadinessViews.kt`, `WEB/school/SchoolViews.kt`; register in `WEB/WebModule.kt`
+- [X] T106 [US4] Implement `ReadinessCheck` with one commented function per rule (reusing `LevelExceedsGridRule`; KDoc notes capacity is an upper-bound estimate) in `DOM/readiness/ReadinessCheck.kt`
+- [X] T107 [US4] Implement `GetSchoolReadiness` in `APP/readiness/GetSchoolReadiness.kt` and add it to `MasterDataUseCases`
+- [X] T108 [US4] Implement route and view `/schools/{schoolId}/readiness` and a readiness summary on the dashboard in `WEB/readiness/ReadinessRoutes.kt`, `WEB/readiness/ReadinessViews.kt`, `WEB/school/SchoolViews.kt`; register in `WEB/WebModule.kt`
 
 **Checkpoint**: Quickstart scenarios 13 and 14a pass; all stories work together
 

@@ -15,6 +15,7 @@ import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.layout.textField
 import timetablescheduler.adapters.web.layout.validationErrors
+import timetablescheduler.adapters.web.readiness.readinessSummary
 import timetablescheduler.application.school.SchoolDashboard
 import timetablescheduler.domain.school.School
 import timetablescheduler.domain.validation.ValidationError
@@ -23,6 +24,7 @@ fun schoolPath(school: School) = "/schools/${school.id.value}"
 
 suspend fun ApplicationCall.respondSchoolDashboard(
     dashboard: SchoolDashboard,
+    readinessIssueCount: Int,
     errors: List<ValidationError> = emptyList(),
     enteredName: String? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
@@ -30,6 +32,7 @@ suspend fun ApplicationCall.respondSchoolDashboard(
     val school = dashboard.school
     respondPage(school.name, status) { session ->
         sectionLinks(school, dashboard)
+        readinessSummary(school.id, readinessIssueCount)
         h2 { +"Umbenennen" }
         validationErrors(errors)
         form(action = schoolPath(school), method = FormMethod.post) {

@@ -28,6 +28,7 @@ import timetablescheduler.adapters.web.layout.Messages
 import timetablescheduler.adapters.web.layout.respondMessage
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.room.roomRoutes
+import timetablescheduler.adapters.web.readiness.readinessRoutes
 import timetablescheduler.adapters.web.school.schoolRoutes
 import timetablescheduler.adapters.web.subject.subjectRoutes
 import timetablescheduler.adapters.web.teacher.teacherRoutes
@@ -59,6 +60,7 @@ fun Application.webModule(dependencies: WebDependencies, settings: WebSettings) 
         subjectRoutes(dependencies)
         classLevelRoutes(dependencies)
         teacherRoutes(dependencies)
+        readinessRoutes(dependencies)
     }
 }
 
