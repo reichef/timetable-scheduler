@@ -32,6 +32,16 @@ class AuthRoutesTest {
     }
 
     @Test
+    fun `start page leads to the login`() = testApplication {
+        val client = startWith(TestSystem().installed())
+
+        val response = client.get("/")
+
+        assertEquals(HttpStatusCode.SeeOther, response.status)
+        assertEquals("/login", response.headers[HttpHeaders.Location])
+    }
+
+    @Test
     fun `login page is reachable without session`() = testApplication {
         val client = startWith(TestSystem().installed())
 

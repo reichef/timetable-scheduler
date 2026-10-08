@@ -29,6 +29,8 @@ import timetablescheduler.domain.account.Role
 const val SESSION_AUTH = "session"
 
 fun Route.authRoutes(dependencies: WebDependencies) {
+    get("/") { call.seeOther("/login") }
+
     get("/login") { call.respondLoginPage(HttpStatusCode.OK, loginFailed = false, username = null) }
 
     // The login form itself carries no CSRF token: there is no session yet to bind it to.
