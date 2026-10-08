@@ -17,4 +17,5 @@ sealed interface ValidationError {
     data object EndNotAfterStart : ValidationError
     data object LastSchoolRemoved : ValidationError
     data class NoActivePlannerLeft(val schoolId: SchoolId) : ValidationError
+    data object IncorrectCurrentPassword : ValidationError
 }

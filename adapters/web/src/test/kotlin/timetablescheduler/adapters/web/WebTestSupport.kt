@@ -48,10 +48,13 @@ class TestSystem {
 
 fun ApplicationTestBuilder.startWith(system: TestSystem): HttpClient {
     application { webModule(system.dependencies, system.settings) }
-    return createClient {
-        followRedirects = false
-        install(HttpCookies)
-    }
+    return newClient()
+}
+
+/** A further browser with its own cookies, e.g. to log in a second user. */
+fun ApplicationTestBuilder.newClient(): HttpClient = createClient {
+    followRedirects = false
+    install(HttpCookies)
 }
 
 suspend fun HttpClient.login(username: String = TestSystem.ADMIN, password: String = TestSystem.PASSWORD): HttpResponse =

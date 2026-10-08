@@ -67,6 +67,14 @@ class ExposedUserAccountRepository : UserAccountRepository {
             .map { AccountId(it[UserAccountTable.id]) }
             .toSet()
 
+    override fun findBySchool(schoolId: SchoolId): List<UserAccount> {
+        val accountIds = AccountSchoolTable.select(AccountSchoolTable.accountId)
+            .where { AccountSchoolTable.schoolId eq schoolId.value }
+            .map { it[AccountSchoolTable.accountId] }
+        if (accountIds.isEmpty()) return emptyList()
+        return UserAccountTable.selectAll().where { UserAccountTable.id inList accountIds }.map { it.toAccount() }
+    }
+
     private fun insertSchoolAssignments(account: UserAccount) {
         AccountSchoolTable.batchInsert(account.schoolIds) { schoolId ->
             this[AccountSchoolTable.accountId] = account.id.value

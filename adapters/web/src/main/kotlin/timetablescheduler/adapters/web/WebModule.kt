@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory
 import timetablescheduler.adapters.web.auth.SESSION_AUTH
 import timetablescheduler.adapters.web.auth.UserSession
 import timetablescheduler.adapters.web.auth.UserSessionSerializer
+import timetablescheduler.adapters.web.account.accountRoutes
 import timetablescheduler.adapters.web.auth.authRoutes
 import timetablescheduler.adapters.web.layout.CsrfViolation
 import timetablescheduler.adapters.web.layout.Messages
@@ -51,6 +52,7 @@ fun Application.webModule(dependencies: WebDependencies, settings: WebSettings) 
         schoolRoutes(dependencies)
         roomRoutes(dependencies)
         timeGridRoutes(dependencies)
+        accountRoutes(dependencies)
     }
 }
 

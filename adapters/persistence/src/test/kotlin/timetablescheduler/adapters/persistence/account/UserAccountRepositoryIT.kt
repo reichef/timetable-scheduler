@@ -57,6 +57,20 @@ class UserAccountRepositoryIT : PostgresTestBase() {
     }
 
     @Test
+    fun `finds all accounts of a school`() {
+        val nord = newSchool("Gymnasium Nord")
+        val teacher = (UserAccount.create("lehrer1", Role.TEACHER, setOf(nord.id)) as ValidationResult.Valid).value
+        val planner = newPlanner("mueller", nord)
+        inTransaction {
+            schools.insert(nord)
+            accounts.insert(planner)
+            accounts.insert(teacher)
+        }
+
+        assertEquals(setOf(planner, teacher), inTransaction { accounts.findBySchool(nord.id) }.toSet())
+    }
+
+    @Test
     fun `username is unique regardless of case`() {
         val nord = newSchool("Gymnasium Nord")
         inTransaction {

@@ -3,7 +3,16 @@ package timetablescheduler.application
 import timetablescheduler.application.access.DependantRef
 import timetablescheduler.application.access.DependantSource
 import timetablescheduler.application.access.SchoolAccessPolicy
+import timetablescheduler.application.account.AccountUseCases
+import timetablescheduler.application.account.ActivateAccount
+import timetablescheduler.application.account.ChangeOwnPassword
+import timetablescheduler.application.account.CreateAccount
+import timetablescheduler.application.account.DeactivateAccount
+import timetablescheduler.application.account.GetAccount
+import timetablescheduler.application.account.ListAccounts
 import timetablescheduler.application.account.LoginUseCase
+import timetablescheduler.application.account.ResetPassword
+import timetablescheduler.application.account.UpdateAccountRole
 import timetablescheduler.application.account.PasswordCredentialAuthenticator
 import timetablescheduler.application.error.DependantType
 import timetablescheduler.application.port.PasswordCredentialRepository
@@ -63,6 +72,19 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             DependantSource { featureId ->
                 rooms.findUsingFeature(featureId).map { DependantRef(DependantType.ROOM, it.identifier, setOf(it.schoolId)) }
             },
+        )
+    }
+
+    val accounts = with(ports) {
+        AccountUseCases(
+            list = ListAccounts(transactions, access, accounts),
+            get = GetAccount(transactions, access, accounts),
+            create = CreateAccount(transactions, access, accounts, credentials, hasher),
+            updateRole = UpdateAccountRole(transactions, access, accounts),
+            deactivate = DeactivateAccount(transactions, access, accounts),
+            activate = ActivateAccount(transactions, access, accounts),
+            resetPassword = ResetPassword(transactions, access, accounts, credentials, hasher),
+            changeOwnPassword = ChangeOwnPassword(transactions, accounts, credentials, hasher),
         )
     }
 

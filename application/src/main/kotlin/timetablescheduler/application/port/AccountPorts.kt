@@ -17,6 +17,9 @@ interface UserAccountRepository {
     fun existsAny(): Boolean
 
     fun findActivePlannerIdsOfSchool(schoolId: SchoolId): Set<AccountId>
+
+    /** All accounts assigned to [schoolId]; with one school these are all accounts (FR-036). */
+    fun findBySchool(schoolId: SchoolId): List<UserAccount>
 }
 
 /** Password credentials, kept apart from accounts so single sign-on can be added beside them (FR-035). */

@@ -75,6 +75,7 @@ class InMemoryUserAccountRepository : VersionedInMemoryStore<AccountId, UserAcco
     override fun existsAny(): Boolean = entries.isNotEmpty()
     override fun findActivePlannerIdsOfSchool(schoolId: SchoolId): Set<AccountId> =
         entries.values.filter { it.isActivePlannerOf(schoolId) }.map { it.id }.toSet()
+    override fun findBySchool(schoolId: SchoolId): List<UserAccount> = entries.values.filter { schoolId in it.schoolIds }
 }
 
 class InMemoryPasswordCredentialRepository : PasswordCredentialRepository {

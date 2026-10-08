@@ -172,14 +172,14 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ### Tests for User Story 5 (write first, must fail)
 
-- [ ] T069 [P] [US5] Write `APP_T/account/AccountManagementUseCasesTest.kt`: create account with role, assigned to the acting planner's school automatically; username "String (3–60)" and "Unique, case-insensitive"; initial password "≥ 10 characters" (FR-034); change role; deactivate/reactivate; reset password; deactivated account cannot log in; deactivating or downgrading the last active planner → `Invalid(NoActivePlannerLeft)` (FR-033); stale `version` → `VersionConflict`; teacher account calling any of these → `AccessDenied`; own password change requires the correct current password and works for teachers
-- [ ] T070 [P] [US5] Write `WEB_T/account/AccountRoutesTest.kt`: `TEACHER` session on `/accounts` → 403 without data; list shows username, role, active; create → 303 and listed; FR-033 violation → 422 with business message; `/account/password` works for a teacher account; unknown `accountId` → 404
+- [X] T069 [P] [US5] Write `APP_T/account/AccountManagementUseCasesTest.kt`: create account with role, assigned to the acting planner's school automatically; username "String (3–60)" and "Unique, case-insensitive"; initial password "≥ 10 characters" (FR-034); change role; deactivate/reactivate; reset password; deactivated account cannot log in; deactivating or downgrading the last active planner → `Invalid(NoActivePlannerLeft)` (FR-033); stale `version` → `VersionConflict`; teacher account calling any of these → `AccessDenied`; own password change requires the correct current password and works for teachers
+- [X] T070 [P] [US5] Write `WEB_T/account/AccountRoutesTest.kt`: `TEACHER` session on `/accounts` → 403 without data; list shows username, role, active; create → 303 and listed; FR-033 violation → 422 with business message; `/account/password` works for a teacher account; unknown `accountId` → 404
 
 ### Implementation for User Story 5
 
-- [ ] T071 [US5] Implement `CreateAccount`, `UpdateAccountRole`, `DeactivateAccount`, `ActivateAccount`, `ResetPassword`, `ChangeOwnPassword`, `ListAccounts`, `GetAccount` and an `AccountUseCases` bundle in `APP/account/AccountManagementUseCases.kt` (FR-033 via `PlannerCoverage`; new accounts get `schoolIds` of the acting planner = the school)
-- [ ] T072 [US5] Add `findBySchool(schoolId)` to `UserAccountRepository` in `APP/port/AccountPorts.kt`, `PER/account/ExposedUserAccountRepository.kt` and `APP_F/fakes/FoundationFakes.kt`; wire `AccountUseCases` into `MasterDataUseCases`
-- [ ] T073 [US5] Implement routes and views `/accounts`, `/accounts/{accountId}` (+ `/deactivate`, `/activate`, `/password`) and `/account/password` in `WEB/account/AccountRoutes.kt` and `WEB/account/AccountViews.kt` per contracts "User accounts"; register in `WEB/WebModule.kt`
+- [X] T071 [US5] Implement `CreateAccount`, `UpdateAccountRole`, `DeactivateAccount`, `ActivateAccount`, `ResetPassword`, `ChangeOwnPassword`, `ListAccounts`, `GetAccount` and an `AccountUseCases` bundle in `APP/account/AccountManagementUseCases.kt` (FR-033 via `PlannerCoverage`; new accounts get `schoolIds` of the acting planner = the school)
+- [X] T072 [US5] Add `findBySchool(schoolId)` to `UserAccountRepository` in `APP/port/AccountPorts.kt`, `PER/account/ExposedUserAccountRepository.kt` and `APP_F/fakes/FoundationFakes.kt`; wire `AccountUseCases` into `MasterDataUseCases`
+- [X] T073 [US5] Implement routes and views `/accounts`, `/accounts/{accountId}` (+ `/deactivate`, `/activate`, `/password`) and `/account/password` in `WEB/account/AccountRoutes.kt` and `WEB/account/AccountViews.kt` per contracts "User accounts"; register in `WEB/WebModule.kt`
 
 **Checkpoint**: Quickstart scenarios 16, 16a, 16c, 16f pass; US1 still works
 

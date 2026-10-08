@@ -21,6 +21,7 @@ object Messages {
     private val fieldLabels = mapOf(
         "name" to "Name",
         "username" to "Benutzername",
+        "role" to "Rolle",
         "password" to "Passwort",
         "identifier" to "Bezeichnung",
         "label" to "Bezeichnung",
@@ -51,7 +52,8 @@ object Messages {
         ValidationError.Overlap -> "Das Zeitfenster überschneidet sich mit einem vorhandenen Zeitfenster."
         ValidationError.EndNotAfterStart -> "Das Ende muss nach dem Beginn liegen."
         ValidationError.LastSchoolRemoved -> "Es muss mindestens eine Schule zugeordnet sein."
-        is ValidationError.NoActivePlannerLeft -> "Eine Schule hätte sonst keinen aktiven Planer mehr."
+        is ValidationError.NoActivePlannerLeft -> "Es muss mindestens ein aktiver Planer bleiben."
+        ValidationError.IncorrectCurrentPassword -> "Das aktuelle Passwort ist falsch."
     }
 
     fun describe(type: DependantType): String = when (type) {

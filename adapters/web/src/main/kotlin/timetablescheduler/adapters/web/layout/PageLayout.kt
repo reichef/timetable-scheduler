@@ -53,7 +53,6 @@ suspend fun ApplicationCall.respondPage(
 private fun FlowContent.navigation(session: UserSession) {
     nav {
         a(href = "/schools") { +"Schule" }
-        a(href = "/teachers") { +"Lehrkräfte" }
         a(href = "/accounts") { +"Konten" }
         a(href = "/account/password") { +"Passwort ändern" }
         form(action = "/logout", method = FormMethod.post, classes = "inline") {
