@@ -7,12 +7,16 @@ import kotlinx.html.FORM
 import kotlinx.html.InputType
 import kotlinx.html.a
 import kotlinx.html.div
+import kotlinx.html.fieldSet
 import kotlinx.html.input
 import kotlinx.html.label
+import kotlinx.html.legend
 import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.ul
 import timetablescheduler.application.error.ApplicationError
+import timetablescheduler.domain.common.RoomFeatureId
+import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.validation.ValidationError
 
 /** Lists business errors above a form (SC-003: every violated rule is named). */
@@ -29,6 +33,23 @@ fun FORM.textField(name: String, labelText: String, currentValue: String?, input
         +labelText
         input(type = inputType, name = name) {
             if (currentValue != null && inputType != InputType.password) value = currentValue
+        }
+    }
+}
+
+/** Room features as checkboxes named [fieldName]; nothing is shown while the school has no features. */
+fun FORM.featureCheckboxes(fieldName: String, features: List<RoomFeature>, checkedIds: Set<RoomFeatureId>) {
+    if (features.isEmpty()) return
+    fieldSet {
+        legend { +"Ausstattung" }
+        features.forEach { feature ->
+            label {
+                input(type = InputType.checkBox, name = fieldName) {
+                    value = "${feature.id.value}"
+                    checked = feature.id in checkedIds
+                }
+                +feature.name
+            }
         }
     }
 }

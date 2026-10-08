@@ -193,28 +193,28 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T074 [P] [US2] Write `DOM_T/curriculum/ClassLevelTest.kt` and `DOM_T/curriculum/SubjectTest.kt`: subject name "String (1–80)"; required features from the same school (FR-009); level identifier "String (1–10)"; "`periodsPerWeek: Int ≥ 1`"; "At most one entry per subject"; curriculum subject from the same school
-- [ ] T075 [P] [US2] Write `DOM_T/curriculum/SchoolClassTest.kt` and `DOM_T/curriculum/SuffixProposalTest.kt`: suffix "String (1–5)" unique per level case-insensitive; display name = level identifier + suffix ("6b"); `priorityWeight` "Int (1–100)", "Default 10"; proposal = "smallest letter `a..z` not used in the level; if all used, no proposal" (FR-013)
-- [ ] T076 [P] [US2] Write `DOM_T/curriculum/ClassCurriculumResolverTest.kt`: `curriculumOf(class)` equals its level's curriculum and reflects later level changes (FR-014)
-- [ ] T077 [P] [US2] Write `DOM_T/readiness/LevelExceedsGridRuleTest.kt`: `LEVEL_EXCEEDS_GRID` when "Σ periods of a level > teachingSlotsPerWeek" (acceptance 2.5), with excess amount
-- [ ] T078 [P] [US2] Write `APP_T/curriculum/CurriculumUseCasesTest.kt`: subject name unique per school; level identifier unique per school; class "6a" duplicate rejected (acceptance 2.4); saving an over-full level succeeds and returns the warning (FR-025); deletion blocked with named dependants: subject used in a curriculum, level with classes, room feature required by a subject (FR-023)
-- [ ] T079 [P] [US2] Write `PER_T/curriculum/CurriculumRepositoryIT.kt` and `WEB_T/curriculum/CurriculumRoutesTest.kt` (new-class form pre-filled with proposed suffix; class page shows resolved curriculum read only)
+- [X] T074 [P] [US2] Write `DOM_T/curriculum/ClassLevelTest.kt` and `DOM_T/curriculum/SubjectTest.kt`: subject name "String (1–80)"; required features from the same school (FR-009); level identifier "String (1–10)"; "`periodsPerWeek: Int ≥ 1`"; "At most one entry per subject"; curriculum subject from the same school
+- [X] T075 [P] [US2] Write `DOM_T/curriculum/SchoolClassTest.kt` and `DOM_T/curriculum/SuffixProposalTest.kt`: suffix "String (1–5)" unique per level case-insensitive; display name = level identifier + suffix ("6b"); `priorityWeight` "Int (1–100)", "Default 10"; proposal = "smallest letter `a..z` not used in the level; if all used, no proposal" (FR-013)
+- [X] T076 [P] [US2] Write `DOM_T/curriculum/ClassCurriculumResolverTest.kt`: `curriculumOf(class)` equals its level's curriculum and reflects later level changes (FR-014)
+- [X] T077 [P] [US2] Write `DOM_T/readiness/LevelExceedsGridRuleTest.kt`: `LEVEL_EXCEEDS_GRID` when "Σ periods of a level > teachingSlotsPerWeek" (acceptance 2.5), with excess amount
+- [X] T078 [P] [US2] Write `APP_T/curriculum/CurriculumUseCasesTest.kt`: subject name unique per school; level identifier unique per school; class "6a" duplicate rejected (acceptance 2.4); saving an over-full level succeeds and returns the warning (FR-025); deletion blocked with named dependants: subject used in a curriculum, level with classes, room feature required by a subject (FR-023)
+- [X] T079 [P] [US2] Write `PER_T/curriculum/CurriculumRepositoryIT.kt` and `WEB_T/curriculum/CurriculumRoutesTest.kt` (new-class form pre-filled with proposed suffix; class page shows resolved curriculum read only)
 
 ### Implementation for User Story 2
 
-- [ ] T080 [P] [US2] Create `Subject` (name "String (1–80)", `requiredFeatureIds`, `version`) in `DOM/curriculum/Subject.kt`
-- [ ] T081 [P] [US2] Create `ClassLevel` (identifier "String (1–10)", `curriculum: List<CurriculumEntry>`, `version`) and `CurriculumEntry(subjectId, periodsPerWeek ≥ 1)` with `weeklyPeriods()` in `DOM/curriculum/ClassLevel.kt`
-- [ ] T082 [P] [US2] Create `SchoolClass` (suffix "String (1–5)", `priorityWeight` "Int (1–100)" default 10, `version`, `displayName(level)`) and `SuffixProposal` in `DOM/curriculum/SchoolClass.kt` and `DOM/curriculum/SuffixProposal.kt`
-- [ ] T083 [US2] Create `ClassCurriculumResolver` (only place that reads `ClassLevel.curriculum` for a class; KDoc explains it is the extension point for later per-class deviations, R9) in `DOM/curriculum/ClassCurriculumResolver.kt`
-- [ ] T084 [US2] Create `ReadinessIssue` sealed type (codes from data-model "Readiness issues") and the `LEVEL_EXCEEDS_GRID` rule in `DOM/readiness/ReadinessIssue.kt` and `DOM/readiness/LevelExceedsGridRule.kt`
-- [ ] T085 [US2] Create ports `SubjectRepository`, `ClassLevelRepository`, `SchoolClassRepository` in `APP/port/CurriculumPorts.kt`; add a room-feature dependant source for subjects requiring the feature in `MasterDataUseCases`
-- [ ] T086 [US2] Implement use cases `CreateSubject`, `UpdateSubject`, `DeleteSubject`, `ListSubjects`, `GetSubject`, `CreateClassLevel`, `UpdateClassLevel` (identifier + curriculum, returns warnings), `DeleteClassLevel`, `ListClassLevels`, `GetClassLevel`, `ProposeClassSuffix`, `CreateSchoolClass`, `UpdateSchoolClass`, `DeleteSchoolClass`, `GetSchoolClassWithCurriculum` and a `CurriculumUseCases` bundle in `APP/curriculum/`
-- [ ] T087 [P] [US2] Add in-memory fakes for the US2 repositories in `APP_F/fakes/CurriculumFakes.kt` and register them in `MasterDataWorld`/`MasterDataPorts`
-- [ ] T088 [US2] Create migration `PER_R/V3__curriculum.sql`: `subject` (unique `(school_id, lower(name))`, `version`), `subject_requires_feature`, `class_level` (unique `(school_id, lower(identifier))`, `version`), `curriculum_entry` (pk `(class_level_id, subject_id)`, check `periods_per_week >= 1`), `school_class` (unique `(class_level_id, lower(suffix))`, check `priority_weight between 1 and 100`, default 10, `version`)
-- [ ] T089 [US2] Implement Exposed tables and repositories for subjects, class levels and classes in `PER/curriculum/`
-- [ ] T090 [US2] Implement routes and views for subjects in `WEB/subject/SubjectRoutes.kt` and `WEB/subject/SubjectViews.kt` per contracts "Subjects"
-- [ ] T091 [US2] Implement routes and views for class levels (curriculum editor with weekly total and grid warning) and classes in `WEB/classlevel/ClassLevelRoutes.kt` and `WEB/classlevel/ClassLevelViews.kt` per contracts "Class levels and classes"; add dashboard links in `WEB/school/SchoolViews.kt`
-- [ ] T092 [US2] Wire US2 repositories in `BOOT/Main.kt` and register routes in `WEB/WebModule.kt`
+- [X] T080 [P] [US2] Create `Subject` (name "String (1–80)", `requiredFeatureIds`, `version`) in `DOM/curriculum/Subject.kt`
+- [X] T081 [P] [US2] Create `ClassLevel` (identifier "String (1–10)", `curriculum: List<CurriculumEntry>`, `version`) and `CurriculumEntry(subjectId, periodsPerWeek ≥ 1)` with `weeklyPeriods()` in `DOM/curriculum/ClassLevel.kt`
+- [X] T082 [P] [US2] Create `SchoolClass` (suffix "String (1–5)", `priorityWeight` "Int (1–100)" default 10, `version`, `displayName(level)`) and `SuffixProposal` in `DOM/curriculum/SchoolClass.kt` and `DOM/curriculum/SuffixProposal.kt`
+- [X] T083 [US2] Create `ClassCurriculumResolver` (only place that reads `ClassLevel.curriculum` for a class; KDoc explains it is the extension point for later per-class deviations, R9) in `DOM/curriculum/ClassCurriculumResolver.kt`
+- [X] T084 [US2] Create `ReadinessIssue` sealed type (codes from data-model "Readiness issues") and the `LEVEL_EXCEEDS_GRID` rule in `DOM/readiness/ReadinessIssue.kt` and `DOM/readiness/LevelExceedsGridRule.kt`
+- [X] T085 [US2] Create ports `SubjectRepository`, `ClassLevelRepository`, `SchoolClassRepository` in `APP/port/CurriculumPorts.kt`; add a room-feature dependant source for subjects requiring the feature in `MasterDataUseCases`
+- [X] T086 [US2] Implement use cases `CreateSubject`, `UpdateSubject`, `DeleteSubject`, `ListSubjects`, `GetSubject`, `CreateClassLevel`, `UpdateClassLevel` (identifier + curriculum, returns warnings), `DeleteClassLevel`, `ListClassLevels`, `GetClassLevel`, `ProposeClassSuffix`, `CreateSchoolClass`, `UpdateSchoolClass`, `DeleteSchoolClass`, `GetSchoolClassWithCurriculum` and a `CurriculumUseCases` bundle in `APP/curriculum/`
+- [X] T087 [P] [US2] Add in-memory fakes for the US2 repositories in `APP_F/fakes/CurriculumFakes.kt` and register them in `MasterDataWorld`/`MasterDataPorts`
+- [X] T088 [US2] Create migration `PER_R/V3__curriculum.sql`: `subject` (unique `(school_id, lower(name))`, `version`), `subject_requires_feature`, `class_level` (unique `(school_id, lower(identifier))`, `version`), `curriculum_entry` (pk `(class_level_id, subject_id)`, check `periods_per_week >= 1`), `school_class` (unique `(class_level_id, lower(suffix))`, check `priority_weight between 1 and 100`, default 10, `version`)
+- [X] T089 [US2] Implement Exposed tables and repositories for subjects, class levels and classes in `PER/curriculum/`
+- [X] T090 [US2] Implement routes and views for subjects in `WEB/subject/SubjectRoutes.kt` and `WEB/subject/SubjectViews.kt` per contracts "Subjects"
+- [X] T091 [US2] Implement routes and views for class levels (curriculum editor with weekly total and grid warning) and classes in `WEB/classlevel/ClassLevelRoutes.kt` and `WEB/classlevel/ClassLevelViews.kt` per contracts "Class levels and classes"; add dashboard links in `WEB/school/SchoolViews.kt`
+- [X] T092 [US2] Wire US2 repositories in `BOOT/Main.kt` and register routes in `WEB/WebModule.kt`
 
 **Checkpoint**: Quickstart scenarios 5–9 pass; US1 and US5 still work
 

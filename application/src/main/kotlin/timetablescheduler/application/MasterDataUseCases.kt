@@ -15,11 +15,30 @@ import timetablescheduler.application.account.ResetPassword
 import timetablescheduler.application.account.UpdateAccountRole
 import timetablescheduler.application.account.PasswordCredentialAuthenticator
 import timetablescheduler.application.error.DependantType
+import timetablescheduler.application.curriculum.CreateClassLevel
+import timetablescheduler.application.curriculum.CreateSchoolClass
+import timetablescheduler.application.curriculum.CreateSubject
+import timetablescheduler.application.curriculum.CurriculumUseCases
+import timetablescheduler.application.curriculum.DeleteClassLevel
+import timetablescheduler.application.curriculum.DeleteSchoolClass
+import timetablescheduler.application.curriculum.DeleteSubject
+import timetablescheduler.application.curriculum.GetClassLevel
+import timetablescheduler.application.curriculum.GetSchoolClass
+import timetablescheduler.application.curriculum.GetSubject
+import timetablescheduler.application.curriculum.ListClassLevels
+import timetablescheduler.application.curriculum.ListSubjects
+import timetablescheduler.application.curriculum.ProposeClassSuffix
+import timetablescheduler.application.curriculum.UpdateClassLevel
+import timetablescheduler.application.curriculum.UpdateSchoolClass
+import timetablescheduler.application.curriculum.UpdateSubject
+import timetablescheduler.application.port.ClassLevelRepository
 import timetablescheduler.application.port.PasswordCredentialRepository
 import timetablescheduler.application.port.PasswordHasher
 import timetablescheduler.application.port.RoomFeatureRepository
 import timetablescheduler.application.port.RoomRepository
+import timetablescheduler.application.port.SchoolClassRepository
 import timetablescheduler.application.port.SchoolRepository
+import timetablescheduler.application.port.SubjectRepository
 import timetablescheduler.application.port.TimeSlotUsage
 import timetablescheduler.application.port.TransactionRunner
 import timetablescheduler.application.port.UserAccountRepository
@@ -43,7 +62,9 @@ import timetablescheduler.application.school.SetSlotExclusions
 import timetablescheduler.application.school.SetTeachingDays
 import timetablescheduler.application.school.TimeGridUseCases
 import timetablescheduler.application.school.UpdateTimeSlot
+import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
+import timetablescheduler.domain.common.SubjectId
 
 /** All ports the use cases need; implemented by the persistence adapter or by in-memory fakes in tests. */
 class MasterDataPorts(
@@ -55,6 +76,9 @@ class MasterDataPorts(
     val rooms: RoomRepository,
     val roomFeatures: RoomFeatureRepository,
     val timeSlotUsage: TimeSlotUsage,
+    val subjects: SubjectRepository,
+    val classLevels: ClassLevelRepository,
+    val schoolClasses: SchoolClassRepository,
 )
 
 /** Wires every use case from the ports in one place, so production and tests use identical wiring. */
@@ -71,6 +95,27 @@ class MasterDataUseCases(ports: MasterDataPorts) {
         listOf(
             DependantSource { featureId ->
                 rooms.findUsingFeature(featureId).map { DependantRef(DependantType.ROOM, it.identifier, setOf(it.schoolId)) }
+            },
+            DependantSource { featureId ->
+                subjects.findRequiringFeature(featureId).map { DependantRef(DependantType.SUBJECT, it.name, setOf(it.schoolId)) }
+            },
+        )
+    }
+
+    /** US3 adds teacher qualifications as a further source. */
+    private val subjectDependantSources: List<DependantSource<SubjectId>> = with(ports) {
+        listOf(
+            DependantSource { subjectId ->
+                classLevels.findUsingSubject(subjectId).map { DependantRef(DependantType.CLASS_LEVEL, it.identifier, setOf(it.schoolId)) }
+            },
+        )
+    }
+
+    private val classLevelDependantSources: List<DependantSource<ClassLevelId>> = with(ports) {
+        listOf(
+            DependantSource { levelId ->
+                val level = classLevels.findById(levelId) ?: return@DependantSource emptyList()
+                schoolClasses.findByLevel(levelId).map { DependantRef(DependantType.SCHOOL_CLASS, it.displayName(level), setOf(level.schoolId)) }
             },
         )
     }
@@ -105,6 +150,26 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             deleteRoom = DeleteRoom(transactions, access, rooms),
             listRooms = ListRooms(transactions, access, rooms, roomFeatures),
             getRoom = GetRoom(transactions, access, rooms, roomFeatures),
+        )
+    }
+
+    val curriculum = with(ports) {
+        CurriculumUseCases(
+            createSubject = CreateSubject(transactions, access, subjects, roomFeatures),
+            updateSubject = UpdateSubject(transactions, access, subjects, roomFeatures),
+            deleteSubject = DeleteSubject(transactions, access, subjects, subjectDependantSources),
+            listSubjects = ListSubjects(transactions, access, subjects, roomFeatures),
+            getSubject = GetSubject(transactions, access, subjects, roomFeatures),
+            createClassLevel = CreateClassLevel(transactions, access, classLevels),
+            updateClassLevel = UpdateClassLevel(transactions, access, schools, classLevels, subjects),
+            deleteClassLevel = DeleteClassLevel(transactions, access, classLevels, classLevelDependantSources),
+            listClassLevels = ListClassLevels(transactions, access, schools, classLevels, schoolClasses),
+            getClassLevel = GetClassLevel(transactions, access, schools, classLevels, schoolClasses, subjects),
+            proposeClassSuffix = ProposeClassSuffix(transactions, access, classLevels, schoolClasses),
+            createSchoolClass = CreateSchoolClass(transactions, access, classLevels, schoolClasses),
+            updateSchoolClass = UpdateSchoolClass(transactions, access, classLevels, schoolClasses),
+            deleteSchoolClass = DeleteSchoolClass(transactions, access, classLevels, schoolClasses),
+            getSchoolClass = GetSchoolClass(transactions, access, classLevels, schoolClasses, subjects),
         )
     }
 

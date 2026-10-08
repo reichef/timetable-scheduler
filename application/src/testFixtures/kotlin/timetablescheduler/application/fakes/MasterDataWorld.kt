@@ -6,6 +6,10 @@ import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.curriculum.ClassLevel
+import timetablescheduler.domain.curriculum.CurriculumEntry
+import timetablescheduler.domain.curriculum.SchoolClass
+import timetablescheduler.domain.curriculum.Subject
 import timetablescheduler.domain.room.Room
 import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.school.School
@@ -27,8 +31,13 @@ class MasterDataWorld {
     val rooms = InMemoryRoomRepository()
     val roomFeatures = InMemoryRoomFeatureRepository()
     val timeSlotUsage = InMemoryTimeSlotUsage()
+    val subjects = InMemorySubjectRepository()
+    val classLevels = InMemoryClassLevelRepository()
+    val schoolClasses = InMemorySchoolClassRepository(classLevels)
 
-    val ports = MasterDataPorts(transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage)
+    val ports = MasterDataPorts(
+        transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage, subjects, classLevels, schoolClasses,
+    )
     val useCases = MasterDataUseCases(ports)
 
     val schoolUseCases get() = useCases.schools
@@ -70,6 +79,20 @@ class MasterDataWorld {
         schools.saveTimeGrid(schoolId, grid)
         return grid.slots.single { it.label == label }
     }
+
+    fun subject(schoolId: SchoolId, name: String, requiredFeatureIds: Set<RoomFeatureId> = emptySet()): Subject =
+        Subject.create(schoolId, name, requiredFeatureIds, requiredFeatureIds).valid().also(subjects::insert)
+
+    /** A level with the given (subject, periods per week) curriculum. */
+    fun classLevel(schoolId: SchoolId, identifier: String, vararg curriculum: Pair<Subject, Int>): ClassLevel {
+        val entries = curriculum.map { (subject, periods) -> CurriculumEntry(subject.id, periods) }
+        return ClassLevel.create(schoolId, identifier).valid()
+            .update(identifier, entries, entries.map { it.subjectId }.toSet()).valid()
+            .also(classLevels::insert)
+    }
+
+    fun schoolClass(level: ClassLevel, suffix: String, priorityWeight: Int = SchoolClass.DEFAULT_PRIORITY_WEIGHT): SchoolClass =
+        SchoolClass.create(level.id, suffix, priorityWeight).valid().also(schoolClasses::insert)
 
     fun bumpSchoolVersion(schoolId: SchoolId) {
         schools.update(schools.findById(schoolId)!!)

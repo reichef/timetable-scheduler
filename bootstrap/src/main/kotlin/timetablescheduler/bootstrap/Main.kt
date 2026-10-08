@@ -7,6 +7,9 @@ import timetablescheduler.adapters.persistence.DatabaseFactory
 import timetablescheduler.adapters.persistence.account.BcryptPasswordHasher
 import timetablescheduler.adapters.persistence.account.ExposedPasswordCredentialRepository
 import timetablescheduler.adapters.persistence.account.ExposedUserAccountRepository
+import timetablescheduler.adapters.persistence.curriculum.ExposedClassLevelRepository
+import timetablescheduler.adapters.persistence.curriculum.ExposedSchoolClassRepository
+import timetablescheduler.adapters.persistence.curriculum.ExposedSubjectRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
@@ -46,6 +49,9 @@ fun main() {
         rooms = ExposedRoomRepository(),
         roomFeatures = ExposedRoomFeatureRepository(),
         timeSlotUsage = NoTeacherUnavailabilitiesYet,
+        subjects = ExposedSubjectRepository(),
+        classLevels = ExposedClassLevelRepository(),
+        schoolClasses = ExposedSchoolClassRepository(),
     )
     val dependencies = WebDependencies(MasterDataUseCases(ports))
     embeddedServer(Netty, port = 8080) {

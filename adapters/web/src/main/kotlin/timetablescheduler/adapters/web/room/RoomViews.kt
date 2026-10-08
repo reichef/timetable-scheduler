@@ -2,17 +2,11 @@ package timetablescheduler.adapters.web.room
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import kotlinx.html.FORM
 import kotlinx.html.FormMethod
-import kotlinx.html.InputType
 import kotlinx.html.a
 import kotlinx.html.button
-import kotlinx.html.fieldSet
 import kotlinx.html.form
 import kotlinx.html.h2
-import kotlinx.html.input
-import kotlinx.html.label
-import kotlinx.html.legend
 import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.table
@@ -21,6 +15,7 @@ import kotlinx.html.th
 import kotlinx.html.tr
 import kotlinx.html.ul
 import timetablescheduler.adapters.web.layout.csrfField
+import timetablescheduler.adapters.web.layout.featureCheckboxes
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.layout.textField
@@ -37,22 +32,6 @@ fun featuresPath(schoolId: SchoolId) = "/schools/${schoolId.value}/room-features
 
 /** Entered values of the room form, kept when the form is shown again after an error. */
 data class RoomFormInput(val identifier: String, val featureIds: Set<RoomFeatureId>)
-
-private fun FORM.featureCheckboxes(features: List<RoomFeature>, checkedIds: Set<RoomFeatureId>) {
-    if (features.isEmpty()) return
-    fieldSet {
-        legend { +"Ausstattung" }
-        features.forEach { feature ->
-            label {
-                input(type = InputType.checkBox, name = "featureId") {
-                    value = "${feature.id.value}"
-                    checked = feature.id in checkedIds
-                }
-                +feature.name
-            }
-        }
-    }
-}
 
 suspend fun ApplicationCall.respondRoomList(
     schoolId: SchoolId,
@@ -77,7 +56,7 @@ suspend fun ApplicationCall.respondRoomList(
         form(action = roomsPath(schoolId), method = FormMethod.post) {
             csrfField(session)
             textField("identifier", "Bezeichnung", entered?.identifier)
-            featureCheckboxes(overview.features, entered?.featureIds.orEmpty())
+            featureCheckboxes("featureId", overview.features, entered?.featureIds.orEmpty())
             button { +"Anlegen" }
         }
         p { a(href = featuresPath(schoolId)) { +"Ausstattung verwalten" } }
@@ -100,7 +79,7 @@ suspend fun ApplicationCall.respondRoomDetails(
             csrfField(session)
             hiddenField("version", "${room.version}")
             textField("identifier", "Bezeichnung", entered?.identifier ?: room.identifier)
-            featureCheckboxes(details.features, entered?.featureIds ?: room.featureIds)
+            featureCheckboxes("featureId", details.features, entered?.featureIds ?: room.featureIds)
             button { +"Speichern" }
         }
         form(action = "$roomPath/delete", method = FormMethod.post) {

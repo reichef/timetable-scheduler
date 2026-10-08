@@ -22,12 +22,14 @@ import timetablescheduler.adapters.web.auth.UserSession
 import timetablescheduler.adapters.web.auth.UserSessionSerializer
 import timetablescheduler.adapters.web.account.accountRoutes
 import timetablescheduler.adapters.web.auth.authRoutes
+import timetablescheduler.adapters.web.classlevel.classLevelRoutes
 import timetablescheduler.adapters.web.layout.CsrfViolation
 import timetablescheduler.adapters.web.layout.Messages
 import timetablescheduler.adapters.web.layout.respondMessage
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.room.roomRoutes
 import timetablescheduler.adapters.web.school.schoolRoutes
+import timetablescheduler.adapters.web.subject.subjectRoutes
 import timetablescheduler.adapters.web.timegrid.timeGridRoutes
 import java.util.UUID
 
@@ -53,6 +55,8 @@ fun Application.webModule(dependencies: WebDependencies, settings: WebSettings) 
         roomRoutes(dependencies)
         timeGridRoutes(dependencies)
         accountRoutes(dependencies)
+        subjectRoutes(dependencies)
+        classLevelRoutes(dependencies)
     }
 }
 
