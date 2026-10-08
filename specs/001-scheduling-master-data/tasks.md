@@ -11,7 +11,7 @@ description: "Task list for Scheduling Master Data Management"
 
 **Tests**: Mandatory. Constitution v1.1.0 Principle V (Test-Driven Development, NON-NEGOTIABLE) requires meaningful tests for every non-trivial function, written before the implementation; the quality gate additionally requires tests showing hard constraints are never violated. Within each phase, write the test tasks first and make sure they fail before implementing (R11).
 
-**Organization**: Tasks are grouped by user story. Story order follows priority: US1 (P1, MVP), US5 (P1), US2 (P2), US3 (P3), US4 (P4). Login, sessions, installation (first school + initial planner) and the school access policy are foundational because every story needs them; account *management* is US5.
+**Organization**: Tasks are grouped by user story. Story order follows priority: US1 (P1, MVP), US5 (P1), US2 (P2), US3 (P3), US4 (P4). Login, sessions, installation (school + initial planner) and the school access policy are foundational because every story needs them; account *management* is US5. **Single-school variant (branch `one-school`)**: Phases 1–3 were built before the scope change and are kept as done; Phase 3a reworks US1, later phases follow the single-school spec (see Notes).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -141,28 +141,47 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 **Checkpoint**: Quickstart scenarios 0–4 pass against the running app
 
 ---
+## Phase 3a: User Story 1 - Rework for a single school (Priority: P1) 🎯 MVP
 
-## Phase 4: User Story 5 - Log in and manage accounts and school access (Priority: P1)
+**Goal**: Adapt the already built US1 to the scope change (spec FR-001, FR-036, plan "Rework of already built code", research R17): exactly one school, renamed but never created or deleted in the UI.
 
-**Goal**: Planners manage the accounts of their schools (create, role, schools, deactivate, reset password); every user changes their own password.
+**Independent Test**: First login lands on the dashboard of the installation's school; no school list, no create or delete; rename works (quickstart 0–4a).
 
-**Independent Test**: Initial planner creates a planner for "Realschule Süd" only; that planner sees neither "Gymnasium Nord" nor the initial planner's account (quickstart 16, 16a, 16c, 16d, 16f).
+### Tests for the rework (change first, must fail)
+
+- [ ] T062 [P] [US1] Update `APP_T/school/SchoolUseCasesTest.kt`: remove the tests for creating and deleting schools and the test `renaming to another school's name is rejected` (no name uniqueness check in this version); keep rename (version check, "String (1–120)") and dashboard tests; add a test that `ListAccessibleSchools` returns exactly the installation's school for every active planner
+- [ ] T063 [P] [US1] Update `WEB_T/school/SchoolRoutesTest.kt`: `GET /schools` → 303 to `/schools/{schoolId}` of the installation's school; dashboard shows no create or delete form; `POST /schools` and `POST /schools/{schoolId}/delete` are not routed (404/405); keep rename and foreign-`schoolId` → 404 tests
+- [ ] T064 [P] [US1] Update `PER_T/school/SchoolRepositoryIT.kt`: remove the test for accounts with only this school and school deletion; keep time grid, name lookup and optimistic locking tests
+
+### Implementation of the rework
+
+- [ ] T065 [US1] Remove `CreateSchool`, `DeleteSchool`, `requireUniqueSchoolName` and its call in `RenameSchool` (with one school no name uniqueness check is needed in this version; renaming only validates "String (1–120)" and the version) and the fields `create`/`delete` from `SchoolUseCases` in `APP/school/SchoolUseCases.kt`; remove `schoolDependantSources` from `application/src/main/kotlin/timetablescheduler/application/MasterDataUseCases.kt`
+- [ ] T066 [US1] Remove `findAccountsWithOnlySchool` and `removeSchoolAssignments` from `APP/port/AccountPorts.kt`, `PER/account/ExposedUserAccountRepository.kt` and `APP_F/fakes/FoundationFakes.kt`; remove `SchoolRepository.delete` from `APP/port/SchoolRepository.kt`, `PER/school/ExposedSchoolRepository.kt` (incl. `TimeGridStore.deleteAll`) and the fake
+- [ ] T067 [US1] In `WEB/school/SchoolRoutes.kt` and `WEB/school/SchoolViews.kt`: `GET /schools` redirects (303) to the first school returned by `ListAccessibleSchools`; remove `POST /schools`, `POST /schools/{schoolId}/delete`, the school list page and the create/delete forms; keep dashboard and rename; rename the navigation entry "Schulen" to "Schule" in `WEB/layout/PageLayout.kt`
+- [ ] T068 [US1] Run `./gradlew build`, reset to a fresh database (`docker compose down -v`, then `docker compose up -d db`), then run quickstart scenarios 0–4a against `./gradlew :bootstrap:run` (values with spaces quoted in `.env`) and record the result
+
+**Checkpoint**: All tests green; quickstart 0–4a pass
+
+---
+
+## Phase 4: User Story 5 - Log in and manage accounts (Priority: P1)
+
+**Goal**: Planners manage all accounts (create, role, deactivate/activate, reset password); every user changes their own password. New accounts are assigned to the school automatically (FR-036).
+
+**Independent Test**: As initial planner create planner `mueller` and teacher `lehrer1`; `mueller` works with the school; `lehrer1` sees no master data; the last active planner cannot be deactivated (quickstart 16, 16a, 16c, 16f).
 
 ### Tests for User Story 5 (write first, must fail)
 
-- [ ] T062 [P] [US5] Write `APP_T/access/AccountManagementPolicyTest.kt`: "account `a` is manageable by planner `p` iff `a.schoolIds ⊆ p.schoolIds`" (FR-032a); own account is manageable; teacher accounts follow the same rule
-- [ ] T063 [P] [US5] Write `APP_T/account/AccountManagementUseCasesTest.kt`: create account with role and ≥ 1 of own schools (FR-031a, FR-032); assigning a school not in `p.schoolIds` → `AccessDenied`; removing an account's last school → `Invalid(LastSchoolRemoved)`; password "≥ 10 characters" (FR-034); deactivate/reactivate; reset password; non-manageable account → `NotFound`; downgrading/deactivating/unassigning the only active planner of a school → `Invalid(NoActivePlannerLeft)` (FR-033); username uniqueness case-insensitive; own password change requires correct current password
-- [ ] T064 [P] [US5] Write `WEB_T/account/AccountRoutesTest.kt`: `TEACHER` session on `/accounts` → 403 without data; list shows only manageable accounts; `/accounts/{id}` of non-manageable account → 404; FR-031a/FR-033 violation → 422; `/account/password` works for teacher accounts
+- [ ] T069 [P] [US5] Write `APP_T/account/AccountManagementUseCasesTest.kt`: create account with role, assigned to the acting planner's school automatically; username "String (3–60)" and "Unique, case-insensitive"; initial password "≥ 10 characters" (FR-034); change role; deactivate/reactivate; reset password; deactivated account cannot log in; deactivating or downgrading the last active planner → `Invalid(NoActivePlannerLeft)` (FR-033); stale `version` → `VersionConflict`; teacher account calling any of these → `AccessDenied`; own password change requires the correct current password and works for teachers
+- [ ] T070 [P] [US5] Write `WEB_T/account/AccountRoutesTest.kt`: `TEACHER` session on `/accounts` → 403 without data; list shows username, role, active; create → 303 and listed; FR-033 violation → 422 with business message; `/account/password` works for a teacher account; unknown `accountId` → 404
 
 ### Implementation for User Story 5
 
-- [ ] T065 [US5] Implement `AccountManagementPolicy` (commented subset check) in `APP/access/AccountManagementPolicy.kt`
-- [ ] T066 [US5] Implement `CreateAccount`, `UpdateAccountRoleAndSchools`, `DeactivateAccount`, `ActivateAccount`, `ResetPassword`, `ChangeOwnPassword`, `ListManageableAccounts` in `APP/account/`
-- [ ] T067 [US5] Extend `ExposedUserAccountRepository` with queries needed by T066 (accounts whose schools are a subset of a given set, active planners of a school) in `PER/account/ExposedUserAccountRepository.kt`; extend `InMemoryUserAccountRepository` in `APP_F/`
-- [ ] T068 [US5] Implement routes and views `/accounts`, `/accounts/{accountId}` (+ `/deactivate`, `/activate`, `/password`) and `/account/password` in `WEB/account/AccountRoutes.kt` and `WEB/account/AccountViews.kt` per contracts "User accounts"
-- [ ] T069 [US5] Wire US5 use cases and routes in `BOOT/Main.kt`
+- [ ] T071 [US5] Implement `CreateAccount`, `UpdateAccountRole`, `DeactivateAccount`, `ActivateAccount`, `ResetPassword`, `ChangeOwnPassword`, `ListAccounts`, `GetAccount` and an `AccountUseCases` bundle in `APP/account/AccountManagementUseCases.kt` (FR-033 via `PlannerCoverage`; new accounts get `schoolIds` of the acting planner = the school)
+- [ ] T072 [US5] Add `findBySchool(schoolId)` to `UserAccountRepository` in `APP/port/AccountPorts.kt`, `PER/account/ExposedUserAccountRepository.kt` and `APP_F/fakes/FoundationFakes.kt`; wire `AccountUseCases` into `MasterDataUseCases`
+- [ ] T073 [US5] Implement routes and views `/accounts`, `/accounts/{accountId}` (+ `/deactivate`, `/activate`, `/password`) and `/account/password` in `WEB/account/AccountRoutes.kt` and `WEB/account/AccountViews.kt` per contracts "User accounts"; register in `WEB/WebModule.kt`
 
-**Checkpoint**: Quickstart scenarios 16, 16a, 16c, 16d pass; US1 still works
+**Checkpoint**: Quickstart scenarios 16, 16a, 16c, 16f pass; US1 still works
 
 ---
 
@@ -174,28 +193,28 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T070 [P] [US2] Write `DOM_T/curriculum/ClassLevelTest.kt` and `DOM_T/curriculum/SubjectTest.kt`: subject name "String (1–80)"; required features from the same school (FR-009); level identifier "String (1–10)"; "`periodsPerWeek: Int ≥ 1`"; "At most one entry per subject"; curriculum subject from same school
-- [ ] T071 [P] [US2] Write `DOM_T/curriculum/SchoolClassTest.kt` and `DOM_T/curriculum/SuffixProposalTest.kt`: suffix "String (1–5)" unique per level case-insensitive; display name = level identifier + suffix ("6b"); `priorityWeight` "Int (1–100)", "Default 10"; proposal = "smallest letter `a..z` not used in the level; if all used, no proposal" (FR-013)
-- [ ] T072 [P] [US2] Write `DOM_T/curriculum/ClassCurriculumResolverTest.kt`: `curriculumOf(class)` equals its level's curriculum and reflects later level changes (FR-014, edge case "curriculum is changed after classes exist")
-- [ ] T073 [P] [US2] Write `DOM_T/readiness/LevelExceedsGridRuleTest.kt`: `LEVEL_EXCEEDS_GRID` when "Σ periods of a level > teachingSlotsPerWeek" (acceptance 2.5), with excess amount
-- [ ] T074 [P] [US2] Write `APP_T/curriculum/CurriculumUseCasesTest.kt`: subject name unique per school; level identifier unique per school; class "6a" duplicate rejected (acceptance 2.4); saving an over-full level succeeds and returns the warning (FR-025); deletion blocked with named dependants: subject used in curriculum, level with classes, room feature required by a subject (FR-023)
-- [ ] T075 [P] [US2] Write `PER_T/curriculum/CurriculumRepositoryIT.kt` and `WEB_T/curriculum/CurriculumRoutesTest.kt` (new-class form pre-filled with proposed suffix; class page shows resolved curriculum read only)
+- [ ] T074 [P] [US2] Write `DOM_T/curriculum/ClassLevelTest.kt` and `DOM_T/curriculum/SubjectTest.kt`: subject name "String (1–80)"; required features from the same school (FR-009); level identifier "String (1–10)"; "`periodsPerWeek: Int ≥ 1`"; "At most one entry per subject"; curriculum subject from the same school
+- [ ] T075 [P] [US2] Write `DOM_T/curriculum/SchoolClassTest.kt` and `DOM_T/curriculum/SuffixProposalTest.kt`: suffix "String (1–5)" unique per level case-insensitive; display name = level identifier + suffix ("6b"); `priorityWeight` "Int (1–100)", "Default 10"; proposal = "smallest letter `a..z` not used in the level; if all used, no proposal" (FR-013)
+- [ ] T076 [P] [US2] Write `DOM_T/curriculum/ClassCurriculumResolverTest.kt`: `curriculumOf(class)` equals its level's curriculum and reflects later level changes (FR-014)
+- [ ] T077 [P] [US2] Write `DOM_T/readiness/LevelExceedsGridRuleTest.kt`: `LEVEL_EXCEEDS_GRID` when "Σ periods of a level > teachingSlotsPerWeek" (acceptance 2.5), with excess amount
+- [ ] T078 [P] [US2] Write `APP_T/curriculum/CurriculumUseCasesTest.kt`: subject name unique per school; level identifier unique per school; class "6a" duplicate rejected (acceptance 2.4); saving an over-full level succeeds and returns the warning (FR-025); deletion blocked with named dependants: subject used in a curriculum, level with classes, room feature required by a subject (FR-023)
+- [ ] T079 [P] [US2] Write `PER_T/curriculum/CurriculumRepositoryIT.kt` and `WEB_T/curriculum/CurriculumRoutesTest.kt` (new-class form pre-filled with proposed suffix; class page shows resolved curriculum read only)
 
 ### Implementation for User Story 2
 
-- [ ] T076 [P] [US2] Create `Subject` (name "String (1–80)", `requiredFeatureIds`, `version`) in `DOM/curriculum/Subject.kt`
-- [ ] T077 [P] [US2] Create `ClassLevel` (identifier "String (1–10)", `curriculum: List<CurriculumEntry>`, `version`) and `CurriculumEntry(subjectId, periodsPerWeek ≥ 1)` with `weeklyPeriods()` in `DOM/curriculum/ClassLevel.kt`
-- [ ] T078 [P] [US2] Create `SchoolClass` (suffix "String (1–5)", `priorityWeight` "Int (1–100)" default 10, `version`, `displayName(level)`) and `SuffixProposal` in `DOM/curriculum/SchoolClass.kt` and `DOM/curriculum/SuffixProposal.kt`
-- [ ] T079 [US2] Create `ClassCurriculumResolver` (only place that reads `ClassLevel.curriculum` for a class; KDoc explains it is the extension point for later per-class deviations, R9) in `DOM/curriculum/ClassCurriculumResolver.kt`
-- [ ] T080 [US2] Create `ReadinessIssue` sealed type (all codes from data-model "Readiness issues", incl. `TEACHER_LOAD_EXCEEDS_GRID`) and the `LEVEL_EXCEEDS_GRID` rule in `DOM/readiness/ReadinessIssue.kt` and `DOM/readiness/LevelExceedsGridRule.kt`
-- [ ] T081 [US2] Create ports `SubjectRepository`, `ClassLevelRepository`, `SchoolClassRepository` (each with `findDependants`) in `APP/port/`; extend `RoomFeatureRepository.findDependants` to include subjects requiring the feature
-- [ ] T082 [US2] Implement use cases `CreateSubject`, `UpdateSubject`, `DeleteSubject`, `ListSubjects`, `CreateClassLevel`, `UpdateClassLevelCurriculum` (returns warnings), `DeleteClassLevel`, `ListClassLevels`, `ProposeClassSuffix`, `CreateSchoolClass`, `UpdateSchoolClass`, `DeleteSchoolClass`, `GetSchoolClassWithCurriculum` in `APP/curriculum/`
-- [ ] T083 [P] [US2] Add in-memory fakes for the US2 repositories in `APP_F/`
-- [ ] T084 [US2] Create migration `PER_R/V3__curriculum.sql`: `subject` (unique `(school_id, lower(name))`), `subject_requires_feature`, `class_level` (unique `(school_id, lower(identifier))`), `curriculum_entry` (pk `(class_level_id, subject_id)`, check `periods_per_week >= 1`), `school_class` (unique `(class_level_id, lower(suffix))`, check `priority_weight between 1 and 100`, default 10)
-- [ ] T085 [US2] Implement Exposed tables and repositories for subjects, class levels and classes in `PER/curriculum/`
-- [ ] T086 [US2] Implement routes and views for subjects in `WEB/subject/SubjectRoutes.kt` and `WEB/subject/SubjectViews.kt` per contracts "Subjects"
-- [ ] T087 [US2] Implement routes and views for class levels (curriculum editor with weekly total and grid warning) and classes in `WEB/classlevel/ClassLevelRoutes.kt` and `WEB/classlevel/ClassLevelViews.kt` per contracts "Class levels and classes"
-- [ ] T088 [US2] Wire US2 in `BOOT/Main.kt`
+- [ ] T080 [P] [US2] Create `Subject` (name "String (1–80)", `requiredFeatureIds`, `version`) in `DOM/curriculum/Subject.kt`
+- [ ] T081 [P] [US2] Create `ClassLevel` (identifier "String (1–10)", `curriculum: List<CurriculumEntry>`, `version`) and `CurriculumEntry(subjectId, periodsPerWeek ≥ 1)` with `weeklyPeriods()` in `DOM/curriculum/ClassLevel.kt`
+- [ ] T082 [P] [US2] Create `SchoolClass` (suffix "String (1–5)", `priorityWeight` "Int (1–100)" default 10, `version`, `displayName(level)`) and `SuffixProposal` in `DOM/curriculum/SchoolClass.kt` and `DOM/curriculum/SuffixProposal.kt`
+- [ ] T083 [US2] Create `ClassCurriculumResolver` (only place that reads `ClassLevel.curriculum` for a class; KDoc explains it is the extension point for later per-class deviations, R9) in `DOM/curriculum/ClassCurriculumResolver.kt`
+- [ ] T084 [US2] Create `ReadinessIssue` sealed type (codes from data-model "Readiness issues") and the `LEVEL_EXCEEDS_GRID` rule in `DOM/readiness/ReadinessIssue.kt` and `DOM/readiness/LevelExceedsGridRule.kt`
+- [ ] T085 [US2] Create ports `SubjectRepository`, `ClassLevelRepository`, `SchoolClassRepository` in `APP/port/CurriculumPorts.kt`; add a room-feature dependant source for subjects requiring the feature in `MasterDataUseCases`
+- [ ] T086 [US2] Implement use cases `CreateSubject`, `UpdateSubject`, `DeleteSubject`, `ListSubjects`, `GetSubject`, `CreateClassLevel`, `UpdateClassLevel` (identifier + curriculum, returns warnings), `DeleteClassLevel`, `ListClassLevels`, `GetClassLevel`, `ProposeClassSuffix`, `CreateSchoolClass`, `UpdateSchoolClass`, `DeleteSchoolClass`, `GetSchoolClassWithCurriculum` and a `CurriculumUseCases` bundle in `APP/curriculum/`
+- [ ] T087 [P] [US2] Add in-memory fakes for the US2 repositories in `APP_F/fakes/CurriculumFakes.kt` and register them in `MasterDataWorld`/`MasterDataPorts`
+- [ ] T088 [US2] Create migration `PER_R/V3__curriculum.sql`: `subject` (unique `(school_id, lower(name))`, `version`), `subject_requires_feature`, `class_level` (unique `(school_id, lower(identifier))`, `version`), `curriculum_entry` (pk `(class_level_id, subject_id)`, check `periods_per_week >= 1`), `school_class` (unique `(class_level_id, lower(suffix))`, check `priority_weight between 1 and 100`, default 10, `version`)
+- [ ] T089 [US2] Implement Exposed tables and repositories for subjects, class levels and classes in `PER/curriculum/`
+- [ ] T090 [US2] Implement routes and views for subjects in `WEB/subject/SubjectRoutes.kt` and `WEB/subject/SubjectViews.kt` per contracts "Subjects"
+- [ ] T091 [US2] Implement routes and views for class levels (curriculum editor with weekly total and grid warning) and classes in `WEB/classlevel/ClassLevelRoutes.kt` and `WEB/classlevel/ClassLevelViews.kt` per contracts "Class levels and classes"; add dashboard links in `WEB/school/SchoolViews.kt`
+- [ ] T092 [US2] Wire US2 repositories in `BOOT/Main.kt` and register routes in `WEB/WebModule.kt`
 
 **Checkpoint**: Quickstart scenarios 5–9 pass; US1 and US5 still work
 
@@ -203,49 +222,47 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ## Phase 6: User Story 3 - Define teachers and their constraints (Priority: P3)
 
-**Goal**: Teachers with short code, weekly load, schools, qualifications, commute times and unavailability; cross-school visibility, removal and deletion per FR-028b/c.
+**Goal**: Teachers of the school with short code, weekly load, qualifications and unavailability.
 
-**Independent Test**: Teacher "Anna Schmidt" (SCHA, 24 periods, two schools, Mathematik + Chemie, 30 min commute, Friday afternoon unavailable) is stored and shown unchanged; a planner of only one school removes her from that school without affecting the other (quickstart 10–12, 16e).
+**Independent Test**: Teacher "Anna Schmidt" (SCHA, 24 periods, Mathematik + Chemie, Friday afternoon unavailable) is stored and shown unchanged; a load above the school's teaching slots is rejected (quickstart 10–12).
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T089 [P] [US3] Write `DOM_T/teacher/TeacherTest.kt` covering every hard constraint: name "String (1–120)" "Not unique"; shortCode "String (2–8, upper case letters/digits)"; `schoolIds` "≥ 1"; weeklyLoad "Int ≥ 0" and "≤ Σ teachingSlotsPerWeek over the teacher's schools" when saved (FR-018); qualifications "Each subject must belong to one of the teacher's schools"; commute time "stored with `schoolAId < schoolBId`", "both schools must be in `schoolIds`", `minutes ≥ 0`; unavailability "Slot belongs to one of the teacher's schools and exists on that day when entered"; incomplete while a school pair lacks a commute time (acceptance 3.5); `removeSchools(own)` drops related qualifications, unavailabilities and commute times
-- [ ] T090 [P] [US3] Write `APP_T/teacher/TeacherUseCasesTest.kt`: shortCode "Unique in installation" (acceptance 3.2); planner sees teacher if assigned to ≥ 1 of the teacher's schools (FR-028b); planner may edit general data and own-school qualifications/unavailability/commute times, but not those of other schools (→ `AccessDenied`); full delete only with all of the teacher's schools, otherwise `AccessDenied` (FR-028c); `RemoveTeacherFromMySchools` keeps the teacher unchanged at other schools (acceptance 3.6); `DeleteTimeSlot` removes teacher unavailabilities referencing the slot and returns their count; `DeleteSubject` blocked by qualification with the teacher named
-- [ ] T091 [P] [US3] Write `PER_T/teacher/TeacherRepositoryIT.kt` and `WEB_T/teacher/TeacherRoutesTest.kt` (other-school data shown read-only/hidden; duplicate short code → 422; incomplete teacher page shows the missing commute time prompt; `/delete` without all schools → 403; `/remove-from-my-schools` → 303)
+- [ ] T093 [P] [US3] Write `DOM_T/teacher/TeacherTest.kt` covering every hard constraint: name "String (1–120)" "Not unique"; shortCode "String (2–8, upper case letters/digits)"; weeklyLoad "Int ≥ 0" and "≤ teachingSlotsPerWeek of the school" when saved (FR-018); qualifications "Subjects of the same school" (FR-017); unavailability "Slot of the same school that exists on that day when entered" (FR-021)
+- [ ] T094 [P] [US3] Write `APP_T/teacher/TeacherUseCasesTest.kt`: shortCode "Unique in installation" (acceptance 3.2); load 40 with 38 teaching slots rejected (acceptance 3.4); qualifications and unavailability saved with version check; teacher of a foreign `schoolId` → `NotFound`; `DeleteSubject` blocked by a qualification naming the teacher; `DeleteTimeSlot` removes the teacher unavailabilities of the slot and reports their count; deleting a teacher removes its qualifications and unavailabilities
+- [ ] T095 [P] [US3] Write `PER_T/teacher/TeacherRepositoryIT.kt` (round trip incl. qualifications/unavailability, optimistic locking, unique short code, `ExposedTimeSlotUsage` count/delete) and `WEB_T/teacher/TeacherRoutesTest.kt` (create → 303; duplicate short code → 422; unavailability grid saved; delete → 303)
 
 ### Implementation for User Story 3
 
-- [ ] T092 [US3] Create `Teacher` aggregate with `CommuteTime`, `Unavailability(dayOfWeek, slotId)`, commented checks for load limit and commute pair normalisation, `isComplete()` and `removeSchools(...)` in `DOM/teacher/Teacher.kt`, `DOM/teacher/CommuteTime.kt`, `DOM/teacher/Unavailability.kt`
-- [ ] T093 [US3] Extend `SchoolAccessPolicy` with `requireTeacherAccess`, per-section edit checks and `requireTeacherDeletion` (all schools assigned) per data-model "Access rules" in `APP/access/SchoolAccessPolicy.kt`
-- [ ] T094 [US3] Create port `TeacherRepository` (incl. `findByShortCode`, `findBySchool`, `deleteUnavailabilitiesOfSlot`) in `APP/port/TeacherRepository.kt`; extend `SchoolRepository`/`SubjectRepository` dependant queries with teacher references
-- [ ] T095 [US3] Implement use cases `CreateTeacher`, `UpdateTeacherGeneralData`, `UpdateTeacherSchools`, `UpdateQualifications`, `UpdateCommuteTimes`, `UpdateUnavailability`, `DeleteTeacher`, `RemoveTeacherFromMySchools`, `ListVisibleTeachers`, `GetTeacherForPlanner` (filters data of unassigned schools) in `APP/teacher/`; extend `DeleteTimeSlot` in `APP/school/` to remove referencing unavailabilities and report their count; extend `PreviewTimeSlotDeletion` with the unavailability count
-- [ ] T096 [P] [US3] Add `InMemoryTeacherRepository` in `APP_F/`
-- [ ] T097 [US3] Create migration `PER_R/V4__teachers.sql`: `teacher` (unique `short_code`, check `weekly_load >= 0`, `version`), `teacher_school`, `teacher_qualification`, `commute_time` (pk `(teacher_id, school_a_id, school_b_id)`, check `school_a_id < school_b_id` and `minutes >= 0`), `teacher_unavailability` (pk `(teacher_id, day_of_week, slot_id)`, fk `slot_id` on delete cascade)
-- [ ] T098 [US3] Implement Exposed tables and `ExposedTeacherRepository` in `PER/teacher/`
-- [ ] T099 [US3] Implement routes and views `/teachers`, `/teachers/{teacherId}` with sections qualifications, commute times (prominent prompt while incomplete, acceptance 3.5), unavailability grid, delete and remove-from-my-schools in `WEB/teacher/TeacherRoutes.kt` and `WEB/teacher/TeacherViews.kt` per contracts "Teachers"
-- [ ] T100 [US3] Wire US3 in `BOOT/Main.kt`
+- [ ] T096 [US3] Create `Teacher` aggregate (`schoolId`, name, shortCode, weeklyLoad, `qualifiedSubjectIds`, `unavailability`, `version`) with `Unavailability(dayOfWeek, slotId)` and a commented load-limit check in `DOM/teacher/Teacher.kt` and `DOM/teacher/Unavailability.kt`
+- [ ] T097 [US3] Create port `TeacherRepository` (incl. `findByShortCode`, `findBySchool`, `findQualifiedFor(subjectId)`) in `APP/port/TeacherRepository.kt`; add a subject dependant source for teacher qualifications in `MasterDataUseCases`
+- [ ] T098 [US3] Implement use cases `CreateTeacher`, `UpdateTeacher`, `UpdateQualifications`, `UpdateUnavailability`, `DeleteTeacher`, `ListTeachers`, `GetTeacher` and a `TeacherUseCases` bundle in `APP/teacher/`
+- [ ] T099 [P] [US3] Add `InMemoryTeacherRepository` in `APP_F/fakes/TeacherFakes.kt`; make `InMemoryTimeSlotUsage` count real unavailabilities of the fake teacher repository
+- [ ] T100 [US3] Create migration `PER_R/V4__teachers.sql`: `teacher` (`school_id` fk, unique `short_code`, check `weekly_load >= 0`, `version`), `teacher_qualification` (pk `(teacher_id, subject_id)`), `teacher_unavailability` (pk `(teacher_id, day_of_week, slot_id)`, fk `slot_id` on delete cascade)
+- [ ] T101 [US3] Implement Exposed tables, `ExposedTeacherRepository` and `ExposedTimeSlotUsage` in `PER/teacher/`; replace the placeholder `NoTeacherUnavailabilitiesYet` in `BOOT/Main.kt`
+- [ ] T102 [US3] Implement routes and views `/schools/{schoolId}/teachers` and `/schools/{schoolId}/teachers/{teacherId}` (general data, qualifications, unavailability grid days × teaching slots, delete) in `WEB/teacher/TeacherRoutes.kt` and `WEB/teacher/TeacherViews.kt` per contracts "Teachers"; add dashboard link
+- [ ] T103 [US3] Wire US3 in `BOOT/Main.kt` and `WEB/WebModule.kt`
 
-**Checkpoint**: Quickstart scenarios 10–12, 14, 14a (first part), 16e, 16f pass; earlier stories still work
+**Checkpoint**: Quickstart scenarios 10–12, 14 and the confirmation part of 14a pass; earlier stories still work
 
 ---
 
 ## Phase 7: User Story 4 - Check readiness of the data for scheduling (Priority: P4)
 
-**Goal**: Per-school readiness overview listing all issues from FR-024 with links to affected entries.
+**Goal**: Readiness overview of the school listing all issues from FR-024 with links to the affected entries.
 
 **Independent Test**: Seed Chemie without suitable room and Physik without qualified teacher; overview reports both (quickstart 13, 14a).
 
 ### Tests for User Story 4 (write first, must fail)
 
-- [ ] T101 [P] [US4] Write `DOM_T/readiness/ReadinessCheckTest.kt` with one test per code: `SUBJECT_NO_SUITABLE_ROOM` (names missing features), `SUBJECT_NO_QUALIFIED_TEACHER`, `SUBJECT_TEACHER_CAPACITY_SHORTFALL` (required periods computed via `ClassCurriculumResolver`; acceptance 4.2: 40 required vs 30 offered → shortfall 10), `LEVEL_EXCEEDS_GRID`, `TEACHER_WITHOUT_QUALIFICATION`, `TEACHER_ZERO_LOAD`, `TEACHER_LOAD_EXCEEDS_GRID` ("weeklyLoad > Σ teachingSlotsPerWeek over the teacher's schools", e.g. after a grid reduction), `TEACHER_MISSING_COMMUTE_TIME`; consistent data → no issues (acceptance 4.3)
-- [ ] T102 [P] [US4] Write `WEB_T/readiness/ReadinessRoutesTest.kt`: issues grouped by code with links; "Keine blockierenden Probleme gefunden" when empty; unassigned school → 404
+- [ ] T104 [P] [US4] Write `DOM_T/readiness/ReadinessCheckTest.kt` with one test per code: `SUBJECT_NO_SUITABLE_ROOM` (names missing features), `SUBJECT_NO_QUALIFIED_TEACHER`, `SUBJECT_TEACHER_CAPACITY_SHORTFALL` (required periods via `ClassCurriculumResolver`; acceptance 4.2: 40 required vs 30 offered → shortfall 10), `LEVEL_EXCEEDS_GRID`, `TEACHER_WITHOUT_QUALIFICATION`, `TEACHER_ZERO_LOAD`, `TEACHER_LOAD_EXCEEDS_GRID` ("weeklyLoad > teachingSlotsPerWeek"); consistent data → no issues (acceptance 4.3)
+- [ ] T105 [P] [US4] Write `WEB_T/readiness/ReadinessRoutesTest.kt`: issues grouped by code with links; "Keine blockierenden Probleme gefunden" when empty; foreign `schoolId` → 404
 
 ### Implementation for User Story 4
 
-- [ ] T103 [US4] Implement `ReadinessCheck` with one commented function per rule (reusing `LevelExceedsGridRule`; KDoc notes capacity is an upper-bound estimate) in `DOM/readiness/ReadinessCheck.kt`
-- [ ] T104 [US4] Implement `GetSchoolReadiness` use case (loads one school's data incl. its teachers' other schools' slot totals, runs `ReadinessCheck`) in `APP/readiness/GetSchoolReadiness.kt`
-- [ ] T105 [US4] Implement route and view `/schools/{schoolId}/readiness` and a readiness summary on the school dashboard in `WEB/readiness/ReadinessRoutes.kt`, `WEB/readiness/ReadinessViews.kt`, `WEB/school/SchoolViews.kt`
-- [ ] T106 [US4] Wire US4 in `BOOT/Main.kt`
+- [ ] T106 [US4] Implement `ReadinessCheck` with one commented function per rule (reusing `LevelExceedsGridRule`; KDoc notes capacity is an upper-bound estimate) in `DOM/readiness/ReadinessCheck.kt`
+- [ ] T107 [US4] Implement `GetSchoolReadiness` in `APP/readiness/GetSchoolReadiness.kt` and add it to `MasterDataUseCases`
+- [ ] T108 [US4] Implement route and view `/schools/{schoolId}/readiness` and a readiness summary on the dashboard in `WEB/readiness/ReadinessRoutes.kt`, `WEB/readiness/ReadinessViews.kt`, `WEB/school/SchoolViews.kt`; register in `WEB/WebModule.kt`
 
 **Checkpoint**: Quickstart scenarios 13 and 14a pass; all stories work together
 
@@ -253,13 +270,13 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T107 [P] Write `WEB_T/LogConfidentialityTest.kt`: capture log output while creating teacher "Anna Schmidt", provoking a validation error, a deletion-blocked business error naming her and an unexpected exception; assert no log line contains the name, form values or password, and the 500 page contains only the generic text + correlation id (R10, FR-029, constitution III)
-- [ ] T108 [P] Write `WEB_T/ConcurrentEditTest.kt`: two saves of the same room with the same `version` → second gets 409 conflict page with reload link (FR-027, quickstart 15)
-- [ ] T109 [P] Write `PER_T/PerformanceSmokeIT.kt`: seed SC-001 volume (40 rooms, 15 subjects, 6 levels, 25 classes, 60 teachers, 5 × 10 grid) and assert school dashboard, teacher list and readiness use cases complete in < 1 s each (R15)
-- [ ] T110 [P] Update `README.md` with prerequisites, configuration variables, run/test commands and CI workflows (link to quickstart.md)
-- [ ] T111 Review all modules against constitution I, III and V (naming, function size, comments on compact constraint/access checks, test-first coverage of non-trivial functions, no confidential data in logs or technical error output) and fix findings
-- [ ] T112 Push the branch, open a pull request and confirm workflows Build and CodeQL succeed without new security alerts; fix findings
-- [ ] T113 Run all quickstart.md scenarios against `./gradlew :bootstrap:run` with a fresh database and record the result (constitution: UI verified against a running instance)
+- [ ] T109 [P] Write `WEB_T/LogConfidentialityTest.kt`: capture log output while creating teacher "Anna Schmidt", provoking a validation error, a deletion-blocked business error naming her and an unexpected exception; assert no log line contains the name, form values or password, and the 500 page contains only the generic text + correlation id (R10, FR-029, constitution III)
+- [ ] T110 [P] Write `WEB_T/ConcurrentEditTest.kt`: two saves of the same room with the same `version` → second gets 409 conflict page with reload link (FR-027, quickstart 15)
+- [ ] T111 [P] Write `PER_T/PerformanceSmokeIT.kt`: seed SC-001 volume (40 rooms, 15 subjects, 6 levels, 25 classes, 60 teachers, 5 × 10 grid) and assert school dashboard, teacher list and readiness use cases complete in < 1 s each (R15)
+- [ ] T112 [P] Update `README.md` with prerequisites, configuration variables (quote values with spaces), run/test commands and CI workflows (link to quickstart.md)
+- [ ] T113 Review all modules against constitution I, III and V (naming, function size, comments on compact constraint/access checks, test-first coverage of non-trivial functions, no confidential data in logs or technical error output) and fix findings
+- [ ] T114 Push the branch, open a pull request and confirm workflows Build and CodeQL succeed without new security alerts; fix findings
+- [ ] T115 Run all quickstart.md scenarios against `./gradlew :bootstrap:run` with a fresh database and record the result (constitution: UI verified against a running instance)
 
 ---
 
@@ -267,74 +284,73 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)** → **Foundational (Phase 2)** → user story phases → **Polish (Phase 8)**
+- Phases 1–3 are done (built before the scope change, see Notes).
+- **Phase 3a (US1 rework)** → user story phases → **Polish (Phase 8)**
 
 ### User Story Dependencies
 
-- **US1 (P1)**: after Foundational. No story dependencies.
-- **US5 (P1)**: after Foundational; its independent test needs a second school, created with US1's `CreateSchool`.
-- **US2 (P2)**: after US1 (subjects reference room features; the warning needs the time grid).
-- **US3 (P3)**: after US1 (schools, time slots) and US2 (subjects for qualifications).
-- **US4 (P4)**: after US1, US2, US3 (checks all of their data).
+- **US1 rework (P1)**: first; removes code later phases must not build on.
+- **US5 (P1)**: after 3a.
+- **US2 (P2)**: after 3a (subjects reference room features; the warning needs the time grid). Can run in parallel with US5.
+- **US3 (P3)**: after US2 (subjects for qualifications).
+- **US4 (P4)**: after US1, US2, US3.
 
 ```text
-Setup → Foundational → US1 ─┬─→ US5
-                            └─→ US2 → US3 → US4 → Polish
+Setup ✓ → Foundational ✓ → US1 ✓ → US1 rework ─┬─→ US5
+                                               └─→ US2 → US3 → US4 → Polish
 ```
 
 ### Within Each Phase
 
 - Tests first and failing (Principle V) → domain → ports → use cases → fakes → migration → repositories → routes/views → wiring
-- `BOOT/Main.kt` wiring tasks are sequential (same file)
+- `BOOT/Main.kt`, `MasterDataUseCases.kt` and `WebModule.kt` are shared files: tasks touching them run sequentially
 
 ### Parallel Opportunities
 
-- Setup: T004–T008, T010–T014
-- Foundational: tests T015–T020 together; then T021–T025, T027, T030, T034, T036, T037, T041 in parallel
-- Per story: all test tasks together; domain entity tasks marked [P] together
-- After US1: US5 and US2 can proceed in parallel
-- Polish: T107–T110 in parallel
+- 3a: T062–T064 together
+- US5: T069, T070 together
+- US2: T074–T079 together; T080–T082 together
+- US3: T093–T095 together
+- US4: T104, T105 together
+- Polish: T109–T112 together
+- After 3a: US5 and US2 in parallel
 
 ---
 
-## Parallel Example: User Story 1
+## Parallel Example: User Story 2
 
 ```text
-# Tests together:
-T042 TimeGridTest, T043 RoomTest, T044 SchoolUseCasesTest, T045 Room/TimeGrid use case tests,
-T046 repository ITs, T047 route tests
-
-# Domain together:
-T048 TimeGrid.kt/TimeSlot.kt, T049 RoomFeature.kt/Room.kt
+# Tests together: T074, T075, T076, T077, T078, T079
+# Domain together: T080 Subject.kt, T081 ClassLevel.kt, T082 SchoolClass.kt/SuffixProposal.kt
 ```
 
 ## Parallel Example: User Story 3
 
 ```text
-# Tests together: T089 TeacherTest, T090 TeacherUseCasesTest, T091 repository IT + route tests
+# Tests together: T093 TeacherTest, T094 TeacherUseCasesTest, T095 repository IT + route tests
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Story 1)
+### MVP First
 
-1. Phase 1 Setup (incl. CI) → Phase 2 Foundational (installation + login work)
-2. Phase 3 US1 → validate with quickstart 0–4 → demo
+1. Phase 3a: finish the single-school US1 → validate with quickstart 0–4a → demo
+2. + US5 → several planners and teacher accounts
 
 ### Incremental Delivery
 
-1. + US5 → several planners with separated schools (needed before real data from more than one school is entered)
-2. + US2 → curriculum demand side
-3. + US3 → teacher supply side and hard constraints
-4. + US4 → readiness overview
-5. Polish → log-leak, concurrency, performance, CI security results, full quickstart run
+1. + US2 → curriculum demand side
+2. + US3 → teacher supply side and hard constraints
+3. + US4 → readiness overview
+4. Polish → log-leak, concurrency, performance, CI security results, full quickstart run
 
 ---
 
 ## Notes
 
-- Migrations are split per story (V1 schools + accounts, V2 rooms + time grid, V3 curriculum, V4 teachers) so each story ships its schema change in the same change set (constitution quality gate). `school` is in V1 because installation creates the first school.
-- Commit after each task or logical group on branch `001-scheduling-master-data`.
+- **Scope change (single school, R17)**: T001–T061 were implemented on branch `001-scheduling-master-data` before the change and remain valid except the parts reworked in Phase 3a (school creation/deletion, school list, school-deletion checks). Their descriptions are kept as history; where they mention several schools, Phase 3a and the current data-model take precedence. The former multi-school tasks for US5 and US3 (account school assignment, `AccountManagementPolicy`, commute times, remove-from-my-schools) were dropped.
+- Migrations: V1 schools + accounts, V2 rooms + time grid (both existing), V3 curriculum, V4 teachers — each story ships its schema change (constitution quality gate).
+- Commit after each task or logical group on branch `one-school`.
 - Stop at any checkpoint to validate the story independently.

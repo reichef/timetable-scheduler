@@ -41,9 +41,9 @@ All "NEEDS CLARIFICATION" items of the Technical Context are resolved below.
   - **Accounts separated from credentials**: `user_account` holds identity and authorization (username, role, active flag, school assignments). Credentials live in a separate `password_credential` table (one row per account). A later SSO adapter adds an `external_identity` table (`provider`, `subject`) linked to the same account — accounts and roles stay untouched (FR-035).
   - **Port**: application port `CredentialAuthenticator` returns an `AuthenticatedUser(accountId)`; the password adapter is the only implementation now, an OIDC adapter can be added beside it.
   - **Session**: Ktor form login with a server-side session cookie (`HttpOnly`, `SameSite=Strict`, `Secure` outside local dev). Role, active flag and school assignments are re-read on every request so deactivation and re-assignment take effect immediately.
-  - **Installation**: On start-up with an empty database, the first school (`TTS_INITIAL_SCHOOL_NAME`) and the initial planner (`TTS_INITIAL_PLANNER_USER` / `_PASSWORD`) assigned to it are created in one transaction (FR-031). Afterwards the variables are ignored. Every account keeps ≥ 1 school (FR-031a); deleting a school that is an account's only school is blocked.
-  - **Data access**: `SchoolAccessPolicy` in the application layer checks every use case: active planner + assignment to the affected school (FR-028a); teachers: visible/editable per FR-028b; full deletion only with all of the teacher's schools, otherwise "remove from own schools" (FR-028c). Unassigned schools answer `404` so their existence is not revealed.
-  - **Account management**: `AccountManagementPolicy` — an account is manageable by a planner iff *all* of its schools are assigned to that planner (FR-032a); non-manageable accounts are not listed. Teacher accounts carry school assignments too. Own password change is always allowed. FR-033 (≥ 1 active planner per school) is checked on deactivate, downgrade and unassign.
+  - **Installation**: On start-up with an empty database, the school (`TTS_INITIAL_SCHOOL_NAME`) and the initial planner (`TTS_INITIAL_PLANNER_USER` / `_PASSWORD`) assigned to it are created in one transaction (FR-031). Afterwards the variables are ignored.
+  - **Data access**: `SchoolAccessPolicy` in the application layer checks every use case: active planner assigned to the school. With one school this is always the school of the installation; any other `schoolId` answers `404`. It is the single extension point for FR-028a–c (R17).
+  - **Account management**: every active planner manages all accounts; new accounts of both roles are assigned to the school automatically (`account_school`, FR-036). Own password change is always allowed. FR-033 (≥ 1 active planner) is checked on deactivate and downgrade. Per-school manageability (FR-032a) is deferred (R17).
 - **Rationale**: Smallest solution that satisfies Principle III and the clarified account management, while keeping SSO an additive change.
 - **Alternatives considered**: OIDC only (rejected in clarification — needs extra infrastructure first); credentials as columns of `user_account` (SSO would later leave unused columns and mixed concerns); HTTP Basic auth (no logout, weak UX).
 
@@ -111,3 +111,16 @@ All "NEEDS CLARIFICATION" items of the Technical Context are resolved below.
   - Workflows use least-privilege `permissions:` per job (`contents: read`, `security-events: write` only for CodeQL/SARIF upload) and pin actions to a major version.
 - **Rationale**: Uses GitHub-native tooling named by the constitution with minimal configuration.
 - **Alternatives considered**: CodeQL default setup via repository settings (no versioned config in the repo, less transparent); `build-mode: none` (not supported for Kotlin).
+
+## R17 — Single school per installation, prepared for multiple schools (FR-001, FR-036)
+
+- **Context**: Scope change: the first version manages exactly one school; multi-school support must be addable later without re-entering data.
+- **Decision**:
+  - **Keep the school as owner of all data**: `school` table and `school_id` on rooms, room features, time slots, subjects, class levels and teachers stay. Teachers get a plain `school_id` column (no join table yet); the extension migrates it into `teacher_school` automatically.
+  - **Keep `account_school`** (already built): every account is assigned to the one school when it is created. No schema change is needed when accounts may later belong to several schools.
+  - **Keep `SchoolAccessPolicy` and `DependantVisibilityFilter`**: trivially satisfied with one school; they are the places the extension adapts.
+  - **Keep the URL scheme `/schools/{schoolId}/…`**: `/schools` redirects to the one school instead of listing schools.
+  - **Remove from the built code** (implemented before the scope change): creating and deleting schools, the school list page, the school-deletion dependant checks and the account queries used only for them; school name uniqueness becomes moot but the unique index stays harmless.
+  - **Not built**: commute times, teachers at several schools, account school selection, `AccountManagementPolicy`.
+- **Rationale**: Smallest product for a quick start while every future change is additive (new tables/columns, broader policy), never a data re-entry.
+- **Alternatives considered**: Removing `school` entirely (extension would need to re-key every table); keeping the full multi-school UI hidden behind a flag (unused code that must still be tested and maintained).
