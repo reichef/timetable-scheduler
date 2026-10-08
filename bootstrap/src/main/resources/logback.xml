@@ -10,6 +10,8 @@
     <logger name="org.flywaydb" level="INFO"/>
     <logger name="com.zaxxer.hikari" level="WARN"/>
     <logger name="Exposed" level="WARN"/>
+    <!-- Its TRACE/DEBUG output repeats exception messages, which may contain confidential data: never lower it. -->
+    <logger name="io.ktor.server.plugins.statuspages" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

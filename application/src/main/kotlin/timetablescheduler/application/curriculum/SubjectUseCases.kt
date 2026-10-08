@@ -10,6 +10,7 @@ import timetablescheduler.application.error.outcome
 import timetablescheduler.application.port.RoomFeatureRepository
 import timetablescheduler.application.port.SubjectRepository
 import timetablescheduler.application.port.TransactionRunner
+import timetablescheduler.application.room.featureIdsOf
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SchoolId
@@ -29,8 +30,6 @@ private fun OutcomeScope.requireUniqueName(subjects: SubjectRepository, subject:
 
 private fun RoomFeatureRepository.sortedFeaturesOf(schoolId: SchoolId): List<RoomFeature> =
     findBySchool(schoolId).sortedBy { it.name.lowercase() }
-
-private fun RoomFeatureRepository.featureIdsOf(schoolId: SchoolId): Set<RoomFeatureId> = findBySchool(schoolId).map { it.id }.toSet()
 
 class CreateSubject(
     private val transactions: TransactionRunner,

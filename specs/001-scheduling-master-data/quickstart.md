@@ -57,7 +57,7 @@ Log in at `http://localhost:8080/login` with the initial planner.
 | 12 | US3 | Mark Friday slot 6 as unavailable for SCHA; set a load of 40 for SCHM | Unavailability shown as blocked; load 40 rejected (exceeds 38 teaching slots) |
 | 13 | US4 | Open readiness after removing the Chemieraum feature from B-104 | Reports Chemie without suitable room and Mathematik capacity shortfall |
 | 14 | Edge | Delete subject Mathematik | Blocked; business message lists level 6 and Anna Schmidt by name |
-| 14a | Edge | Delete time slot "6. Stunde" | Confirmation names 1 removed unavailability; after deleting, a teacher whose load now exceeds the grid appears in readiness |
+| 14a | Edge | Set SCHM's load to 38 (= the grid), then delete time slot "6. Stunde" | Confirmation names 1 removed unavailability; after deleting, a teacher whose load now exceeds the grid appears in readiness |
 | 15 | Edge | Open the same room in two tabs, save both | Second save shows conflict page |
 | 16 | US5 | Create planner `mueller` and teacher account `lehrer1`; log in as `mueller` | `mueller` sees the school and its data |
 | 16a | US5 | Log in as `lehrer1`, open `/schools`; log out, open `/schools` | 403 without data; redirect to login |

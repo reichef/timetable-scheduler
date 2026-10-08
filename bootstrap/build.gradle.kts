@@ -12,6 +12,8 @@ dependencies {
     implementation(libs.ktor.server.netty)
     implementation(libs.slf4j.api)
     runtimeOnly(libs.logback.classic)
+
+    testImplementation(libs.logback.classic)
 }
 
 application {

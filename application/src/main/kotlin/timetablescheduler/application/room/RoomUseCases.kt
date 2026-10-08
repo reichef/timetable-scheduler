@@ -38,7 +38,8 @@ private fun OutcomeScope.loadRoomOfSchool(rooms: RoomRepository, schoolId: Schoo
     return room
 }
 
-private fun RoomFeatureRepository.featureIdsOf(schoolId: SchoolId): Set<RoomFeatureId> =
+/** The ids of all room features of [schoolId]; entities may only reference these (FR-003, FR-009). */
+internal fun RoomFeatureRepository.featureIdsOf(schoolId: SchoolId): Set<RoomFeatureId> =
     findBySchool(schoolId).map { it.id }.toSet()
 
 class CreateRoomFeature(

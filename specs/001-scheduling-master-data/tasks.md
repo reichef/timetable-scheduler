@@ -270,13 +270,13 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T109 [P] Write `WEB_T/LogConfidentialityTest.kt`: capture log output while creating teacher "Anna Schmidt", provoking a validation error, a deletion-blocked business error naming her and an unexpected exception; assert no log line contains the name, form values or password, and the 500 page contains only the generic text + correlation id (R10, FR-029, constitution III)
-- [ ] T110 [P] Write `WEB_T/ConcurrentEditTest.kt`: two saves of the same room with the same `version` → second gets 409 conflict page with reload link (FR-027, quickstart 15)
-- [ ] T111 [P] Write `PER_T/PerformanceSmokeIT.kt`: seed SC-001 volume (40 rooms, 15 subjects, 6 levels, 25 classes, 60 teachers, 5 × 10 grid) and assert school dashboard, teacher list and readiness use cases complete in < 1 s each (R15)
-- [ ] T112 [P] Update `README.md` with prerequisites, configuration variables (quote values with spaces), run/test commands and CI workflows (link to quickstart.md)
-- [ ] T113 Review all modules against constitution I, III and V (naming, function size, comments on compact constraint/access checks, test-first coverage of non-trivial functions, no confidential data in logs or technical error output) and fix findings
+- [X] T109 [P] Write `WEB_T/LogConfidentialityTest.kt`: capture log output while creating teacher "Anna Schmidt", provoking a validation error, a deletion-blocked business error naming her and an unexpected exception; assert no log line contains the name, form values or password, and the 500 page contains only the generic text + correlation id (R10, FR-029, constitution III)
+- [X] T110 [P] Write `WEB_T/ConcurrentEditTest.kt`: two saves of the same room with the same `version` → second gets 409 conflict page with reload link (FR-027, quickstart 15)
+- [X] T111 [P] Write `PER_T/PerformanceSmokeIT.kt`: seed SC-001 volume (40 rooms, 15 subjects, 6 levels, 25 classes, 60 teachers, 5 × 10 grid) and assert school dashboard, teacher list and readiness use cases complete in < 1 s each (R15)
+- [X] T112 [P] Update `README.md` with prerequisites, configuration variables (quote values with spaces), run/test commands and CI workflows (link to quickstart.md)
+- [X] T113 Review all modules against constitution I, III and V (naming, function size, comments on compact constraint/access checks, test-first coverage of non-trivial functions, no confidential data in logs or technical error output) and fix findings
 - [ ] T114 Push the branch, open a pull request and confirm workflows Build and CodeQL succeed without new security alerts; fix findings
-- [ ] T115 Run all quickstart.md scenarios against `./gradlew :bootstrap:run` with a fresh database and record the result (constitution: UI verified against a running instance)
+- [X] T115 Run all quickstart.md scenarios against `./gradlew :bootstrap:run` with a fresh database and record the result (constitution: UI verified against a running instance)
 
 ---
 

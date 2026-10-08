@@ -78,7 +78,7 @@ private suspend fun ApplicationCall.showLevelAgain(
     }
 }
 
-/** Class levels with their curriculum and the classes of each level (FR-010 – FR-015). */
+/** Class levels with their curriculum (FR-010, FR-011) and the classes of each level. */
 fun Route.classLevelRoutes(dependencies: WebDependencies) {
     val curriculum = dependencies.useCases.curriculum
 
@@ -133,59 +133,64 @@ fun Route.classLevelRoutes(dependencies: WebDependencies) {
             ) { call.seeOther(levelsPath(schoolId)) }
         }
 
-        get("/schools/{schoolId}/class-levels/{levelId}/classes/new") {
-            val schoolId = call.schoolIdParameter() ?: return@get
-            val levelId = call.levelIdParameter() ?: return@get
-            call.respondResult(curriculum.proposeClassSuffix.execute(call.actor, schoolId, levelId)) { call.respondNewClassForm(it) }
-        }
+        schoolClassRoutes(curriculum)
+    }
+}
 
-        post("/schools/{schoolId}/class-levels/{levelId}/classes") {
-            val schoolId = call.schoolIdParameter() ?: return@post
-            val levelId = call.levelIdParameter() ?: return@post
-            val form = call.receiveCheckedForm()
-            call.respondFormResult(
-                form.parseClass { suffix, weight -> curriculum.createSchoolClass.execute(call.actor, schoolId, levelId, suffix, weight) },
-                backLink = "${levelsPath(schoolId)}/${levelId.value}",
-                onInvalid = { errors ->
-                    call.respondResult(curriculum.proposeClassSuffix.execute(call.actor, schoolId, levelId)) {
-                        call.respondNewClassForm(it, errors, form.classInput(), HttpStatusCode.UnprocessableEntity)
-                    }
-                },
-            ) { call.seeOther(classPath(schoolId, it)) }
-        }
+/** The classes of a level: new-class form with suffix proposal, class page with resolved curriculum (FR-012 – FR-015). */
+private fun Route.schoolClassRoutes(curriculum: CurriculumUseCases) {
+    get("/schools/{schoolId}/class-levels/{levelId}/classes/new") {
+        val schoolId = call.schoolIdParameter() ?: return@get
+        val levelId = call.levelIdParameter() ?: return@get
+        call.respondResult(curriculum.proposeClassSuffix.execute(call.actor, schoolId, levelId)) { call.respondNewClassForm(it) }
+    }
 
-        get("/schools/{schoolId}/classes/{classId}") {
-            val schoolId = call.schoolIdParameter() ?: return@get
-            val classId = call.classIdParameter() ?: return@get
-            call.respondResult(curriculum.getSchoolClass.execute(call.actor, schoolId, classId)) { call.respondSchoolClassDetails(it) }
-        }
-
-        post("/schools/{schoolId}/classes/{classId}") {
-            val schoolId = call.schoolIdParameter() ?: return@post
-            val classId = call.classIdParameter() ?: return@post
-            val form = call.receiveCheckedForm()
-            call.respondFormResult(
-                form.parseClass { suffix, weight -> curriculum.updateSchoolClass.execute(call.actor, schoolId, classId, suffix, weight, form.version()) },
-                backLink = "/schools/${schoolId.value}/classes/${classId.value}",
-                onInvalid = { errors ->
-                    call.respondResult(curriculum.getSchoolClass.execute(call.actor, schoolId, classId)) {
-                        call.respondSchoolClassDetails(it, errors, form.classInput(), HttpStatusCode.UnprocessableEntity)
-                    }
-                },
-            ) { call.seeOther(classPath(schoolId, it)) }
-        }
-
-        post("/schools/{schoolId}/classes/{classId}/delete") {
-            val schoolId = call.schoolIdParameter() ?: return@post
-            val classId = call.classIdParameter() ?: return@post
-            val form = call.receiveCheckedForm()
-            call.respondResult(
-                curriculum.getSchoolClass.execute(call.actor, schoolId, classId),
-                "/schools/${schoolId.value}/classes/${classId.value}",
-            ) { details ->
-                call.respondResult(curriculum.deleteSchoolClass.execute(call.actor, schoolId, classId, form.version()), classPath(schoolId, details.schoolClass)) {
-                    call.seeOther(levelPath(details.level))
+    post("/schools/{schoolId}/class-levels/{levelId}/classes") {
+        val schoolId = call.schoolIdParameter() ?: return@post
+        val levelId = call.levelIdParameter() ?: return@post
+        val form = call.receiveCheckedForm()
+        call.respondFormResult(
+            form.parseClass { suffix, weight -> curriculum.createSchoolClass.execute(call.actor, schoolId, levelId, suffix, weight) },
+            backLink = "${levelsPath(schoolId)}/${levelId.value}",
+            onInvalid = { errors ->
+                call.respondResult(curriculum.proposeClassSuffix.execute(call.actor, schoolId, levelId)) {
+                    call.respondNewClassForm(it, errors, form.classInput(), HttpStatusCode.UnprocessableEntity)
                 }
+            },
+        ) { call.seeOther(classPath(schoolId, it)) }
+    }
+
+    get("/schools/{schoolId}/classes/{classId}") {
+        val schoolId = call.schoolIdParameter() ?: return@get
+        val classId = call.classIdParameter() ?: return@get
+        call.respondResult(curriculum.getSchoolClass.execute(call.actor, schoolId, classId)) { call.respondSchoolClassDetails(it) }
+    }
+
+    post("/schools/{schoolId}/classes/{classId}") {
+        val schoolId = call.schoolIdParameter() ?: return@post
+        val classId = call.classIdParameter() ?: return@post
+        val form = call.receiveCheckedForm()
+        call.respondFormResult(
+            form.parseClass { suffix, weight -> curriculum.updateSchoolClass.execute(call.actor, schoolId, classId, suffix, weight, form.version()) },
+            backLink = "/schools/${schoolId.value}/classes/${classId.value}",
+            onInvalid = { errors ->
+                call.respondResult(curriculum.getSchoolClass.execute(call.actor, schoolId, classId)) {
+                    call.respondSchoolClassDetails(it, errors, form.classInput(), HttpStatusCode.UnprocessableEntity)
+                }
+            },
+        ) { call.seeOther(classPath(schoolId, it)) }
+    }
+
+    post("/schools/{schoolId}/classes/{classId}/delete") {
+        val schoolId = call.schoolIdParameter() ?: return@post
+        val classId = call.classIdParameter() ?: return@post
+        val form = call.receiveCheckedForm()
+        call.respondResult(
+            curriculum.getSchoolClass.execute(call.actor, schoolId, classId),
+            "/schools/${schoolId.value}/classes/${classId.value}",
+        ) { details ->
+            call.respondResult(curriculum.deleteSchoolClass.execute(call.actor, schoolId, classId, form.version()), classPath(schoolId, details.schoolClass)) {
+                call.seeOther(levelPath(details.level))
             }
         }
     }
