@@ -214,16 +214,16 @@ As in feature 001. Kotlin base package `timetablescheduler`. Abbreviations:
 
 ### Tests for User Story 4 (write first, must fail)
 
-- [ ] T095 [P] [US4] Tests in `APP_T/scheduling/ListGenerationsTest.kt` and `APP_T/scheduling/GetAlternativeTest.kt`: outdated ⇔ stored fingerprint ≠ current fingerprint (master data or constraints changed, also while running); outdated alternative returns the lessons that now violate a hard rule with the rule; deleted master data entries shown as "deleted entry"
-- [ ] T096 [P] [US4] Delete tests in `APP_T/scheduling/DeleteGenerationTest.kt`: deleting removes alternatives; the generation containing the chosen timetable → `DeletionBlocked` (FR-024); a running generation cannot be deleted
-- [ ] T097 [P] [US4] Route tests in `WEB_T/generation/GenerationRoutesTest.kt`: list shows start time, planner, status, number of alternatives and outdated mark; outdated alternative page highlights conflicting cells with the reason; delete with confirmation → `303`, chosen one → `409`
+- [X] T095 [P] [US4] Tests in `APP_T/scheduling/ListGenerationsTest.kt` and `APP_T/scheduling/GetAlternativeTest.kt`: outdated ⇔ stored fingerprint ≠ current fingerprint (master data or constraints changed, also while running); outdated alternative returns the lessons that now violate a hard rule with the rule; deleted master data entries shown as "deleted entry"
+- [X] T096 [P] [US4] Delete tests in `APP_T/scheduling/DeleteGenerationTest.kt`: deleting removes alternatives; the generation containing the chosen timetable → `DeletionBlocked` (FR-024); a running generation cannot be deleted
+- [X] T097 [P] [US4] Route tests in `WEB_T/generation/GenerationRoutesTest.kt`: list shows start time, planner, status, number of alternatives and outdated mark; outdated alternative page highlights conflicting cells with the reason; delete with confirmation → `303`, chosen one → `409`
 
 ### Implementation for User Story 4
 
-- [ ] T098 [US4] Compute outdated marks in `ListGenerations`/`GetGeneration` and conflict highlighting in `GetAlternative` (current problem + `HardConstraintChecker`) in `APP/scheduling/` to pass T095
-- [ ] T099 [US4] Implement `DeleteGeneration` in `APP/scheduling/DeleteGeneration.kt` and the repository delete in `PER/scheduling/ExposedGenerationRepository.kt` to pass T096
-- [ ] T100 [US4] Show outdated marks, highlighted conflicts (via `TimetableGrid` highlight) and the delete action with confirmation in `WEB/generation/GenerationViews.kt` and `AlternativeViews.kt`, texts in both languages, to pass T097
-- [ ] T101 [US4] Run quickstart scenarios 22–24 against `:bootstrap:run` (incl. stopping the server during a running generation)
+- [X] T098 [US4] Compute outdated marks in `ListGenerations`/`GetGeneration` and conflict highlighting in `GetAlternative` (current problem + `HardConstraintChecker`) in `APP/scheduling/` to pass T095
+- [X] T099 [US4] Implement `DeleteGeneration` in `APP/scheduling/DeleteGeneration.kt` and the repository delete in `PER/scheduling/ExposedGenerationRepository.kt` to pass T096
+- [X] T100 [US4] Show outdated marks, highlighted conflicts (via `TimetableGrid` highlight) and the delete action with confirmation in `WEB/generation/GenerationViews.kt` and `AlternativeViews.kt`, texts in both languages, to pass T097
+- [X] T101 [US4] Run quickstart scenarios 22–24 against `:bootstrap:run` (incl. stopping the server during a running generation) — 2026-10-09 on `timetable_002`: 9/9 checks passed (one script check was too broad — older generations are rightly outdated — and was re-checked on a fresh generation); the restart marked the interrupted generation failed and kept its 5 alternatives; the log contained no names
 
 **Checkpoint**: All four user stories work independently
 

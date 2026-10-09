@@ -48,6 +48,7 @@ import timetablescheduler.application.scheduling.ConstraintContextLoader
 import timetablescheduler.application.scheduling.GetChosenTimetable
 import timetablescheduler.application.scheduling.CreateConstraint
 import timetablescheduler.application.scheduling.DeleteConstraint
+import timetablescheduler.application.scheduling.DeleteGeneration
 import timetablescheduler.application.scheduling.GenerationControl
 import timetablescheduler.application.scheduling.GetConstraint
 import timetablescheduler.application.scheduling.ListConstraints
@@ -366,13 +367,14 @@ class MasterDataUseCases(private val ports: MasterDataPorts, private val schedul
                 schedulingPorts.executor, runner, schedulingPorts.clock,
             ),
             stop = StopGeneration(transactions, access, schedulingPorts.generations, control),
-            list = ListGenerations(transactions, access, schedulingPorts.generations, accounts, readinessReports, schedulingPorts.constraints, names, schedulingPorts.chosenTimetables),
-            get = GetGeneration(transactions, access, schedulingPorts.generations, accounts, names),
-            getAlternative = GetAlternative(transactions, access, schedulingPorts.generations, names, schedulingPorts.chosenTimetables),
+            list = ListGenerations(transactions, access, schedulingPorts.generations, accounts, readinessReports, schedulingPorts.constraints, names, schedulingPorts.chosenTimetables, constraintContext),
+            get = GetGeneration(transactions, access, schedulingPorts.generations, accounts, names, constraintContext),
+            getAlternative = GetAlternative(transactions, access, schedulingPorts.generations, names, schedulingPorts.chosenTimetables, constraintContext),
             recoverInterrupted = RecoverInterruptedGenerations(transactions, schedulingPorts.generations, schedulingPorts.clock),
             choose = ChooseAlternative(transactions, access, schedulingPorts.generations, schedulingPorts.chosenTimetables, constraintContext, names, schedulingPorts.clock),
             getChosen = GetChosenTimetable(transactions, access, schedulingPorts.chosenTimetables, constraintContext, names, schedulingPorts.generations, accounts),
             compare = CompareAlternatives(transactions, access, schedulingPorts.generations, names),
+            delete = DeleteGeneration(transactions, access, schedulingPorts.generations, schedulingPorts.chosenTimetables),
         )
     }
 

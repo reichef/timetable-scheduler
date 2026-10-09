@@ -291,6 +291,12 @@ interface GenerationTexts {
     val cancel: String
     val conflictsTitle: String
     val conflictsIntro: String
+    val outdatedMark: String
+    val outdatedHint: String
+    val deleteLink: String
+    val deleteTitle: String
+    val deleteIntro: String
+    val deleteButton: String
     fun changedLessons(count: Int): String
     fun chartCaption(xTitle: String, yTitle: String): String
     fun diffTitle(first: Int, second: Int): String

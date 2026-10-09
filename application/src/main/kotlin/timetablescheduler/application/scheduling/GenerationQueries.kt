@@ -26,15 +26,22 @@ import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
+import timetablescheduler.domain.scheduling.evaluation.HardConstraintChecker
+import timetablescheduler.domain.scheduling.evaluation.HardViolation
 import timetablescheduler.domain.scheduling.generation.ChosenTimetable
+import timetablescheduler.domain.scheduling.problem.SchedulingInputFingerprint
+import timetablescheduler.domain.scheduling.solution.TimetableCandidate
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationGate
 import timetablescheduler.domain.scheduling.generation.GateResult
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.school.TimeGrid
 
-/** A generation as listed, with the username of the planner who started it (US4 scenario 1). */
-data class GenerationSummary(val generation: Generation, val startedByUsername: String)
+/**
+ * A generation as listed, with the username of the planner who started it and whether master data or constraints
+ * changed since its start (US4 scenario 1, G8).
+ */
+data class GenerationSummary(val generation: Generation, val startedByUsername: String, val outdated: Boolean = false)
 
 /** The generations of a school and what the start form needs: readiness gate and the running generation. */
 data class GenerationOverview(
@@ -71,7 +78,8 @@ data class TimetableNames(
  * One alternative with its generation and everything needed to draw it per class, teacher or room (FR-019);
  * [number] is its position in the generation's list, as shown in the result table. [others] are the other
  * alternatives of the generation with their numbers (to compare with, FR-020), [chosen] the school's current choice
- * (its version is needed to choose this one, FR-028).
+ * (its version is needed to choose this one, FR-028). [conflicts] are the hard-constraint violations of its lessons
+ * under today's data — only an outdated alternative has any (FR-023); [constraints] name the planner constraints.
  */
 data class AlternativeDetails(
     val generation: Generation,
@@ -80,6 +88,8 @@ data class AlternativeDetails(
     val number: Int,
     val others: List<Pair<Int, Alternative>> = emptyList(),
     val chosen: ChosenTimetable? = null,
+    val conflicts: List<HardViolation> = emptyList(),
+    val constraints: List<SchedulingConstraint> = emptyList(),
 ) {
     val isChosen: Boolean get() = chosen?.alternativeId == alternative.id
 }
@@ -93,6 +103,7 @@ class ListGenerations(
     private val constraints: SchedulingConstraintRepository,
     private val names: TimetableNamesLoader,
     private val chosenTimetables: ChosenTimetableRepository,
+    private val problems: ConstraintContextLoader,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<GenerationOverview> =
         transactions.inTransaction {
@@ -101,7 +112,9 @@ class ListGenerations(
                 val report = readiness.load(schoolId)
                 GenerationOverview(
                     schoolId = schoolId,
-                    generations = generations.findBySchool(schoolId).sortedByDescending { it.startedAt }.map { summaryOf(it, accounts) },
+                    generations = currentFingerprint(problems, schoolId).let { fingerprint ->
+                        generations.findBySchool(schoolId).sortedByDescending { it.startedAt }.map { summaryOf(it, accounts, fingerprint) }
+                    },
                     gate = GenerationGate.classify(report.issues),
                     readiness = report,
                     softConstraints = constraints.findBySchool(schoolId).filter { it.active && !it.isHard },
@@ -118,13 +131,18 @@ class GetGeneration(
     private val generations: GenerationRepository,
     private val accounts: UserAccountRepository,
     private val names: TimetableNamesLoader,
+    private val problems: ConstraintContextLoader,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId): UseCaseResult<GenerationDetails> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
-                GenerationDetails(summaryOf(generation, accounts), generations.findAlternatives(generationId), names.load(schoolId))
+                GenerationDetails(
+                    summaryOf(generation, accounts, currentFingerprint(problems, schoolId)),
+                    generations.findAlternatives(generationId),
+                    names.load(schoolId),
+                )
             }
         }
 }
@@ -135,6 +153,7 @@ class GetAlternative(
     private val generations: GenerationRepository,
     private val names: TimetableNamesLoader,
     private val chosenTimetables: ChosenTimetableRepository,
+    private val problems: ConstraintContextLoader,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId, alternativeId: AlternativeId): UseCaseResult<AlternativeDetails> =
         transactions.inTransaction {
@@ -144,6 +163,8 @@ class GetAlternative(
                 val alternatives = generations.findAlternatives(generationId)
                 val position = alternatives.indexOfFirst { it.id == alternativeId }
                 if (position < 0) fail(ApplicationError.NotFound)
+                val problem = problems.load(schoolId)
+                val alternative = alternatives[position]
                 AlternativeDetails(
                     generation,
                     alternatives[position],
@@ -151,6 +172,8 @@ class GetAlternative(
                     number = position + 1,
                     others = alternatives.mapIndexed { index, alternative -> index + 1 to alternative }.filter { it.second.id != alternativeId },
                     chosen = chosenTimetables.find(schoolId),
+                    conflicts = HardConstraintChecker.violationsOf(problem, TimetableCandidate(alternative.lessons, alternative.unplaced)),
+                    constraints = problem.constraints,
                 )
             }
         }
@@ -181,5 +204,11 @@ class TimetableNamesLoader(
     }
 }
 
-private fun summaryOf(generation: Generation, accounts: UserAccountRepository) =
-    GenerationSummary(generation, accounts.findById(generation.startedBy)?.username.orEmpty())
+private fun summaryOf(generation: Generation, accounts: UserAccountRepository, currentFingerprint: () -> String) =
+    GenerationSummary(generation, accounts.findById(generation.startedBy)?.username.orEmpty(), generation.inputFingerprint != currentFingerprint())
+
+/** G8: the fingerprint of today's master data and constraints, computed once on first use. */
+private fun currentFingerprint(problems: ConstraintContextLoader, schoolId: SchoolId): () -> String {
+    val fingerprint by lazy { SchedulingInputFingerprint.of(problems.load(schoolId)) }
+    return { fingerprint }
+}

@@ -168,6 +168,11 @@ class ExposedGenerationRepository : GenerationRepository {
         AlternativeTable.deleteWhere { AlternativeTable.id eq alternativeId.value }
     }
 
+    /** Alternatives and snapshot rows go with it (ON DELETE CASCADE); the chosen timetable's generation is restricted. */
+    override fun delete(generationId: GenerationId) {
+        GenerationTable.deleteWhere { GenerationTable.id eq generationId.value }
+    }
+
     override fun findAlternatives(generationId: GenerationId): List<Alternative> =
         loadAlternatives(AlternativeTable.selectAll().where { AlternativeTable.generationId eq generationId.value }.toList())
 

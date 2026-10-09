@@ -18,6 +18,7 @@ import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.timetable.GridCell
 import timetablescheduler.adapters.web.timetable.TimetableView
+import timetablescheduler.adapters.web.timetable.conflictList
 import timetablescheduler.adapters.web.timetable.entityName
 import timetablescheduler.adapters.web.timetable.lessonLines
 import timetablescheduler.adapters.web.timetable.lessonsOf
@@ -47,6 +48,7 @@ suspend fun ApplicationCall.respondAlternative(details: AlternativeDetails, view
     val generation = details.generation
     val alternative = details.alternative
     respondPage(texts.generations.alternativeTitle(details.number)) { session ->
+        if (details.conflicts.isNotEmpty()) p(classes = "warning") { +texts.generations.outdatedHint }
         objectiveSummary(details, texts)
         if (details.isChosen) p { +texts.generations.chosenMarker } else chooseForm(session, generation, alternative, details.chosen, texts)
         if (details.others.isNotEmpty()) {
@@ -65,9 +67,13 @@ suspend fun ApplicationCall.respondAlternative(details: AlternativeDetails, view
             h2 { +entityName(view, entityId, details.names, texts) }
             val lessons = lessonsOf(alternative.lessons, view, entityId)
             weeklyGrid(details.names, texts) { daySlot ->
-                lessons.firstOrNull { it.daySlot == daySlot }?.let { GridCell(lessonLines(it, view, details.names, texts)) }
+                lessons.firstOrNull { it.daySlot == daySlot }?.let { lesson ->
+                    val rules = details.conflicts.filter { lesson in it.lessons }.map { texts.generations.hardRuleName(it.rule) }.distinct()
+                    GridCell(lessonLines(lesson, view, details.names, texts) + rules, highlighted = rules.isNotEmpty(), note = rules.joinToString(", ").ifEmpty { null })
+                }
             }
         }
+        conflictList(details.conflicts, details.constraints, details.names, texts, texts.timetables.conflictsHeading)
         unplacedLessons(alternative.unplaced, details.names, texts)
         p { a(href = generationPath(generation)) { +texts.generations.toGenerations } }
     }

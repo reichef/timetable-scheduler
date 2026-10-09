@@ -113,6 +113,11 @@ class InMemoryGenerationRepository : GenerationRepository {
 
     override fun findAlternatives(generationId: GenerationId): List<Alternative> = alternatives.values.filter { it.generationId == generationId }
     override fun findAlternative(alternativeId: AlternativeId): Alternative? = alternatives[alternativeId]
+
+    override fun delete(generationId: GenerationId) {
+        generations.remove(generationId)
+        alternatives.values.removeIf { it.generationId == generationId }
+    }
 }
 
 /** What the generation log received; only ids, statuses and counts can be recorded (G13). */

@@ -2,6 +2,8 @@ package timetablescheduler.application.scheduling
 
 import timetablescheduler.application.access.SchoolAccessPolicy
 import timetablescheduler.application.error.ApplicationError
+import timetablescheduler.application.error.Dependant
+import timetablescheduler.application.error.DependantType
 import timetablescheduler.application.error.OutcomeScope
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.error.outcome
@@ -183,6 +185,30 @@ class RecoverInterruptedGenerations(
     }
 }
 
+/**
+ * US4: deletes a generation the planner no longer needs, with its alternatives. A running generation must be stopped
+ * first; the generation of the chosen timetable is kept (FR-024).
+ */
+class DeleteGeneration(
+    private val transactions: TransactionRunner,
+    private val access: SchoolAccessPolicy,
+    private val generations: GenerationRepository,
+    private val chosenTimetables: ChosenTimetableRepository,
+) {
+    fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId): UseCaseResult<Unit> =
+        transactions.inTransaction {
+            outcome {
+                access.requireSchoolAccess(actor, schoolId).bind()
+                val generation = loadGenerationOfSchool(generations, schoolId, generationId)
+                if (generation.isRunning) fail(ApplicationError.GenerationRunning(generationId))
+                if (chosenTimetables.find(schoolId)?.generationId == generationId) {
+                    fail(ApplicationError.DeletionBlocked(listOf(Dependant(DependantType.CHOSEN_TIMETABLE, "")), hiddenDependantCount = 0))
+                }
+                generations.delete(generationId)
+            }
+        }
+}
+
 class SchedulingUseCases(
     val start: StartGeneration,
     val stop: StopGeneration,
@@ -193,4 +219,5 @@ class SchedulingUseCases(
     val choose: ChooseAlternative,
     val getChosen: GetChosenTimetable,
     val compare: CompareAlternatives,
+    val delete: DeleteGeneration,
 )

@@ -55,6 +55,9 @@ interface GenerationRepository {
     fun removeAlternative(alternativeId: AlternativeId)
     fun findAlternatives(generationId: GenerationId): List<Alternative>
     fun findAlternative(alternativeId: AlternativeId): Alternative?
+
+    /** Removes the generation with its alternatives and snapshots (US4). */
+    fun delete(generationId: GenerationId)
 }
 
 /**

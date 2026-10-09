@@ -160,7 +160,10 @@ private fun FlowContent.generationTable(overview: GenerationOverview, texts: UiT
             tr {
                 td { a(href = generationPath(generation)) { +texts.generations.dateTime(generation.startedAt) } }
                 td { +summary.startedByUsername }
-                td { +texts.generations.statusName(generation.status) }
+                td {
+                    +texts.generations.statusName(generation.status)
+                    if (summary.outdated) +" (${texts.generations.outdatedMark})"
+                }
                 td { +"${generation.alternativesFound}" }
             }
         }
@@ -177,6 +180,7 @@ suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails,
     val refresh = if (generation.isRunning) REFRESH_SECONDS else null
     respondPage(texts.generations.generationTitle(texts.generations.dateTime(generation.startedAt)), refreshSeconds = refresh) { session ->
         p { +"${texts.generations.statusColumn}: ${texts.generations.statusName(generation.status)}" }
+        if (details.summary.outdated) p(classes = "warning") { +texts.generations.outdatedHint }
         if (generation.isRunning) {
             val elapsed = texts.generations.duration(Duration.between(generation.startedAt, now).seconds.coerceAtLeast(0))
             p { +texts.generations.progress(elapsed, generation.alternativesFound) }
@@ -195,7 +199,28 @@ suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails,
             "${generationPath(generation)}?sort=$key&dir=$dir"
         }
         constraintsInEffect(details, texts)
-        p { a(href = generationsPath(generation.schoolId)) { +texts.generations.toGenerations } }
+        p {
+            a(href = generationsPath(generation.schoolId)) { +texts.generations.toGenerations }
+            if (!generation.isRunning) {
+                +" · "
+                a(href = "${generationPath(generation)}/delete") { +texts.generations.deleteLink }
+            }
+        }
+    }
+}
+
+/** US4: deleting a generation needs a second step, so it cannot happen by a single click. */
+suspend fun ApplicationCall.respondDeleteConfirmation(details: GenerationDetails) {
+    val texts = texts
+    val generation = details.generation
+    respondPage(texts.generations.deleteTitle) { session ->
+        p { +"${texts.generations.generationTitle(texts.generations.dateTime(generation.startedAt))}: ${texts.generations.deleteIntro}" }
+        form(action = "${generationPath(generation)}/delete", method = FormMethod.post, classes = "inline") {
+            csrfField(session)
+            button(classes = "danger") { +texts.generations.deleteButton }
+        }
+        +" "
+        a(href = generationPath(generation)) { +texts.generations.cancel }
     }
 }
 

@@ -124,4 +124,22 @@ class ChosenTimetableRepositoryIT : PostgresTestBase() {
         assertEquals(data.alternative.id, inTransaction { generations.findById(next.id) }!!.referenceAlternativeId)
         assertEquals(alternative, inTransaction { generations.findAlternative(alternative.id) })
     }
+
+    @Test
+    fun `deleting a generation removes its alternatives, but not the generation of the chosen timetable (US4, FR-024)`() {
+        val data = Data()
+        val other = Generation.start(data.school.id, data.planner.id, at.plusSeconds(60), 1, "c".repeat(64)).valid()
+        val otherAlternative = Alternative(AlternativeId.new(), other.id, ObjectiveValues.rounded(1.0, 0.2), listOf(data.lesson), emptyMap(), emptyMap())
+        inTransaction {
+            generations.insert(other)
+            generations.addAlternative(otherAlternative)
+            chosenTimetables.save(data.chosen(0), expectedVersion = null)
+        }
+
+        inTransaction { generations.delete(other.id) }
+
+        assertNull(inTransaction { generations.findById(other.id) })
+        assertNull(inTransaction { generations.findAlternative(otherAlternative.id) })
+        assertFailsWith<ExposedSQLException> { inTransaction { generations.delete(data.generation.id) } }
+    }
 }

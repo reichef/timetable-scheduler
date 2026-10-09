@@ -117,6 +117,21 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             }
         }
 
+        get("/schools/{schoolId}/generations/{generationId}/delete") {
+            val schoolId = call.schoolIdParameter() ?: return@get
+            val generationId = call.generationIdParameter() ?: return@get
+            call.respondResult(scheduling.get.execute(call.actor, schoolId, generationId)) { call.respondDeleteConfirmation(it) }
+        }
+
+        post("/schools/{schoolId}/generations/{generationId}/delete") {
+            val schoolId = call.schoolIdParameter() ?: return@post
+            val generationId = call.generationIdParameter() ?: return@post
+            call.receiveCheckedForm()
+            call.respondResult(scheduling.delete.execute(call.actor, schoolId, generationId), generationsPath(schoolId)) {
+                call.seeOther(generationsPath(schoolId))
+            }
+        }
+
         get("/schools/{schoolId}/generations/{generationId}/compare") {
             val schoolId = call.schoolIdParameter() ?: return@get
             val generationId = call.generationIdParameter() ?: return@get
