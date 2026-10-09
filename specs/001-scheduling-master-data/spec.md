@@ -30,6 +30,14 @@ The application exists to generate Pareto-optimal school timetables: every class
 - Q: What happens to teacher unavailabilities when a time slot is removed? → A: They are removed with the slot; the planner sees their number before confirming.
 - Scope change: Should the first version manage several schools or only one? → A: Exactly one school per installation as a quick start; multi-school support is prepared for (FR-036) but not built.
 
+### Session 2026-10-09
+
+- Scope addition: Should users be able to choose the interface language? → A: Yes, German and English, chosen by every user for themselves (User Story 6, FR-037 – FR-048).
+- Q: Which language should a user see before they have chosen one themselves? → A: The browser's preferred language, switchable in the interface at any time (German if the browser prefers neither German nor English).
+- Q: Should the chosen language be saved with the account or only in the current browser? → A: Saved with the account; after login the account language takes precedence over the browser language.
+- Q: Should the language shown at login be saved to the account automatically if the user never chose one? → A: No; only an active choice (pressing a language button, also on the login page) is saved. Until then the browser language applies on every login.
+- Q: What happens to unsaved form entries when the user switches the language? → A: The page is reloaded in the new language and unsaved entries are lost; if the page has unsaved changes, a hint warns about this first and the user can cancel the switch.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Set up the school, rooms and the weekly time grid (Priority: P1)
@@ -119,6 +127,30 @@ Users log in with username and password. Planners create accounts for colleagues
 
 ---
 
+### User Story 6 - Choose the interface language (Priority: P5)
+
+Every user chooses whether the interface is shown in German or English. The choice can be changed from any page, is remembered for the user's account across logins and devices, and is also available on the login page. Data that users entered themselves (names, identifiers, short codes) is never translated.
+
+**Why this priority**: The target users are mainly German-speaking, so the application is fully usable without this story; an English interface makes it usable for colleagues and schools who prefer English.
+
+**Independent Test**: Log in as a planner, open the rooms page, switch to English and confirm that navigation, headings, labels, buttons and messages on this and all following pages are English while room identifiers stay unchanged; log out, log in from another browser and confirm the interface is still English; open the login page in a browser that prefers English and confirm it is English.
+
+**Acceptance Scenarios**:
+
+1. **Given** a planner works in German on the rooms page, **When** they select English, **Then** the rooms page is shown again with all interface texts in English and the room identifiers unchanged.
+2. **Given** the interface is English, **When** the planner opens any other page (school, time grid, subjects, class levels, teachers, accounts, readiness), **Then** all interface texts on it are English.
+3. **Given** the interface is English, **When** the planner submits an invalid entry (e.g., a duplicate room identifier) or a deletion is blocked, **Then** the explanation is in English and names of dependent entries are shown as entered.
+4. **Given** the interface is English, **When** an unexpected technical error occurs, **Then** the generic error message is in English and still shows only the error reference, no data.
+5. **Given** a user chose English, **When** they log out and log in again, also in another browser or on another device, **Then** the interface is English without choosing again.
+6. **Given** two users share a computer and user A has chosen English and user B German, **When** each of them logs in, **Then** each sees their own language.
+7. **Given** a browser that prefers English and no earlier choice, **When** the login page is opened, **Then** it is shown in English; for a browser preferring any other language than German or English it is shown in German.
+8. **Given** the login page is shown, **When** the user switches the language there, **Then** the login page, including the message for failed logins, appears in the chosen language.
+9. **Given** a user switched to English on the login page and their account has no saved choice, **When** they log in, **Then** English is kept and saved for their account; **Given** an account with English saved, **When** its owner logs in from a German login page, **Then** the interface after login is English.
+10. **Given** a user never pressed a language button and their account has no saved choice, **When** they log in once from a browser preferring English and later from one preferring German, **Then** they see English the first time and German the second time, and their account still has no saved language.
+11. **Given** a planner has typed a new room identifier but not saved it, **When** they press "English", **Then** a hint warns that the unsaved entry will be lost; **When** they cancel, **Then** the page stays German with the entry still in the field; **When** they confirm, **Then** the rooms page is shown in English without the entry.
+
+---
+
 ### Edge Cases
 
 - A subject, room feature, class level or room is deleted while other data still refers to it: the system blocks the deletion and lists the dependent entries.
@@ -130,6 +162,10 @@ Users log in with username and password. Planners create accounts for colleagues
 - Two users edit the same entry at the same time: the later save must not silently overwrite the earlier one; the user is informed and can reload.
 - A user without the planner role tries to view or change master data: access is denied and no data is revealed.
 - A planner tries to deactivate their own account while being the only active planner: rejected (FR-033).
+- A user switches the interface language while a form contains unsaved changes: a hint warns that the changes will be lost and the user can cancel; if they confirm, the page is shown again in the new language without the unsaved changes. Without unsaved changes the switch happens immediately, without a hint.
+- Deactivating, reactivating, resetting the password of or changing the role of an account does not change its saved interface language.
+- Two users share a browser: user A switches to English and logs out; user B, who never chose a language, logs in without pressing a language button. The login page is English (remembered in the browser), but nothing is saved for B; after login B sees their browser's preferred language.
+- Weekday names, roles, slot kinds and readiness issue descriptions are interface texts and appear in the chosen language; texts entered by users (school name, room identifiers, feature, subject and level names, class suffixes, teacher names and short codes, usernames, slot labels) are never translated.
 
 ## Requirements *(mandatory)*
 
@@ -209,6 +245,21 @@ Users log in with username and password. Planners create accounts for colleagues
 
 - **FR-036**: All master data (rooms, room features, time grid, subjects, class levels, classes, teachers) and all user accounts MUST be recorded as belonging to the school, so that a later extension can add further schools, school-scoped access for planners, teachers working at several schools and commute times without re-entering or manually re-assigning existing data.
 
+**Interface language**
+
+- **FR-037**: The system MUST offer the user interface in German and in English.
+- **FR-038**: Every logged-in user MUST be able to switch the interface language from every page with a single action; the current page MUST then be shown again in the chosen language. If the page has unsaved changes, the system MUST first warn that they will be lost and let the user cancel the switch; unsaved changes are not carried over. The warning relies on the browser running the application's scripts; with scripts disabled the switch still works but without the warning (Constitution, Technology & Architecture Constraints).
+- **FR-039**: The system MUST store the language a logged-in user chooses with their account and MUST apply it after every later login, on any browser or device.
+- **FR-040**: Users who are not logged in MUST be able to switch the language on the login page; this choice MUST be remembered in that browser for later visits of the login page.
+- **FR-041**: When the user has not chosen a language yet (neither for the account nor in the browser), the system MUST show the browser's preferred language if it is German or English, and German otherwise; the user can switch at any time (FR-038, FR-040). The language remembered in the browser only decides how the login page is shown; after login without a saved or actively chosen language (FR-042) the browser's preferred language applies.
+- **FR-042**: After login, the account's saved language MUST take precedence. If the account has no saved language yet, a language the user actively chose on the login page during this visit, before submitting the login form, MUST be used and saved for the account; without such a choice the browser's preferred language (FR-041) is shown and nothing is saved. A language remembered in the browser from an earlier visit or another user is never saved to an account.
+- **FR-043**: All interface texts MUST appear in the selected language, including navigation, page titles, headings, field labels, buttons, hints, confirmation pages, validation messages, business messages (e.g., deletion blocked, version conflict, access denied), the readiness overview, weekday names, role and slot-kind names, and the generic message for technical errors.
+- **FR-044**: Data entered by users MUST be shown exactly as entered, regardless of the selected language.
+- **FR-045**: No page may mix languages in its interface texts; every interface text MUST exist in both languages.
+- **FR-046**: Each page MUST state its language so that browsers and assistive technologies (e.g., screen readers) can handle it correctly.
+- **FR-047**: The language selection MUST NOT change stored master data, validation rules or access rights; it only changes how the interface is presented.
+- **FR-048**: The confidentiality rules MUST hold in both languages: business messages show only data the user may see, technical error messages show only the generic text and the error reference, and logs contain no confidential data (FR-029, Constitution III).
+
 ### Key Entities
 
 - **School**: The school whose timetables are planned; exactly one per installation in this feature. Has a name and owns rooms, a time grid, subjects, class levels, classes and teachers.
@@ -220,7 +271,8 @@ Users log in with username and password. Planners create accounts for colleagues
 - **Class Level**: A grade (e.g., "6") with a curriculum: a list of subjects and the number of periods per week for each.
 - **Class**: A group of students that receives the curriculum of its class level. Identified by level + suffix (e.g., "6b"); has a priority weight.
 - **Teacher**: A person who teaches at the school. Has a name, a unique short code, qualified subjects, a weekly teaching load and unavailable time slots.
-- **User Account**: A person who may log in. Has a unique username, a role (planner or teacher), an active/deactivated status and login credentials; belongs to the school (FR-036).
+- **User Account**: A person who may log in. Has a unique username, a role (planner or teacher), an active/deactivated status, login credentials and an optional preferred interface language set by the user (FR-039); belongs to the school (FR-036).
+- **Interface Language**: One of the supported languages, German or English; determines how all interface texts are shown (FR-037).
 
 ## Success Criteria *(mandatory)*
 
@@ -233,6 +285,10 @@ Users log in with username and password. Planners create accounts for colleagues
 - **SC-005**: 90% of first-time planners can set up rooms, a time grid and one class without help or documentation.
 - **SC-006**: 0 master data records are visible to users without the planner role.
 - **SC-007**: All master data saved in one session is available unchanged in the next session (0 data loss).
+- **SC-008**: A user can switch the interface language from any page in one action; the page is shown again in the new language within the general response time of every page (< 1 s, SC-001/R15) and at most 2 seconds.
+- **SC-009**: In a walk-through of every page and every message in both languages, 0 interface texts appear in the wrong language.
+- **SC-010**: After choosing a language, 100% of later logins of that user (including from another device) show the interface in the chosen language without a further choice; a first-time visitor whose browser prefers English sees the login page in English without any action.
+- **SC-011**: Switching the language changes 0 stored master data records.
 
 ## Assumptions
 
@@ -245,3 +301,5 @@ Users log in with username and password. Planners create accounts for colleagues
 - Creating, editing and publishing actual timetables (assignments of lessons to slots, rooms and teachers) is out of scope; this feature provides the input data for them. This includes fixing individual lessons in advance (e.g., "Sport 6a always Tuesday 3rd/4th period"), which comes with the later timetable editing feature.
 - Import from external school administration systems is out of scope; data is entered manually.
 - No access management exists yet; this feature provides the built-in login and account management (FR-030 – FR-035). Single sign-on is out of scope but prepared for (FR-035). Teacher accounts can be created but have no screens yet.
+- The interface is offered in German and English (User Story 6); German remains the reference language and English texts are added for every German text. More languages are expected later, so adding one should only require providing its texts. Every user chooses their own language; there is no installation-wide language setting. Number, time and date formats (e.g., "08:00–08:45") stay the same in both languages; logs, technical identifiers and documents are not translated.
+- Browsers run the application's small static scripts; they are only used for the unsaved-changes warning, everything else works without them.

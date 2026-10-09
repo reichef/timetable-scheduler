@@ -128,6 +128,7 @@ Commute times and teachers at several schools are deferred to the multi-school e
 | role | `PLANNER` \| `TEACHER` | Only `PLANNER` may access master data (FR-028) |
 | active | Boolean | Deactivated accounts cannot log in (FR-032) |
 | schoolIds | Set<UUID → School> | Always exactly the one school; assigned automatically when the account is created (FR-036). Kept as a set so the multi-school extension needs no schema change |
+| preferredLanguage | `InterfaceLanguage?` (`de` \| `en`) | Optional; null until the user actively chooses (FR-039, FR-042). Written only by `ChangeOwnLanguage` (the owner's switch) or at login from an active login-page choice (`chosenLanguage`); not part of optimistic locking (R19). Unchanged by role change, deactivation, reactivation and password reset |
 | version | Int | |
 
 **Invariant (FR-033)**: the installation keeps ≥ 1 *active* planner; deactivating or downgrading the last one is rejected (implemented per school, which is equivalent with one school).
@@ -135,6 +136,10 @@ Commute times and teachers at several schools are deferred to the multi-school e
 **Management (FR-032)**: every active planner manages all accounts (role, active flag, password reset). Every user may change their own password. (Per-school manageability FR-032a is deferred.)
 
 **Installation (FR-031)**: with an empty database, the School and an initial `PLANNER` assigned to it are created together.
+
+### InterfaceLanguage (value, US6)
+
+`GERMAN` ("de") | `ENGLISH` ("en"). Default when nothing is chosen: browser preference if `de`/`en`, else `GERMAN` (FR-041). Not persisted on its own; stored as `user_account.preferred_language` (migration `V5__account_language.sql`) and in the `TTS_LANG` cookie for the login page (R19).
 
 ### PasswordCredential [`password_credential`]
 

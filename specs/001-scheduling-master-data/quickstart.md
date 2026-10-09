@@ -63,4 +63,13 @@ Log in at `http://localhost:8080/login` with the initial planner.
 | 16a | US5 | Log in as `lehrer1`, open `/schools`; log out, open `/schools` | 403 without data; redirect to login |
 | 16c | US5 | Log in with wrong password | Generic error, no hint which field was wrong |
 | 16f | US5 | Deactivate `admin` as `mueller`, then try to deactivate `mueller` itself | First works; second rejected because no active planner would remain (FR-033) |
+| 18 | US6 | As `admin`, open the rooms page and press "English" in the header | Rooms page again, all interface texts English, room identifiers unchanged |
+| 18a | US6 | In English: open school, time grid, subjects, class levels, a class, teachers, accounts and readiness; add room "b-104"; delete subject Mathematik | No German interface text on any page; duplicate and deletion-blocked messages in English, entry names as entered |
+| 18b | US6 | On the rooms page type "C-200" into the identifier field without saving, press "Deutsch"; cancel; press again and confirm | Hint about unsaved changes; after cancel page unchanged with "C-200" still entered; after confirm page German without the entry |
+| 19 | US6 | Log out, log in as `admin` in a second browser (or private window) | Interface English right after login |
+| 19a | US6 | Log out in the first browser (login page now English), log in as `lehrer1` (no own choice yet) without pressing a language button | Start page in the browser's preferred language, nothing saved for `lehrer1`; log out, press "English" on the login page, log in again → English and saved for `lehrer1` (FR-042) |
+| 20 | US6 | Private window with browser language English, open `http://localhost:8080` | Login page in English; press "Deutsch": login page German, failed login message German |
+| 20a | US6 | Private window with browser language English, log in as `mueller` (never switched) without pressing a button; log out; repeat in a window with browser language German | English the first time, German the second time; `mueller` has no saved language |
+| 21 | US6 | `curl -s -H "Accept-Language: fr" http://localhost:8080/login` | Login page German (`<html lang="de">`) |
+| 22 | US6 | Post the language switch with `returnTo=https://example.org` | Redirect to `/`, not to the external site |
 | 17 | Security | `grep -i "schmidt"` over the application log after all scenarios | No match |

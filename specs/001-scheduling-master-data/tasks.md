@@ -11,7 +11,7 @@ description: "Task list for Scheduling Master Data Management"
 
 **Tests**: Mandatory. Constitution v1.1.0 Principle V (Test-Driven Development, NON-NEGOTIABLE) requires meaningful tests for every non-trivial function, written before the implementation; the quality gate additionally requires tests showing hard constraints are never violated. Within each phase, write the test tasks first and make sure they fail before implementing (R11).
 
-**Organization**: Tasks are grouped by user story. Story order follows priority: US1 (P1, MVP), US5 (P1), US2 (P2), US3 (P3), US4 (P4). Login, sessions, installation (school + initial planner) and the school access policy are foundational because every story needs them; account *management* is US5. **Single-school variant (branch `one-school`)**: Phases 1–3 were built before the scope change and are kept as done; Phase 3a reworks US1, later phases follow the single-school spec (see Notes).
+**Organization**: Tasks are grouped by user story. Story order follows priority: US1 (P1, MVP), US5 (P1), US2 (P2), US3 (P3), US4 (P4), US6 (P5). Login, sessions, installation (school + initial planner) and the school access policy are foundational because every story needs them; account *management* is US5. **Single-school variant (branch `one-school`)**: Phases 1–3 were built before the scope change and are kept as done; Phase 3a reworks US1, later phases follow the single-school spec (see Notes).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -278,6 +278,45 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 - [ ] T114 Push the branch, open a pull request and confirm workflows Build and CodeQL succeed without new security alerts; fix findings
 - [X] T115 Run all quickstart.md scenarios against `./gradlew :bootstrap:run` with a fresh database and record the result (constitution: UI verified against a running instance)
 
+## Phase 9: User Story 6 - Choose the interface language (Priority: P5)
+
+**Goal**: Every user switches the interface between German and English from any page (with a hint when unsaved changes would be lost); an active choice is saved with the account and wins after login; before a choice the browser language applies (German if neither de nor en). Domain and use cases stay language-free; all texts come from `UiTexts` catalogs in the web adapter (R18, R19).
+
+**Independent Test**: Quickstart 18–22: switch to English on the rooms page, walk all pages without German interface text, keep English after login in a second browser, login page follows the browser language, browser language alone is never saved, external `returnTo` is rejected.
+
+### Tests for User Story 6 (write first, must fail)
+
+- [ ] T116 [P] [US6] Write `DOM_T/account/InterfaceLanguageTest.kt` and extend `DOM_T/account/UserAccountTest.kt`: `InterfaceLanguage` codes "de" / "en", `fromCode` case-insensitive, unknown or blank code → null; a new `UserAccount` has `preferredLanguage = null` ("Optional; null until the user chooses"); `withPreferredLanguage` keeps id, role, active, schoolIds and version
+- [ ] T117 [P] [US6] Write `APP_T/account/ChangeOwnLanguageTest.kt` and extend `APP_T/account/LoginUseCaseTest.kt`: planner and teacher save their own language; deactivated account → `AccessDenied`; saving does not change the account version (no conflict with a planner editing role/active flag at the same time); login with `chosenLanguage = ENGLISH` saves it only if the account has none; login without chosen language saves nothing (browser preference is never saved, FR-042); a remembered cookie language without `chosenLanguage` is never saved; `LoggedInUser` carries the account's language; role change, deactivation, reactivation and password reset keep the saved language
+- [ ] T118 [P] [US6] Extend `PER_T/account/UserAccountRepositoryIT.kt`: `preferred_language` round trip incl. null; `updatePreferredLanguage` changes neither `version` nor role/active; `update()` (role/active with version check) leaves the saved language untouched; database rejects codes other than "de"/"en"
+- [ ] T119 [P] [US6] Write `WEB_T/i18n/LanguageResolutionTest.kt`: resolution order session → cookie `TTS_LANG` → `Accept-Language` (highest quality of de/en, e.g. "fr, en;q=0.8" → en) → German; `safeReturnTo` accepts "/schools/x?y=1", rejects "//evil.org", "https://example.org", "javascript:…", "" (→ "/")
+- [ ] T120 [P] [US6] Write `WEB_T/i18n/LanguageRoutesTest.kt`: logged-in `POST /language` with CSRF saves the account language, updates the session, sets cookie `TTS_LANG` and answers 303 to `returnTo`; without CSRF token → 403; external `returnTo` → 303 to "/"; unknown language → 303 without change; logged-out switch sets only the cookie; `GET /login` with `Accept-Language: en` is English, with "fr" German, cookie beats header; login after an active English switch on the login page saves English for an account without a language, but not for one that has German saved; login without any switch saves nothing; every page has `<html lang="de">` or `lang="en"` and the switch with the current language marked; a cookie set by another user's switch is not saved at the next login without an active switch on the login page; logged-out switch answers 303 to `/login?chosen=1` and the login form then carries `chosenLanguage`; a later `GET /login` without `?chosen=1` in the same browser is shown in the chosen language (cookie) but without the hidden field (FR-040, scenario 8); after a switch the room, subject and teacher records and the account's version are unchanged (FR-047, SC-011)
+- [ ] T121 [P] [US6] Write `WEB_T/i18n/EnglishPagesTest.kt` (SC-009, FR-045): with the session language English render login, home, own password, school dashboard, room features, rooms, room edit, time grid, slot editor, slot deletion confirmation, subjects, subject, class levels, level, new class, class, teachers, teacher, accounts, account, readiness and the 403, 404, 409 (conflict and deletion blocked), 422 and 500 pages; assert none of the German interface words "Speichern", "Löschen", "Anlegen", "Zurück", "Räume", "Fächer", "Lehrkräfte", "Klassenstufe", "Zeitraster", "Montag", "Planer", "Bezeichnung", "Wochenstunden", "Probleme", "Anmelden", "Abmelden", "Fehlerkennung" appears, while user data (e.g. teacher "Anna Schmidt", room "B-104") is shown unchanged (FR-044)
+- [ ] T122 [P] [US6] Write `WEB_T/i18n/UiTextsTest.kt`: for both catalogs every `ValidationError` variant, `DependantType`, `ReadinessIssue` variant, `Role`, `SlotKind` and `DayOfWeek` yields a non-blank text, and the English text differs from the German one
+- [ ] T123 [P] [US6] Write `WEB_T/i18n/UnsavedChangesHintTest.kt`: every page with a form renders the language switch with `data-unsaved-warning` in the current language and includes `/static/language-switch.js`; the script file is served from the app's own origin; keep the script free of logic beyond "field differs from its initial value → confirm" (≤ 30 lines) and verify the confirm/cancel behaviour manually in quickstart 18b — recorded in the review of T137 as the accepted test for the script (no browser test tooling, constitution II)
+
+### Implementation for User Story 6
+
+- [ ] T124 [US6] Create `InterfaceLanguage` enum (`GERMAN("de")`, `ENGLISH("en")`, `fromCode`) in `DOM/account/InterfaceLanguage.kt`; add `preferredLanguage: InterfaceLanguage? = null` and `withPreferredLanguage(language)` to `DOM/account/UserAccount.kt`
+- [ ] T125 [US6] Create migration `PER_R/V5__account_language.sql`: `ALTER TABLE user_account ADD COLUMN preferred_language VARCHAR(2) NULL CHECK (preferred_language IN ('de','en'))`; add the column to `UserAccountTable` in `PER/account/AccountTables.kt`; read/insert it in `PER/account/ExposedUserAccountRepository.kt` (`update()` must not write it); add `updatePreferredLanguage(accountId, language)` (no version check, version unchanged) to `APP/port/AccountPorts.kt`, the Exposed repository and `InMemoryUserAccountRepository` in `APP_F/fakes/FoundationFakes.kt`
+- [ ] T126 [US6] Implement `ChangeOwnLanguage(actor, language)` (any active account, else `AccessDenied`) in `APP/account/ChangeOwnLanguage.kt` and add it as `changeOwnLanguage` to `AccountUseCases`; extend `APP/account/LoginUseCase.kt`: `execute(username, password, chosenLanguage: InterfaceLanguage?)` saves `chosenLanguage` only if the account has no `preferredLanguage`, `LoggedInUser` gets `language: InterfaceLanguage?` (account language, else chosen language); wire in `application/src/main/kotlin/timetablescheduler/application/MasterDataUseCases.kt`
+- [ ] T127 [US6] Create `UiTexts` interface and `GermanTexts` in `WEB/i18n/UiTexts.kt` and `WEB/i18n/GermanTexts.kt` (R18): move every text of `WEB/layout/Messages.kt` (incl. `describe(ValidationError)`, `describe(DependantType)`, field labels) and of `WEB/layout/FormComponents.kt`, `WEB/layout/PageLayout.kt`, `WEB/WebModule.kt` (error pages), `WEB/auth/AuthRoutes.kt` and `WEB/account/AccountViews.kt` unchanged into `GermanTexts`; views get the texts from the call (temporarily always German) and contain no literal interface text; delete `Messages.kt`; all existing German route tests must stay green
+- [ ] T128 [US6] Move the interface texts of `WEB/school/SchoolViews.kt`, `WEB/room/RoomViews.kt` and `WEB/timegrid/TimeGridViews.kt` into `UiTexts`/`GermanTexts`; replace `germanName()` of `WEB/layout/RouteSupport.kt` by `texts.dayName(day)` and the slot-kind names by `texts.slotKindName(kind)`; existing tests stay green
+- [ ] T129 [US6] Move the interface texts of `WEB/subject/SubjectViews.kt`, `WEB/classlevel/ClassLevelViews.kt`, `WEB/teacher/TeacherViews.kt` and `WEB/readiness/ReadinessViews.kt` (incl. one text function per `ReadinessIssue` variant and the group headings) into `UiTexts`/`GermanTexts`; existing tests stay green
+- [ ] T130 [US6] Implement `EnglishTexts` in `WEB/i18n/EnglishTexts.kt` with an English text for every `UiTexts` member (school terms: room feature, time grid, teaching slot, class level, weekly periods, teaching load, readiness)
+- [ ] T131 [US6] Implement language resolution in `WEB/i18n/LanguageResolution.kt`: `ApplicationCall.uiLanguage()` (session → cookie `TTS_LANG` → `Accept-Language` → German), `ApplicationCall.texts`, `safeReturnTo(raw)`; extend `WEB/auth/UserSession.kt` and its serializer with the language ("accountId|csrf|lang", old two-part values read as no language); set it at login in `WEB/auth/AuthRoutes.kt`, which passes the hidden form field `chosenLanguage` (rendered only after `?chosen=1`) to the login use case; the cookie is never passed
+- [ ] T132 [US6] Implement `POST /language` in `WEB/i18n/LanguageRoutes.kt` (contracts "Authentication": cookie `TTS_LANG` path "/", `SameSite=Strict`, one year; with session CSRF check, `changeOwnLanguage`, session update, 303 to `safeReturnTo`; without session cookie only and 303 to `/login?chosen=1`) and register it in `WEB/WebModule.kt`; render `<html lang>` and the language switch (one button per language, current one marked, `returnTo` = current path and query, CSRF field when logged in, `data-unsaved-warning` text) and include `/static/language-switch.js` from T133 in `WEB/layout/PageLayout.kt` and on the login page; error pages in `WebModule.kt` use the resolved texts without database access
+- [ ] T133 [P] [US6] Create `adapters/web/src/main/resources/static/language-switch.js` (no library): remember the initial values of all form fields, and on submit of the language switch ask `confirm(<data-unsaved-warning>)` only if a field changed; cancelling keeps the page; style the switch in `adapters/web/src/main/resources/static/app.css` (including the script in `PageLayout.kt` is part of T132, which owns that file)
+- [ ] T134 [US6] Run `./gradlew build`, then quickstart scenarios 18–22 against `./gradlew :bootstrap:run` (V5 applied on the existing database) and record the result; note the time of one switch on the rooms page in the result
+
+**Checkpoint**: Quickstart 18–22 pass; all earlier scenarios still pass in German
+
+### Polish for User Story 6
+
+- [ ] T135 [P] Extend `WEB_T/LogConfidentialityTest.kt` to run the same steps with the English interface (FR-048) and assert the 500 page shows the English generic text + correlation id only
+- [ ] T136 [P] Update `README.md`: interface languages, how the language is chosen and remembered, cookie `TTS_LANG`
+- [ ] T137 Run all quickstart.md scenarios (0–22) against `./gradlew :bootstrap:run` with a fresh database and record the result
+
 ---
 
 ## Dependencies & Execution Order
@@ -285,7 +324,7 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 ### Phase Dependencies
 
 - Phases 1–3 are done (built before the scope change, see Notes).
-- **Phase 3a (US1 rework)** → user story phases → **Polish (Phase 8)**
+- **Phase 3a (US1 rework)** → user story phases → **Polish (Phase 8)** → **US6 (Phase 9)**, added after the scope addition of 2026-10-09
 
 ### User Story Dependencies
 
@@ -294,10 +333,11 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 - **US2 (P2)**: after 3a (subjects reference room features; the warning needs the time grid). Can run in parallel with US5.
 - **US3 (P3)**: after US2 (subjects for qualifications).
 - **US4 (P4)**: after US1, US2, US3.
+- **US6 (P5)**: after all other stories, because it touches every page; T127–T129 move texts and must keep all existing tests green.
 
 ```text
 Setup ✓ → Foundational ✓ → US1 ✓ → US1 rework ─┬─→ US5
-                                               └─→ US2 → US3 → US4 → Polish
+                                               └─→ US2 → US3 → US4 → Polish → US6
 ```
 
 ### Within Each Phase
@@ -313,6 +353,8 @@ Setup ✓ → Foundational ✓ → US1 ✓ → US1 rework ─┬─→ US5
 - US3: T093–T095 together
 - US4: T104, T105 together
 - Polish: T109–T112 together
+- US6: T116–T123 together; T133 parallel to T127–T132; T135, T136 together
+- US6 sequential chain (shared `UiTexts`, `PageLayout.kt`, `WebModule.kt`): T127 → T128 → T129 → T130 → T131 → T132
 - After 3a: US5 and US2 in parallel
 
 ---
@@ -332,6 +374,15 @@ Setup ✓ → Foundational ✓ → US1 ✓ → US1 rework ─┬─→ US5
 
 ---
 
+## Parallel Example: User Story 6
+
+```text
+# Tests together: T116 domain, T117 use cases, T118 repository IT, T119–T123 web tests
+# Meanwhile: T133 language-switch.js + CSS
+```
+
+---
+
 ## Implementation Strategy
 
 ### MVP First
@@ -345,12 +396,14 @@ Setup ✓ → Foundational ✓ → US1 ✓ → US1 rework ─┬─→ US5
 2. + US3 → teacher supply side and hard constraints
 3. + US4 → readiness overview
 4. Polish → log-leak, concurrency, performance, CI security results, full quickstart run
+5. + US6 → German/English interface: first move all texts into `GermanTexts` without visible change (T127–T129), then add English and the switch (T130–T133)
 
 ---
 
 ## Notes
 
 - **Scope change (single school, R17)**: T001–T061 were implemented on branch `001-scheduling-master-data` before the change and remain valid except the parts reworked in Phase 3a (school creation/deletion, school list, school-deletion checks). Their descriptions are kept as history; where they mention several schools, Phase 3a and the current data-model take precedence. The former multi-school tasks for US5 and US3 (account school assignment, `AccountManagementPolicy`, commute times, remove-from-my-schools) were dropped.
-- Migrations: V1 schools + accounts, V2 rooms + time grid (both existing), V3 curriculum, V4 teachers — each story ships its schema change (constitution quality gate).
+- Migrations: V1 schools + accounts, V2 rooms + time grid (both existing), V3 curriculum, V4 teachers, V5 account language (US6) — each story ships its schema change (constitution quality gate).
+- **Scope addition (US6, 2026-10-09)**: interface language German/English, developed on `one-school` by decision of the project owner. Decided in clarification: browser language until an active choice, choice saved with the account, browser language alone never saved, hint before losing unsaved changes. A language column in the planner's account list is not part of US6.
 - Commit after each task or logical group on branch `one-school`.
 - Stop at any checkpoint to validate the story independently.

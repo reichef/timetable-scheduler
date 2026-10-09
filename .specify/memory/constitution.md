@@ -30,7 +30,8 @@ Do not aim for something like code-coverage but create meaningful tests, especia
 
 ## Technology & Architecture Constraints
 
-- Language & build: Kotlin on Gradle is the only supported language/build toolchain for production code. We use a CI/CD pipeline on github for this purpose. 
+- Language & build: Kotlin on Gradle is the only supported language/build toolchain for production code. We use a CI/CD pipeline on github for this purpose.
+  Exception: small static browser scripts (plain JavaScript served as a static resource of the application) are allowed when an interaction cannot be realized with server-rendered HTML alone. Such scripts MUST NOT require a build tool, package manager, transpiler or third-party library, MUST NOT contain business, validation, scheduling or access logic (these stay in Kotlin), MUST NOT process or store confidential data, and the application MUST remain usable when they are disabled (progressive enhancement). Each script stays small and single-purpose and is checked in review like any other code. 
 - Clean architecture: We use the clean architecture for structuring the application. Thus, we have circles like entities (most inner circle), the application specific business rules, interface adapters and the frameworks & drivers (most outer circle). 
 Dependencies point only from outer circles to inner ones. 
 - Database: any relational or embedded database is acceptable provided it supports transactional writes and access control sufficient to satisfy Principle III. The specific engine is an implementation detail.
@@ -54,4 +55,4 @@ This constitution supersedes all other project practices and guidelines, includi
 the Sync Impact Report, and (3) a version bump per the policy below. Versioning follows semantic versioning: MAJOR for backward-incompatible principle removals or redefinitions, MINOR for new principles or materially expanded guidance, PATCH for clarifications and wording fixes. All pull
 requests and reviews MUST verify compliance with this constitution; unjustified complexity or deviation from a principle MUST be called out and either resolved or explicitly justified in the review.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-10-08
+**Version**: 1.2.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-10-09

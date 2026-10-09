@@ -90,10 +90,10 @@ All "NEEDS CLARIFICATION" items of the Technical Context are resolved below.
 - **Decision**: Add the Gradle wrapper (pinned version) and a version catalog (`gradle/libs.versions.toml`); upgrade the Kotlin plugin to the current stable 2.x release; keep JVM toolchain 21.
 - **Rationale**: The repository currently has no wrapper and no `gradle` on the PATH, so builds are not reproducible.
 
-## R14 — UI language
+## R14 — Interface language
 
-- **Decision**: User-facing texts in German, code and identifiers in English. Texts kept in one message object per screen area so translation can be added later.
-- **Rationale**: Target users are German school planners (Gymnasium/Realschule terminology).
+- **Decision**: Code and identifiers in English. User-facing texts in German and English (US6); German is the reference language with the school terminology (Gymnasium/Realschule). Superseded in detail by R18 and R19.
+- **Rationale**: Target users are mainly German school planners; English is offered for colleagues who prefer it.
 
 ## R15 — Performance and scale
 
@@ -124,3 +124,22 @@ All "NEEDS CLARIFICATION" items of the Technical Context are resolved below.
   - **Not built**: commute times, teachers at several schools, account school selection, `AccountManagementPolicy`.
 - **Rationale**: Smallest product for a quick start while every future change is additive (new tables/columns, broader policy), never a data re-entry.
 - **Alternatives considered**: Removing `school` entirely (extension would need to re-key every table); keeping the full multi-school UI hidden behind a flag (unused code that must still be tested and maintained).
+
+## R18 — Interface texts in two languages (FR-037, FR-043 – FR-046)
+
+- **Decision**: One Kotlin interface `UiTexts` in the web adapter with one member per interface text (properties for fixed texts, functions for texts with values, e.g. `deletionBlocked`, `teachingSlotsPerWeek(count)`, `describe(error: ValidationError)`, `describe(issue: ReadinessIssue)`, `dayName(day)`, `roleName(role)`). Two implementations, `GermanTexts` and `EnglishTexts`, as Kotlin objects. Views receive the `UiTexts` of the request and never contain literal interface text. `respondPage` writes `<html lang="de|en">` (FR-046). User data is inserted unchanged (FR-044).
+- **Rationale**: The compiler rejects a catalog with a missing text, so "every text exists in both languages" (FR-045) is guaranteed without a runtime check; `when` over sealed types (validation errors, readiness issues, dependant types) forces a translation for every new case. Functions keep word order natural per language instead of concatenating fragments. No dependency (constitution II).
+- **Alternatives considered**: Java `ResourceBundle` / `.properties` files (missing keys only fail at runtime, string keys are not checked, placeholders untyped); an i18n library such as ICU4J or a Kotlin i18n DSL (extra dependency for two languages and simple plurals); translating in the domain (would leak presentation into the entities circle).
+
+## R19 — Choosing, storing and resolving the language (FR-038 – FR-042)
+
+- **Decision**:
+  - **Model**: `InterfaceLanguage` enum (`GERMAN` "de", `ENGLISH` "en") in the domain (`account` package); `UserAccount.preferredLanguage: InterfaceLanguage?` (null = not chosen yet). Column `user_account.preferred_language VARCHAR(2) NULL CHECK (preferred_language IN ('de','en'))`, migration `V5__account_language.sql`.
+  - **Storing**: use case `ChangeOwnLanguage(actor, language)` for any active account (planner or teacher); repository method `updatePreferredLanguage(accountId, language)` without version check — only the owner changes it, so no lost update is possible, and planners editing role or active flag never get a version conflict because of it.
+  - **Resolution per request** (first match wins): (1) logged in → language in the session, set from the account at login and on every switch; (2) cookie `TTS_LANG` (`de`/`en`, path `/`, `SameSite=Strict`, one year); (3) `Accept-Language` header, first of `de`/`en` by quality; (4) German. The technical error page uses the same resolution, which needs no database access.
+  - **Switching**: a small form in the page header (and on the login page) with one button per language posts to `POST /language` with `language` and `returnTo` (current path and query). Logged in → CSRF checked, account and session updated, cookie set; not logged in → only the cookie is set and the answer is `303` to `/login?chosen=1` (no session exists to bind a CSRF token to); because nothing is stored without a later login with the visible hidden field, a forged cross-site switch can at most change the login page's display language. Answer `303` to `returnTo`; `returnTo` must be a local path (starts with `/`, not `//`, no scheme), otherwise `/` — no open redirect.
+  - **Unsaved-changes hint (FR-038)**: a small static script (`static/language-switch.js`, no library, loaded from the app's own origin) marks a page as changed when any form field differs from its initial value and, on a language-switch submit, asks for confirmation with a text in the current language (taken from a `data-` attribute rendered by the server). Without JavaScript the switch works but without the hint (progressive enhancement).
+  - **Login (FR-042)**: `LoginUseCase` receives `chosenLanguage` from the hidden login-form field `chosenLanguage`, which the login page renders only after a language switch on the login page in this visit (the logged-out switch redirects to `/login?chosen=1`). The `TTS_LANG` cookie only decides how the login page is shown and is never saved. If the account has no `preferredLanguage` and `chosenLanguage` is given, it is saved in the same transaction. Session language: account language, else `chosenLanguage`, else `Accept-Language`, else German.
+- **Rationale**: Account storage fulfils "any browser or device" (FR-039); the session copy avoids a database read for every page; the cookie covers the login page (FR-040) and survives logout; `Accept-Language` gives first-time visitors the right language (SC-010). Redirecting to `returnTo` re-shows the current page in one action (FR-038, SC-008).
+- **Alternatives considered**: Language in the URL (`/en/schools/...`) — doubles every route and contract; cookie only — fails FR-039 on another device; reading the account on every request — an extra query per page for a value that only its owner changes; versioned update via `UpdateAccount` — would create false conflicts with planner edits.
+
