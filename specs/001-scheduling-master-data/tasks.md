@@ -315,7 +315,7 @@ Gradle multi-module build per plan.md. Kotlin base package `timetablescheduler`.
 
 - [X] T135 [P] Extend `WEB_T/LogConfidentialityTest.kt` to run the same steps with the English interface (FR-048) and assert the 500 page shows the English generic text + correlation id only
 - [X] T136 [P] Update `README.md`: interface languages, how the language is chosen and remembered, cookie `TTS_LANG`
-- [ ] T137 Run all quickstart.md scenarios (0–22) against `./gradlew :bootstrap:run` with a fresh database and record the result
+- [X] T137 Run all quickstart.md scenarios (0–22) against `./gradlew :bootstrap:run` with a fresh database and record the result
 
 ---
 
