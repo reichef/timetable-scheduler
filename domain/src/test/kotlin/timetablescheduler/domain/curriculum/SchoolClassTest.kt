@@ -1,11 +1,13 @@
 package timetablescheduler.domain.curriculum
 
+import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.validation.ValidationError
 import timetablescheduler.domain.validation.ValidationResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 class SchoolClassTest {
 
@@ -54,5 +56,23 @@ class SchoolClassTest {
         assertEquals(level6.id, updated.classLevelId)
         assertEquals("c", updated.suffix)
         assertEquals(25, updated.priorityWeight)
+    }
+
+    @Test
+    fun `a class has no home room until one is set (FR-002a)`() {
+        val schoolClass = (SchoolClass.create(level6.id, "a") as ValidationResult.Valid).value
+
+        assertNull(schoolClass.homeRoomId)
+    }
+
+    @Test
+    fun `setting and clearing the home room keeps all other fields`() {
+        val schoolClass = (SchoolClass.create(level6.id, "a", priorityWeight = 20) as ValidationResult.Valid).value
+        val room = RoomId.new()
+
+        val withRoom = schoolClass.withHomeRoom(room)
+
+        assertEquals(schoolClass.copy(homeRoomId = room), withRoom)
+        assertEquals(schoolClass, withRoom.withHomeRoom(null))
     }
 }
