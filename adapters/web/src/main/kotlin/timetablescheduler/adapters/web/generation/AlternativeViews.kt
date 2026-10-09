@@ -16,11 +16,10 @@ import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
-import timetablescheduler.adapters.web.timetable.GridCell
+import timetablescheduler.adapters.web.timetable.conflictCell
 import timetablescheduler.adapters.web.timetable.TimetableView
 import timetablescheduler.adapters.web.timetable.conflictList
 import timetablescheduler.adapters.web.timetable.entityName
-import timetablescheduler.adapters.web.timetable.lessonLines
 import timetablescheduler.adapters.web.timetable.lessonsOf
 import timetablescheduler.adapters.web.timetable.viewSelection
 import timetablescheduler.adapters.web.timetable.weeklyGrid
@@ -67,10 +66,7 @@ suspend fun ApplicationCall.respondAlternative(details: AlternativeDetails, view
             h2 { +entityName(view, entityId, details.names, texts) }
             val lessons = lessonsOf(alternative.lessons, view, entityId)
             weeklyGrid(details.names, texts) { daySlot ->
-                lessons.firstOrNull { it.daySlot == daySlot }?.let { lesson ->
-                    val rules = details.conflicts.filter { lesson in it.lessons }.map { texts.generations.hardRuleName(it.rule) }.distinct()
-                    GridCell(lessonLines(lesson, view, details.names, texts) + rules, highlighted = rules.isNotEmpty(), note = rules.joinToString(", ").ifEmpty { null })
-                }
+                lessons.firstOrNull { it.daySlot == daySlot }?.let { conflictCell(it, view, details.names, details.conflicts, texts) }
             }
         }
         conflictList(details.conflicts, details.constraints, details.names, texts, texts.timetables.conflictsHeading)

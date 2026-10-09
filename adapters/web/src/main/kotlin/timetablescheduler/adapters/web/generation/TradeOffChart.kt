@@ -29,28 +29,28 @@ object TradeOffChart {
     fun render(points: List<ChartPoint>, xTitle: String, yTitle: String, caption: String): String {
         val xAxis = Axis.of(points.map { it.x })
         val yAxis = Axis.of(points.map { it.y })
-        fun px(value: Double) = LEFT + xAxis.fraction(value) * PLOT_WIDTH
-        fun py(value: Double) = TOP + (1 - yAxis.fraction(value)) * PLOT_HEIGHT
+        fun xPosition(value: Double) = LEFT + xAxis.fraction(value) * PLOT_WIDTH
+        fun yPosition(value: Double) = TOP + (1 - yAxis.fraction(value)) * PLOT_HEIGHT
         return buildString {
-            append("""<svg class="trade-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(WIDTH)} ${n(HEIGHT)}" role="img">""")
+            append("""<svg class="trade-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${coordinate(WIDTH)} ${coordinate(HEIGHT)}" role="img">""")
             append("<title>").append(escape(caption)).append("</title>")
-            append("""<line class="axis" x1="${n(LEFT)}" y1="${n(TOP + PLOT_HEIGHT)}" x2="${n(LEFT + PLOT_WIDTH)}" y2="${n(TOP + PLOT_HEIGHT)}"/>""")
-            append("""<line class="axis" x1="${n(LEFT)}" y1="${n(TOP)}" x2="${n(LEFT)}" y2="${n(TOP + PLOT_HEIGHT)}"/>""")
-            append("""<text x="${n(LEFT)}" y="${n(TOP + PLOT_HEIGHT + 16)}">${percent(xAxis.min)}</text>""")
-            append("""<text x="${n(LEFT + PLOT_WIDTH)}" y="${n(TOP + PLOT_HEIGHT + 16)}" text-anchor="end">${percent(xAxis.max)}</text>""")
-            append("""<text x="${n(LEFT + PLOT_WIDTH / 2)}" y="${n(HEIGHT - 8)}" text-anchor="middle">${escape(xTitle)}</text>""")
-            append("""<text x="${n(LEFT - 6)}" y="${n(TOP + PLOT_HEIGHT)}" text-anchor="end">${percent(yAxis.min)}</text>""")
-            append("""<text x="${n(LEFT - 6)}" y="${n(TOP + 10)}" text-anchor="end">${percent(yAxis.max)}</text>""")
-            append("""<text transform="translate(14 ${n(TOP + PLOT_HEIGHT / 2)}) rotate(-90)" text-anchor="middle">${escape(yTitle)}</text>""")
+            append("""<line class="axis" x1="${coordinate(LEFT)}" y1="${coordinate(TOP + PLOT_HEIGHT)}" x2="${coordinate(LEFT + PLOT_WIDTH)}" y2="${coordinate(TOP + PLOT_HEIGHT)}"/>""")
+            append("""<line class="axis" x1="${coordinate(LEFT)}" y1="${coordinate(TOP)}" x2="${coordinate(LEFT)}" y2="${coordinate(TOP + PLOT_HEIGHT)}"/>""")
+            append("""<text x="${coordinate(LEFT)}" y="${coordinate(TOP + PLOT_HEIGHT + 16)}">${percent(xAxis.min)}</text>""")
+            append("""<text x="${coordinate(LEFT + PLOT_WIDTH)}" y="${coordinate(TOP + PLOT_HEIGHT + 16)}" text-anchor="end">${percent(xAxis.max)}</text>""")
+            append("""<text x="${coordinate(LEFT + PLOT_WIDTH / 2)}" y="${coordinate(HEIGHT - 8)}" text-anchor="middle">${escape(xTitle)}</text>""")
+            append("""<text x="${coordinate(LEFT - 6)}" y="${coordinate(TOP + PLOT_HEIGHT)}" text-anchor="end">${percent(yAxis.min)}</text>""")
+            append("""<text x="${coordinate(LEFT - 6)}" y="${coordinate(TOP + 10)}" text-anchor="end">${percent(yAxis.max)}</text>""")
+            append("""<text transform="translate(14 ${coordinate(TOP + PLOT_HEIGHT / 2)}) rotate(-90)" text-anchor="middle">${escape(yTitle)}</text>""")
             val front = front(points)
             if (front.size > 1) {
-                append("""<polyline class="front" points="${front.joinToString(" ") { "${n(px(it.x))},${n(py(it.y))}" }}"/>""")
+                append("""<polyline class="front" points="${front.joinToString(" ") { "${coordinate(xPosition(it.x))},${coordinate(yPosition(it.y))}" }}"/>""")
             }
             points.forEach { point ->
                 append("""<a href="${escape(point.href)}">""")
-                append("""<circle cx="${n(px(point.x))}" cy="${n(py(point.y))}" r="6">""")
+                append("""<circle cx="${coordinate(xPosition(point.x))}" cy="${coordinate(yPosition(point.y))}" r="6">""")
                 append("<title>").append("#${point.number}: ${percent(point.x)} / ${percent(point.y)}").append("</title></circle>")
-                append("""<text x="${n(px(point.x) + 8)}" y="${n(py(point.y) - 8)}">${point.number}</text>""")
+                append("""<text x="${coordinate(xPosition(point.x) + 8)}" y="${coordinate(yPosition(point.y) - 8)}">${point.number}</text>""")
                 append("</a>")
             }
             append("</svg>")
@@ -84,7 +84,7 @@ object TradeOffChart {
         }
     }
 
-    private fun n(value: Double) = String.format(Locale.ROOT, "%.1f", value)
+    private fun coordinate(value: Double) = String.format(Locale.ROOT, "%.1f", value)
 
     private fun percent(value: Double) = String.format(Locale.ROOT, "%.1f %%", value * 100)
 

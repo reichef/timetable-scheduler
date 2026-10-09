@@ -19,6 +19,7 @@ import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.evaluation.HardViolation
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import timetablescheduler.domain.school.SlotKind
 import java.time.format.DateTimeFormatter
@@ -63,6 +64,27 @@ fun lessonLines(lesson: LessonAssignment, view: TimetableView, names: TimetableN
         TimetableView.TEACHER -> listOf(className, subject, room)
         TimetableView.ROOM -> listOf(className, subject, teacher)
     }
+}
+
+/**
+ * The cell of a lesson that may now violate hard constraints (FR-023): the rules it violates are added as lines and
+ * as tooltip, and the cell is highlighted; [dropped] marks a lesson the current curricula no longer require.
+ */
+fun conflictCell(
+    lesson: LessonAssignment,
+    view: TimetableView,
+    names: TimetableNames,
+    conflicts: List<HardViolation>,
+    texts: UiTexts,
+    dropped: Boolean = false,
+): GridCell {
+    val rules = conflicts.filter { lesson in it.lessons }.map { texts.generations.hardRuleName(it.rule) }.distinct()
+    val droppedLine = listOfNotNull(texts.timetables.noLongerRequired.takeIf { dropped })
+    return GridCell(
+        lines = lessonLines(lesson, view, names, texts) + droppedLine + rules,
+        highlighted = dropped || rules.isNotEmpty(),
+        note = rules.joinToString(", ").ifEmpty { null },
+    )
 }
 
 /** One lesson in a sentence, e.g. in conflict lists: class, subject, day and slot. */

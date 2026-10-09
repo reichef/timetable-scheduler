@@ -59,9 +59,13 @@ private const val REFRESH_SECONDS = 3
  * One objective of a generation's result table; keys as in the routes contract (classFill, separate1, …). Values are
  * shown as percentages; [display] can add more, e.g. the changed lessons next to stability.
  */
-class ObjectiveColumn(val key: String, val title: String, private val texts: UiTexts, val valueOf: (Alternative) -> Double) {
-    var details: ((Alternative) -> String?)? = null
-
+class ObjectiveColumn(
+    val key: String,
+    val title: String,
+    private val texts: UiTexts,
+    private val details: ((Alternative) -> String?)? = null,
+    val valueOf: (Alternative) -> Double,
+) {
     fun display(alternative: Alternative): String {
         val extra = details?.invoke(alternative)
         val percent = texts.generations.percent(valueOf(alternative))
@@ -81,9 +85,12 @@ fun objectiveColumns(generation: Generation, names: TimetableNames?, texts: UiTe
         ObjectiveColumn("separate${index + 1}", title, texts) { it.objectiveValues.separate.getOrNull(index) ?: 1.0 }
     }
     val withStability = generation.referenceAlternativeId != null || alternatives.any { it.objectiveValues.stability != null }
-    val stability = ObjectiveColumn("stability", texts.generations.stability, texts) { it.objectiveValues.stability ?: 1.0 }.apply {
-        details = { alternative -> alternative.changedLessons?.let(texts.generations::changedLessons) }
-    }
+    val stability = ObjectiveColumn(
+        "stability",
+        texts.generations.stability,
+        texts,
+        details = { alternative -> alternative.changedLessons?.let(texts.generations::changedLessons) },
+    ) { it.objectiveValues.stability ?: 1.0 }
     return listOf(
         ObjectiveColumn("classFill", texts.generations.classFill, texts) { it.objectiveValues.classFill },
         ObjectiveColumn("teacherLoad", texts.generations.teacherLoad, texts) { it.objectiveValues.teacherLoadUsage },
