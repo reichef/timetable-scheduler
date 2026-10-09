@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":application"))
     implementation(project(":adapters:persistence"))
     implementation(project(":adapters:web"))
+    implementation(project(":adapters:solver"))
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.slf4j.api)

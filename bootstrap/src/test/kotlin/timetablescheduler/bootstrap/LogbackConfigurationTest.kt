@@ -24,4 +24,19 @@ class LogbackConfigurationTest {
             root.level = previousRootLevel
         }
     }
+
+    @Test
+    fun `Timefold solver logger stays at WARN so solver progress and planning values never reach the log`() {
+        val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
+        val solver = LoggerFactory.getLogger("ai.timefold.solver.core.impl.solver.DefaultSolver") as Logger
+        val previousRootLevel = root.level
+        try {
+            root.level = Level.TRACE
+
+            assertEquals(Level.WARN, solver.effectiveLevel)
+            assertFalse(solver.isInfoEnabled)
+        } finally {
+            root.level = previousRootLevel
+        }
+    }
 }

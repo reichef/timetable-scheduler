@@ -45,10 +45,10 @@ As in feature 001. Kotlin base package `timetablescheduler`. Abbreviations:
 
 **Purpose**: Solver module, dependency, logging and test task
 
-- [ ] T001 Add `timefold = "2.7.1"` with libraries `timefold-solver-core` (`ai.timefold.solver:timefold-solver-core`) and `timefold-solver-test` (`ai.timefold.solver:timefold-solver-test`) to `gradle/libs.versions.toml`; verify on Maven Central that 2.7.1 is the current stable release and adjust if not (G1)
-- [ ] T002 Include `adapters:solver` in `settings.gradle.kts` and create `adapters/solver/build.gradle.kts` depending on `:application`, `:domain`, `timefold-solver-core`, `slf4j-api`; test deps `timefold-solver-test`, `testFixtures(project(":application"))`, `logback-classic`
-- [ ] T003 Register a `performanceTest` Gradle task in `adapters/solver/build.gradle.kts` that runs only JUnit tests tagged `performance`, and exclude that tag from the normal `test` task (G12)
-- [ ] T004 Add `implementation(project(":adapters:solver"))` to `bootstrap/build.gradle.kts`; pin `<logger name="ai.timefold" level="WARN"/>` in `bootstrap/src/main/resources/logback.xml` and extend `bootstrap/src/test/kotlin/timetablescheduler/bootstrap/LogbackConfigurationTest.kt` to assert it (G13); verify `./gradlew build` is green
+- [X] T001 Add `timefold = "2.7.1"` with library `timefold-solver-core` (`ai.timefold.solver:timefold-solver-core`) to `gradle/libs.versions.toml`; verify on Maven Central that 2.7.1 is the current stable release and adjust if not (G1). In 2.x `ConstraintVerifier` is part of the core artifact; there is no separate test artifact
+- [X] T002 Include `adapters:solver` in `settings.gradle.kts` and create `adapters/solver/build.gradle.kts` depending on `:application`, `:domain`, `timefold-solver-core`, `slf4j-api`; test deps `testFixtures(project(":application"))`, `logback-classic`
+- [X] T003 Register a `performanceTest` Gradle task in `adapters/solver/build.gradle.kts` that runs only JUnit tests tagged `performance`, and exclude that tag from the normal `test` task (G12)
+- [X] T004 Add `implementation(project(":adapters:solver"))` to `bootstrap/build.gradle.kts`; pin `<logger name="ai.timefold" level="WARN"/>` in `bootstrap/src/main/resources/logback.xml` and extend `bootstrap/src/test/kotlin/timetablescheduler/bootstrap/LogbackConfigurationTest.kt` to assert it (G13); verify `./gradlew build` is green
 
 ---
 
@@ -109,7 +109,7 @@ As in feature 001. Kotlin base package `timetablescheduler`. Abbreviations:
 ### Implementation for User Story 1
 
 - [ ] T034 [P] [US1] Implement `GenerationGate` in `DOM/scheduling/generation/GenerationGate.kt` and `Generation`/`GenerationStatus` in `DOM/scheduling/generation/Generation.kt` to pass T023, T024
-- [ ] T035 [P] [US1] Create the Timefold model in `SOL/model/`: `TimetablePlan` (`@PlanningSolution`, problem facts, `HardSoftLongScore`: one hard level for all hard constraints, one soft level for the weighted sum of the pass (G2, G5)), `CourseAssignment` (class, subject, `@PlanningVariable teacher`, `@PlanningPin` for fixations later), `LessonPlacement` (one per required period; `timeslot` and `room` variables with `allowsUnassigned = true`; room value range restricted to the home room for subjects without required features); keep annotations inside the module (G5)
+- [ ] T035 [P] [US1] Create the Timefold model in `SOL/model/`: `TimetablePlan` (`@PlanningSolution`, problem facts, `HardSoftScore` (long-based in 2.x): one hard level for all hard constraints, one soft level for the weighted sum of the pass (G2, G5)), `CourseAssignment` (class, subject, `@PlanningVariable teacher`, `@PlanningPin` for fixations later), `LessonPlacement` (one per required period; `timeslot` and `room` variables with `allowsUnassigned = true`; room value range restricted to the home room for subjects without required features); keep annotations inside the module (G5)
 - [ ] T036 [US1] Implement `ProblemMapping` in `SOL/ProblemMapping.kt` (SchedulingProblem → `TimetablePlan`, `TimetablePlan` → `TimetableCandidate` with unplaced lessons)
 - [ ] T037 [US1] Implement `TimetableConstraintProvider` in `SOL/constraints/TimetableConstraintProvider.kt`: hard streams for every rule of T007, soft stream = weighted sum of the normalized objectives of the current pass (class fill, teacher load usage; score scaling commented)
 - [ ] T038 [US1] Implement `TimefoldTimetableSolver` in `SOL/TimefoldTimetableSolver.kt`: passes from `WeightVectors`, time limit split evenly with ≥ max(60 s, limit / passes) for the first pass, warm start from the previous best, every new best solution mapped and passed to `onCandidate`, stop signal → `terminateEarly()` (G2, G12); passes T025
