@@ -125,7 +125,7 @@ As in feature 001. Kotlin base package `timetablescheduler`. Abbreviations:
 - [X] T048 [US1] Implement `WEB/generation/GenerationRoutes.kt` and `WEB/generation/GenerationViews.kt` (list, start form with time limit and warnings confirmation, progress with meta refresh, stop, result table with sorting) to pass T031
 - [X] T049 [US1] Implement `WEB/generation/AlternativeRoutes.kt` and `WEB/generation/AlternativeViews.kt` (class/teacher/room views, objective values, unplaced lessons) to pass T032
 - [X] T050 [US1] Add navigation entry *Stundenplanläufe* / *Generations* in `WEB/layout/PageLayout.kt` and register the routes in `WEB/WebModule.kt`
-- [ ] T051 [US1] Run quickstart scenarios 0 (home room part), 1–6 and 4a against `:bootstrap:run` with a fresh database
+- [X] T051 [US1] Run quickstart scenarios 0 (home room part), 1–6 and 4a against `:bootstrap:run` with a fresh database — 2026-10-09 on a separate database `timetable_002`: 20/20 checks passed; first alternative after ~1 s, 100 % of 52 lessons placed within the 1-minute limit (after making the room always assigned in the solver model, which raised it from 92 %)
 
 **Checkpoint**: US1 delivers the MVP: valid, equally optimal timetables viewable per class, teacher and room
 

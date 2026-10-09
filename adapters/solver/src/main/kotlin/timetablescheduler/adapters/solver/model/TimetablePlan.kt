@@ -86,9 +86,11 @@ class CourseAssignment() {
 }
 
 /**
- * One period of a course. A lesson counts as placed when it has a timeslot and a room; rooms come only from those
- * offering the subject's required features, or only the class's home room for subjects without required features
- * (001 FR-009, 002 FR-002a), so these rules hold by construction.
+ * One period of a course. Every lesson always has a room — only rooms offering the subject's required features, or only
+ * the class's home room for subjects without required features (001 FR-009, 002 FR-002a), so these rules hold by
+ * construction. A lesson counts as placed when it also has a timeslot; placing or removing a lesson is therefore a
+ * single change of its timeslot, which keeps the solver's moves simple. Lessons without any suitable room are not
+ * created and stay unplaced.
  */
 @PlanningEntity
 class LessonPlacement() {
@@ -100,7 +102,7 @@ class LessonPlacement() {
     @field:PlanningVariable(valueRangeProviderRefs = ["timeslots"], allowsUnassigned = true)
     var timeslot: TimeslotFact? = null
 
-    @field:PlanningVariable(valueRangeProviderRefs = ["suitableRooms"], allowsUnassigned = true)
+    @field:PlanningVariable(valueRangeProviderRefs = ["suitableRooms"])
     var room: RoomFact? = null
 
     constructor(id: Int, course: CourseAssignment, suitableRooms: List<RoomFact>) : this() {

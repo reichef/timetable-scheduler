@@ -31,7 +31,7 @@ object ProblemMapping {
         var nextLessonId = 0
         val lessons = courses.flatMap { course ->
             val suitable = suitableRooms(problem, course, rooms)
-            List(course.requiredPeriods) { LessonPlacement(nextLessonId++, course, suitable) }
+            if (suitable.isEmpty()) emptyList() else List(course.requiredPeriods) { LessonPlacement(nextLessonId++, course, suitable) }
         }
         return TimetablePlan().apply {
             this.timeslots = timeslots
