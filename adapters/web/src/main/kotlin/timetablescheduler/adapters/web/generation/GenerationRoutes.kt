@@ -16,6 +16,7 @@ import timetablescheduler.adapters.web.layout.respondFormResult
 import timetablescheduler.adapters.web.layout.respondResult
 import timetablescheduler.adapters.web.layout.seeOther
 import timetablescheduler.adapters.web.layout.text
+import timetablescheduler.adapters.web.layout.uuids
 import timetablescheduler.adapters.web.school.schoolIdParameter
 import timetablescheduler.adapters.web.timetable.TimetableView
 import timetablescheduler.application.error.ApplicationError
@@ -24,6 +25,7 @@ import timetablescheduler.application.scheduling.SchedulingUseCases
 import timetablescheduler.application.scheduling.StartRequest
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.generation.AlternativeId
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.validation.ValidationError
@@ -61,7 +63,15 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val input = FormInput(form)
             val timeLimit = input.int("timeLimitMinutes")
             val result = if (timeLimit == null) UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
-            else scheduling.start.execute(call.actor, schoolId, StartRequest(timeLimit, form[StartRequest.FIELD_WARNINGS_CONFIRMED] == "true"))
+            else scheduling.start.execute(
+                call.actor,
+                schoolId,
+                StartRequest(
+                    timeLimitMinutes = timeLimit,
+                    warningsConfirmed = form[StartRequest.FIELD_WARNINGS_CONFIRMED] == "true",
+                    separateObjectiveIds = form.uuids(StartRequest.FIELD_SEPARATE_OBJECTIVES).map(::SchedulingConstraintId),
+                ),
+            )
             call.respondFormResult(
                 result,
                 generationsPath(schoolId),
@@ -72,10 +82,9 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
         get("/schools/{schoolId}/generations/{generationId}") {
             val schoolId = call.schoolIdParameter() ?: return@get
             val generationId = call.generationIdParameter() ?: return@get
-            val sortColumn = ObjectiveColumn.fromKey(call.parameters["sort"])
             val descending = call.parameters["dir"] != "asc"
             call.respondResult(scheduling.get.execute(call.actor, schoolId, generationId)) {
-                call.respondGenerationDetails(it, sortColumn, descending, Instant.now())
+                call.respondGenerationDetails(it, call.parameters["sort"], descending, Instant.now())
             }
         }
 

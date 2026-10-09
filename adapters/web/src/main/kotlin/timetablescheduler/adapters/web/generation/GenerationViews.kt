@@ -7,10 +7,12 @@ import kotlinx.html.FormMethod
 import kotlinx.html.InputType
 import kotlinx.html.a
 import kotlinx.html.button
+import kotlinx.html.fieldSet
 import kotlinx.html.form
 import kotlinx.html.h2
 import kotlinx.html.input
 import kotlinx.html.label
+import kotlinx.html.legend
 import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.table
@@ -18,6 +20,9 @@ import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
 import kotlinx.html.ul
+import timetablescheduler.adapters.web.constraint.constraintList
+import timetablescheduler.adapters.web.constraint.describe
+import timetablescheduler.adapters.web.constraint.describeRule
 import timetablescheduler.adapters.web.i18n.UiTexts
 import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
@@ -28,6 +33,7 @@ import timetablescheduler.adapters.web.readiness.issueEntry
 import timetablescheduler.application.scheduling.GenerationDetails
 import timetablescheduler.application.scheduling.GenerationOverview
 import timetablescheduler.application.scheduling.StartRequest
+import timetablescheduler.application.scheduling.TimetableNames
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.Generation
@@ -45,21 +51,23 @@ fun alternativePath(generation: Generation, alternative: Alternative) = "${gener
 /** Seconds between automatic reloads of a running generation's page (G6). */
 private const val REFRESH_SECONDS = 3
 
-/** The objectives a result table can be sorted by; keys as in the routes contract. */
-enum class ObjectiveColumn(val key: String, val valueOf: (Alternative) -> Double) {
-    CLASS_FILL("classFill", { it.objectiveValues.classFill }),
-    TEACHER_LOAD("teacherLoad", { it.objectiveValues.teacherLoadUsage }),
-    OTHER_SOFT("otherSoft", { it.objectiveValues.otherSoft });
+/** One objective of a generation's result table; keys as in the routes contract (classFill, separate1, …). */
+class ObjectiveColumn(val key: String, val title: String, val valueOf: (Alternative) -> Double)
 
-    companion object {
-        fun fromKey(key: String?): ObjectiveColumn? = entries.firstOrNull { it.key == key }
+/**
+ * The objectives of a generation (FR-006): class fill, teacher load usage, each soft constraint compared separately
+ * (named from the generation's snapshot, FR-006a, FR-022) and the other soft constraints.
+ */
+fun objectiveColumns(generation: Generation, names: TimetableNames?, texts: UiTexts): List<ObjectiveColumn> {
+    val separate = generation.separateObjectiveIds.mapIndexed { index, constraintId ->
+        val constraint = generation.constraintSnapshot.firstOrNull { it.id == constraintId }
+        val title = if (constraint != null && names != null) describeRule(constraint, names, texts) else texts.timetables.deletedEntry
+        ObjectiveColumn("separate${index + 1}", title) { it.objectiveValues.separate.getOrNull(index) ?: 1.0 }
     }
-}
-
-fun UiTexts.objectiveName(column: ObjectiveColumn): String = when (column) {
-    ObjectiveColumn.CLASS_FILL -> generations.classFill
-    ObjectiveColumn.TEACHER_LOAD -> generations.teacherLoad
-    ObjectiveColumn.OTHER_SOFT -> generations.otherSoft
+    return listOf(
+        ObjectiveColumn("classFill", texts.generations.classFill) { it.objectiveValues.classFill },
+        ObjectiveColumn("teacherLoad", texts.generations.teacherLoad) { it.objectiveValues.teacherLoadUsage },
+    ) + separate + ObjectiveColumn("otherSoft", texts.generations.otherSoft) { it.objectiveValues.otherSoft }
 }
 
 /** Start form (FR-009, FR-010) and the list of generations of the school (US4 scenario 1). */
@@ -82,6 +90,18 @@ suspend fun ApplicationCall.respondGenerationList(
                 label {
                     input(type = InputType.checkBox, name = StartRequest.FIELD_WARNINGS_CONFIRMED) { value = "true" }
                     +texts.generations.warningsConfirm
+                }
+            }
+            val names = overview.names
+            if (overview.softConstraints.isNotEmpty() && names != null) {
+                fieldSet {
+                    legend { +texts.constraints.separateObjectivesLegend }
+                    overview.softConstraints.forEach { constraint ->
+                        label {
+                            input(type = InputType.checkBox, name = StartRequest.FIELD_SEPARATE_OBJECTIVES) { value = "${constraint.id.value}" }
+                            +describe(constraint, names, texts)
+                        }
+                    }
                 }
             }
             button { +texts.generations.startButton }
@@ -120,7 +140,7 @@ private fun FlowContent.generationTable(overview: GenerationOverview, texts: UiT
  * A generation: progress with stop button and automatic reload while it runs (FR-011), afterwards the alternatives
  * with their objective values, sortable by every objective (FR-018, FR-020).
  */
-suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails, sortColumn: ObjectiveColumn?, descending: Boolean, now: Instant) {
+suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails, sortKey: String?, descending: Boolean, now: Instant) {
     val texts = texts
     val generation = details.generation
     val refresh = if (generation.isRunning) REFRESH_SECONDS else null
@@ -134,13 +154,36 @@ suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails,
                 button(classes = "danger") { +texts.generations.stopButton }
             }
         }
-        if (generation.status == GenerationStatus.FAILED_INFEASIBLE) p(classes = "errors") { +texts.generations.infeasibleHint }
-        alternativeTable(details, sortColumn, descending, texts)
+        if (generation.status == GenerationStatus.FAILED_INFEASIBLE) {
+            p(classes = "errors") { +texts.generations.infeasibleHint }
+            details.names?.let { names -> constraintList(generation.constraintSnapshot.filter { it.id in generation.infeasibleConstraintIds }, names, texts) }
+        }
+        val columns = objectiveColumns(generation, details.names, texts)
+        alternativeTable(details, columns, columns.firstOrNull { it.key == sortKey }, descending, texts)
+        constraintsInEffect(details, texts)
         p { a(href = generationsPath(generation.schoolId)) { +texts.generations.toGenerations } }
     }
 }
 
-private fun FlowContent.alternativeTable(details: GenerationDetails, sortColumn: ObjectiveColumn?, descending: Boolean, texts: UiTexts) {
+/** The constraints and fixations of the generation's snapshot, named with today's names (FR-022). */
+private fun FlowContent.constraintsInEffect(details: GenerationDetails, texts: UiTexts) {
+    val names = details.names ?: return
+    val generation = details.generation
+    if (generation.constraintSnapshot.isEmpty() && generation.fixationSnapshot.isEmpty()) return
+    h2 { +texts.constraints.inEffectHeading }
+    ul {
+        generation.constraintSnapshot.forEach { li { +describe(it, names, texts) } }
+        generation.fixationSnapshot.forEach { li { +describe(it, names, texts) } }
+    }
+}
+
+private fun FlowContent.alternativeTable(
+    details: GenerationDetails,
+    columns: List<ObjectiveColumn>,
+    sortColumn: ObjectiveColumn?,
+    descending: Boolean,
+    texts: UiTexts,
+) {
     h2 { +texts.generations.alternativesHeading }
     if (details.alternatives.isEmpty()) {
         p { +texts.generations.noAlternatives }
@@ -155,10 +198,10 @@ private fun FlowContent.alternativeTable(details: GenerationDetails, sortColumn:
     table {
         tr {
             th { +"#" }
-            ObjectiveColumn.entries.forEach { column ->
+            columns.forEach { column ->
                 th {
-                    val nextDescending = !(column == sortColumn && descending)
-                    a(href = "${generationPath(generation)}?sort=${column.key}&dir=${if (nextDescending) "desc" else "asc"}") { +texts.objectiveName(column) }
+                    val nextDescending = !(column.key == sortColumn?.key && descending)
+                    a(href = "${generationPath(generation)}?sort=${column.key}&dir=${if (nextDescending) "desc" else "asc"}") { +column.title }
                 }
             }
             th { +texts.generations.unplacedColumn }
@@ -168,7 +211,7 @@ private fun FlowContent.alternativeTable(details: GenerationDetails, sortColumn:
         sorted.forEach { (number, alternative) ->
             tr {
                 td { +"$number" }
-                ObjectiveColumn.entries.forEach { column -> td { +texts.generations.percent(column.valueOf(alternative)) } }
+                columns.forEach { column -> td { +texts.generations.percent(column.valueOf(alternative)) } }
                 td { +"${alternative.unplacedPeriods()}" }
                 td { +"${alternative.softViolations.values.sum()}" }
                 td { a(href = alternativePath(generation, alternative)) { +texts.generations.alternativeTitle(number) } }

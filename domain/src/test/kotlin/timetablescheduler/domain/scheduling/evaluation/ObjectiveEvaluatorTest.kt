@@ -1,6 +1,11 @@
 package timetablescheduler.domain.scheduling.evaluation
 
 import timetablescheduler.domain.scheduling.TestSchool
+import timetablescheduler.domain.scheduling.constraint.ClassScope
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.SoftWeight
+import timetablescheduler.domain.scheduling.constraint.soft
+import timetablescheduler.domain.scheduling.solution.ObjectiveValues
 import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
@@ -71,5 +76,37 @@ class ObjectiveEvaluatorTest {
         assertEquals(emptyList(), values.separate)
         assertNull(values.stability)
         assertEquals(listOf(1.0, 1.0, 1.0), values.asVector())
+    }
+
+    @Test
+    fun `a soft constraint selected as separate objective gets its own value 1 - violations over opportunities (FR-006a)`() {
+        val class5a = school.schoolClass(math to 4)
+        val teacher = school.teacher(10, setOf(math))
+        val mathAtMostOne = soft(ConstraintRule.SubjectMaxPerDayInClass(ClassScope.SpecificClass(class5a), math, 1))
+        val problem = school.problem().copy(constraints = listOf(mathAtMostOne), separateObjectiveIds = listOf(mathAtMostOne.id))
+        val lessons = (0 until 3).map { school.lesson(class5a, math, teacher, room, MONDAY, it) } + school.lesson(class5a, math, teacher, room, TUESDAY, 0)
+
+        val evaluation = ObjectiveEvaluator.evaluate(problem, TimetableCandidate(lessons, emptyMap()))
+
+        // 2 excess periods of 4 opportunities (the subject's periods)
+        assertEquals(listOf(0.5), evaluation.values.separate)
+        assertEquals(1.0, evaluation.values.otherSoft)
+        assertEquals(mapOf(mathAtMostOne.id to 2), evaluation.softViolations)
+    }
+
+    @Test
+    fun `all other soft constraints are combined by their weights 1, 3 and 9 (G3)`() {
+        val class5a = school.schoolClass(math to 4)
+        val teacher = school.teacher(10, setOf(math))
+        val low = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 0))), SoftWeight.LOW)
+        val high = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 1))), SoftWeight.HIGH)
+        val problem = school.problem().copy(constraints = listOf(low, high))
+        val lessons = listOf(school.lesson(class5a, math, teacher, room, MONDAY, 0), school.lesson(class5a, math, teacher, room, TUESDAY, 0))
+
+        val evaluation = ObjectiveEvaluator.evaluate(problem, TimetableCandidate(lessons, emptyMap()))
+
+        // low violated once of 4 opportunities, high not at all: 1 − (1·1) / (1·4 + 9·4)
+        assertEquals(ObjectiveValues.round4(1 - 1.0 / 40), evaluation.values.otherSoft)
+        assertEquals(mapOf(low.id to 1, high.id to 0), evaluation.softViolations)
     }
 }

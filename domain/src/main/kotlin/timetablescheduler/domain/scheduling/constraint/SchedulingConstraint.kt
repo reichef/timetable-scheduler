@@ -20,9 +20,6 @@ enum class SoftWeight(val factor: Int) {
     HIGH(9),
 }
 
-/** What a constraint demands; one subtype per catalogue entry (FR-013, G9). */
-sealed interface ConstraintRule
-
 /**
  * A planner-defined scheduling constraint (FR-012). [weight] is set exactly for soft constraints; switched-off
  * constraints ([active] = false) are kept but ignored by generations.

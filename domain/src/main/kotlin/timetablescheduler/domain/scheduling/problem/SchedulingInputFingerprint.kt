@@ -2,6 +2,7 @@ package timetablescheduler.domain.scheduling.problem
 
 import timetablescheduler.domain.scheduling.DaySlot
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
+import timetablescheduler.domain.scheduling.constraint.canonicalText
 import java.security.MessageDigest
 
 /**
@@ -34,7 +35,6 @@ object SchedulingInputFingerprint {
 
     private fun daySlotText(daySlot: DaySlot) = "${daySlot.day}:${daySlot.slotId.value}"
 
-    /** The rule's data-class text form; rules keep their sets sorted so the text is canonical. */
     private fun constraintText(constraint: SchedulingConstraint): String =
-        "${constraint.id.value} ${constraint.kind} ${constraint.weight} ${constraint.active} ${constraint.rule}"
+        "${constraint.id.value} ${constraint.kind} ${constraint.weight} ${constraint.active} ${constraint.rule.canonicalText()}"
 }

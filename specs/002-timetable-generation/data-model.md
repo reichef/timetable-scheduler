@@ -127,9 +127,9 @@ generation (id PK, school_id, started_by FK user_account, started_at, finished_a
     max_alternatives INT, status VARCHAR(17), input_fingerprint CHAR(64), alternatives_found INT,
     reference_alternative_id FK alternative SET NULL NULL,
     UNIQUE INDEX one_running_per_school ON (school_id) WHERE status = 'RUNNING')
-generation_separate_objective (generation_id FK CASCADE, position SMALLINT 1..3, constraint_id FK SET NULL NULL,
-    constraint_type VARCHAR(40), PK (generation_id, position))
-generation_infeasible_constraint (generation_id FK CASCADE, constraint_id FK CASCADE)
+generation_separate_objective (generation_id FK CASCADE, position SMALLINT 1..3, original_constraint_id UUID,
+    PK (generation_id, position))       -- refers to the generation's constraint snapshot, no FK (implementation)
+generation_infeasible_constraint (generation_id FK CASCADE, original_constraint_id UUID)   -- refers to the snapshot
 generation_constraint (generation_id FK CASCADE, position SMALLINT, original_constraint_id UUID, type VARCHAR(40),
     kind VARCHAR(4), weight VARCHAR(6) NULL, all_classes BOOLEAN, class_id UUID NULL, teacher_id UUID NULL,
     subject_id UUID NULL, limit_value INT NULL, across_breaks BOOLEAN NULL, PK (generation_id, position))

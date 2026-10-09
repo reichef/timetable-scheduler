@@ -60,8 +60,8 @@ suspend fun ApplicationCall.respondAlternative(details: AlternativeDetails, view
 private fun FlowContent.objectiveSummary(details: AlternativeDetails, texts: UiTexts) {
     h2 { +texts.timetables.objectivesHeading }
     ul {
-        ObjectiveColumn.entries.forEach { column ->
-            li { +"${texts.objectiveName(column)}: ${texts.generations.percent(column.valueOf(details.alternative))}" }
+        objectiveColumns(details.generation, details.names, texts).forEach { column ->
+            li { +"${column.title}: ${texts.generations.percent(column.valueOf(details.alternative))}" }
         }
     }
 }

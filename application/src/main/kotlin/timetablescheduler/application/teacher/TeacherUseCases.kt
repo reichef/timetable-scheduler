@@ -1,5 +1,8 @@
 package timetablescheduler.application.teacher
 
+import timetablescheduler.application.access.DependantSource
+import timetablescheduler.application.access.DependantVisibilityFilter
+import timetablescheduler.application.access.dependantsOf
 import timetablescheduler.application.access.SchoolAccessPolicy
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.OutcomeScope
@@ -133,13 +136,16 @@ class DeleteTeacher(
     private val transactions: TransactionRunner,
     private val access: SchoolAccessPolicy,
     private val teachers: TeacherRepository,
+    private val dependantSources: List<DependantSource<TeacherId>>,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, teacherId: TeacherId, expectedVersion: Int): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
-                access.requireSchoolAccess(actor, schoolId).bind()
+                val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 val teacher = loadTeacherOfSchool(teachers, schoolId, teacherId)
                 if (teacher.version != expectedVersion) fail(ApplicationError.VersionConflict)
+                val dependants = dependantSources.dependantsOf(teacherId)
+                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 teachers.delete(teacherId)
             }
         }

@@ -18,7 +18,7 @@ object GenerationGate {
     }
 
     private fun isBlocking(issue: ReadinessIssue): Boolean = when (issue) {
-        is ReadinessIssue.TeacherLoadExceedsGrid, is ReadinessIssue.LevelExceedsGrid -> true
+        is ReadinessIssue.TeacherLoadExceedsGrid, is ReadinessIssue.LevelExceedsGrid, is ReadinessIssue.InvalidTeacherFixation -> true
         else -> false
     }
 }

@@ -13,6 +13,8 @@ import timetablescheduler.adapters.persistence.curriculum.ExposedSubjectReposito
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
 import timetablescheduler.adapters.persistence.scheduling.ExposedGenerationRepository
+import timetablescheduler.adapters.persistence.scheduling.ExposedSchedulingConstraintRepository
+import timetablescheduler.adapters.persistence.scheduling.ExposedTeacherFixationRepository
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
 import timetablescheduler.adapters.persistence.teacher.ExposedTeacherRepository
 import timetablescheduler.adapters.persistence.teacher.ExposedTimeSlotUsage
@@ -42,7 +44,8 @@ fun main() {
     val credentials = ExposedPasswordCredentialRepository()
     val hasher = BcryptPasswordHasher()
 
-    ensureInstalled(InstallationUseCase(transactions, schools, accounts, credentials, hasher), config)
+    val constraints = ExposedSchedulingConstraintRepository()
+    ensureInstalled(InstallationUseCase(transactions, schools, accounts, credentials, hasher, constraints), config)
 
     val ports = MasterDataPorts(
         transactions = transactions,
@@ -59,6 +62,8 @@ fun main() {
         teachers = ExposedTeacherRepository(),
     )
     val schedulingPorts = SchedulingPorts(
+        constraints = constraints,
+        fixations = ExposedTeacherFixationRepository(),
         generations = ExposedGenerationRepository(),
         solver = TimefoldTimetableSolver(),
         executor = SingleThreadGenerationExecutor(),

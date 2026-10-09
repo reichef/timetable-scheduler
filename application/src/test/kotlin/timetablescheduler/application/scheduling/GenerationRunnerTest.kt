@@ -3,6 +3,9 @@ package timetablescheduler.application.scheduling
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.fakes.GenerationEvent
+import timetablescheduler.domain.scheduling.constraint.ClassScope
+import timetablescheduler.domain.scheduling.constraint.ConstraintKind
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
 import timetablescheduler.domain.scheduling.pareto.Dominance
@@ -100,6 +103,24 @@ class GenerationRunnerTest {
         val generation = startedGeneration()
 
         assertEquals(GenerationStatus.FAILED_INFEASIBLE, world.generations.findById(generation.id)!!.status)
+    }
+
+    @Test
+    fun `an infeasible generation names the active hard constraints that can force violations`() {
+        val minimum = world.useCases.constraints.create.execute(
+            test.admin.id, test.school.id,
+            ConstraintInput(ConstraintKind.HARD, null, ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), 1)),
+        ).value()
+        world.useCases.constraints.create.execute(
+            test.admin.id, test.school.id, ConstraintInput(ConstraintKind.HARD, null, ConstraintRule.ClassNoGaps(ClassScope.AllClasses)),
+        ).value()
+        world.solver.infeasiblePasses = 1
+
+        val generation = startedGeneration()
+
+        val stored = world.generations.findById(generation.id)!!
+        assertEquals(GenerationStatus.FAILED_INFEASIBLE, stored.status)
+        assertEquals(listOf(minimum.id), stored.infeasibleConstraintIds)
     }
 
     @Test

@@ -15,6 +15,7 @@ import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.ul
 import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.constraint.constraintList
 import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.readiness.issueEntry
 import timetablescheduler.adapters.web.readiness.readinessPath
@@ -75,7 +76,10 @@ suspend fun ApplicationCall.respondBusinessFailure(error: ApplicationError, back
         is ApplicationError.DeletionBlocked -> respondPage(texts.errors.deletionBlockedTitle, HttpStatusCode.Conflict) {
             p { +texts.errors.deletionBlocked }
             ul {
-                error.visibleDependants.forEach { li { +"${texts.errors.describe(it.type)}: ${it.displayName}" } }
+                error.visibleDependants.forEach { dependant ->
+                    val kind = dependant.constraintType?.let { type -> "${texts.errors.describe(dependant.type)} „${texts.constraints.typeName(type)}“" }
+                    li { +"${kind ?: texts.errors.describe(dependant.type)}: ${dependant.displayName}" }
+                }
                 if (error.hiddenDependantCount > 0) li { +texts.errors.hiddenDependants(error.hiddenDependantCount) }
             }
             if (backLink != null) a(href = backLink) { +texts.common.back }
@@ -84,6 +88,11 @@ suspend fun ApplicationCall.respondBusinessFailure(error: ApplicationError, back
             p { +texts.generations.blockedIntro }
             ul { error.blockingIssues.forEach { issue -> li { issueEntry(error.names, issue, texts) } } }
             a(href = readinessPath(error.names.schoolId)) { +texts.generations.toReadiness }
+        }
+        is ApplicationError.ContradictingConstraints -> respondPage(texts.constraints.contradictionTitle, HttpStatusCode.Conflict) {
+            p { +texts.constraints.contradictionIntro }
+            constraintList(error.constraints, error.names, texts)
+            if (backLink != null) a(href = backLink) { +texts.common.back }
         }
         is ApplicationError.GenerationRunning -> respondPage(texts.generations.runningTitle, HttpStatusCode.Conflict) {
             p { +texts.generations.runningExists }

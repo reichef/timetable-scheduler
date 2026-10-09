@@ -7,6 +7,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import timetablescheduler.application.port.GenerationRepository
@@ -18,7 +19,13 @@ import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.common.TimeSlotId
 import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.constraint.ConstraintKind
+import timetablescheduler.domain.scheduling.constraint.ConstraintType
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
+import timetablescheduler.domain.scheduling.constraint.SoftWeight
+import timetablescheduler.domain.scheduling.constraint.TeacherFixation
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
 import timetablescheduler.domain.scheduling.generation.Generation
@@ -49,6 +56,49 @@ class ExposedGenerationRepository : GenerationRepository {
             it[inputFingerprint] = generation.inputFingerprint
             it[alternativesFound] = generation.alternativesFound
         }
+        GenerationSeparateObjectiveTable.batchInsert(generation.separateObjectiveIds.withIndex()) { (index, constraintId) ->
+            this[GenerationSeparateObjectiveTable.generationId] = generation.id.value
+            this[GenerationSeparateObjectiveTable.position] = (index + 1).toShort()
+            this[GenerationSeparateObjectiveTable.originalConstraintId] = constraintId.value
+        }
+        insertConstraintSnapshot(generation)
+        GenerationFixationTable.batchInsert(generation.fixationSnapshot.withIndex()) { (position, fixation) ->
+            this[GenerationFixationTable.generationId] = generation.id.value
+            this[GenerationFixationTable.position] = position
+            this[GenerationFixationTable.originalFixationId] = fixation.id.value
+            this[GenerationFixationTable.classId] = fixation.classId.value
+            this[GenerationFixationTable.subjectId] = fixation.subjectId.value
+            this[GenerationFixationTable.teacherId] = fixation.teacherId.value
+            this[GenerationFixationTable.version] = fixation.version
+        }
+    }
+
+    private fun insertConstraintSnapshot(generation: Generation) {
+        generation.constraintSnapshot.forEachIndexed { position, constraint ->
+            val columns = RuleColumns.of(constraint.rule)
+            GenerationConstraintTable.insert {
+                it[generationId] = generation.id.value
+                it[GenerationConstraintTable.position] = position
+                it[originalConstraintId] = constraint.id.value
+                it[type] = columns.type.name
+                it[kind] = constraint.kind.name
+                it[weight] = constraint.weight?.name
+                it[active] = constraint.active
+                it[allClasses] = columns.allClasses
+                it[classId] = columns.classId
+                it[teacherId] = columns.teacherId
+                it[subjectId] = columns.subjectId
+                it[limitValue] = columns.limit
+                it[acrossBreaks] = columns.acrossBreaks
+                it[version] = constraint.version
+            }
+            GenerationConstraintSlotTable.batchInsert(columns.slots) { slot ->
+                this[GenerationConstraintSlotTable.generationId] = generation.id.value
+                this[GenerationConstraintSlotTable.position] = position
+                this[GenerationConstraintSlotTable.dayOfWeek] = slot.day.name
+                this[GenerationConstraintSlotTable.slotId] = slot.slotId.value
+            }
+        }
     }
 
     override fun findById(generationId: GenerationId): Generation? =
@@ -72,6 +122,10 @@ class ExposedGenerationRepository : GenerationRepository {
             it[status] = generation.status.name
             it[finishedAt] = generation.finishedAt?.atOffset(ZoneOffset.UTC)
             it[alternativesFound] = generation.alternativesFound
+        }
+        GenerationInfeasibleConstraintTable.batchInsert(generation.infeasibleConstraintIds) { constraintId ->
+            this[GenerationInfeasibleConstraintTable.generationId] = generation.id.value
+            this[GenerationInfeasibleConstraintTable.originalConstraintId] = constraintId.value
         }
     }
 
@@ -174,7 +228,59 @@ class ExposedGenerationRepository : GenerationRepository {
         daySlot = DaySlot(DayOfWeek.valueOf(this[AlternativeLessonTable.dayOfWeek]), TimeSlotId(this[AlternativeLessonTable.timeSlotId])),
     )
 
-    private fun ResultRow.toGeneration() = Generation(
+    private fun ResultRow.toGeneration(): Generation {
+        val id = this[GenerationTable.id]
+        return toGenerationWithoutSnapshot().copy(
+            separateObjectiveIds = GenerationSeparateObjectiveTable.selectAll().where { GenerationSeparateObjectiveTable.generationId eq id }
+                .sortedBy { it[GenerationSeparateObjectiveTable.position] }
+                .map { SchedulingConstraintId(it[GenerationSeparateObjectiveTable.originalConstraintId]) },
+            constraintSnapshot = constraintSnapshotOf(id),
+            fixationSnapshot = GenerationFixationTable.selectAll().where { GenerationFixationTable.generationId eq id }
+                .sortedBy { it[GenerationFixationTable.position] }
+                .map {
+                    TeacherFixation(
+                        TeacherFixationId(it[GenerationFixationTable.originalFixationId]), SchoolId(this[GenerationTable.schoolId]),
+                        SchoolClassId(it[GenerationFixationTable.classId]), SubjectId(it[GenerationFixationTable.subjectId]),
+                        TeacherId(it[GenerationFixationTable.teacherId]), it[GenerationFixationTable.version],
+                    )
+                },
+            infeasibleConstraintIds = GenerationInfeasibleConstraintTable.selectAll().where { GenerationInfeasibleConstraintTable.generationId eq id }
+                .map { SchedulingConstraintId(it[GenerationInfeasibleConstraintTable.originalConstraintId]) },
+        )
+    }
+
+    private fun constraintSnapshotOf(generationId: java.util.UUID): List<SchedulingConstraint> {
+        val slots = GenerationConstraintSlotTable.selectAll().where { GenerationConstraintSlotTable.generationId eq generationId }
+            .groupBy({ it[GenerationConstraintSlotTable.position] }, { RuleColumns.slotOf(it[GenerationConstraintSlotTable.dayOfWeek], it[GenerationConstraintSlotTable.slotId]) })
+        return GenerationConstraintTable.selectAll().where { GenerationConstraintTable.generationId eq generationId }
+            .sortedBy { it[GenerationConstraintTable.position] }
+            .map { row ->
+                val columns = RuleColumns(
+                    type = ConstraintType.valueOf(row[GenerationConstraintTable.type]),
+                    allClasses = row[GenerationConstraintTable.allClasses],
+                    classId = row[GenerationConstraintTable.classId],
+                    teacherId = row[GenerationConstraintTable.teacherId],
+                    subjectId = row[GenerationConstraintTable.subjectId],
+                    limit = row[GenerationConstraintTable.limitValue],
+                    acrossBreaks = row[GenerationConstraintTable.acrossBreaks],
+                    slots = slots[row[GenerationConstraintTable.position]].orEmpty().toSet(),
+                )
+                SchedulingConstraint(
+                    id = SchedulingConstraintId(row[GenerationConstraintTable.originalConstraintId]),
+                    schoolId = SchoolId(this@ExposedGenerationRepository.schoolIdOf(generationId)),
+                    kind = ConstraintKind.valueOf(row[GenerationConstraintTable.kind]),
+                    weight = row[GenerationConstraintTable.weight]?.let(SoftWeight::valueOf),
+                    active = row[GenerationConstraintTable.active],
+                    rule = columns.toRule(),
+                    version = row[GenerationConstraintTable.version],
+                )
+            }
+    }
+
+    private fun schoolIdOf(generationId: java.util.UUID): java.util.UUID =
+        GenerationTable.select(GenerationTable.schoolId).where { GenerationTable.id eq generationId }.single()[GenerationTable.schoolId]
+
+    private fun ResultRow.toGenerationWithoutSnapshot() = Generation(
         id = GenerationId(this[GenerationTable.id]),
         schoolId = SchoolId(this[GenerationTable.schoolId]),
         startedBy = AccountId(this[GenerationTable.startedBy]),

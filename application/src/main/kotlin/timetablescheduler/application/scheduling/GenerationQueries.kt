@@ -7,6 +7,7 @@ import timetablescheduler.application.error.outcome
 import timetablescheduler.application.port.ClassLevelRepository
 import timetablescheduler.application.port.GenerationRepository
 import timetablescheduler.application.port.RoomRepository
+import timetablescheduler.application.port.SchedulingConstraintRepository
 import timetablescheduler.application.port.SchoolClassRepository
 import timetablescheduler.application.port.SchoolRepository
 import timetablescheduler.application.port.SubjectRepository
@@ -21,6 +22,7 @@ import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
 import timetablescheduler.domain.scheduling.generation.Generation
@@ -38,12 +40,14 @@ data class GenerationOverview(
     val generations: List<GenerationSummary>,
     val gate: GateResult,
     val readiness: ReadinessReport,
+    val softConstraints: List<SchedulingConstraint> = emptyList(),
+    val names: TimetableNames? = null,
 ) {
     val running: GenerationSummary? get() = generations.firstOrNull { it.generation.isRunning }
 }
 
-/** A generation with its alternatives (FR-018). */
-data class GenerationDetails(val summary: GenerationSummary, val alternatives: List<Alternative>) {
+/** A generation with its alternatives (FR-018) and names to describe its constraint snapshot (FR-022). */
+data class GenerationDetails(val summary: GenerationSummary, val alternatives: List<Alternative>, val names: TimetableNames? = null) {
     val generation: Generation get() = summary.generation
 }
 
@@ -72,6 +76,8 @@ class ListGenerations(
     private val generations: GenerationRepository,
     private val accounts: UserAccountRepository,
     private val readiness: ReadinessReportLoader,
+    private val constraints: SchedulingConstraintRepository,
+    private val names: TimetableNamesLoader,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<GenerationOverview> =
         transactions.inTransaction {
@@ -83,6 +89,8 @@ class ListGenerations(
                     generations = generations.findBySchool(schoolId).sortedByDescending { it.startedAt }.map { summaryOf(it, accounts) },
                     gate = GenerationGate.classify(report.issues),
                     readiness = report,
+                    softConstraints = constraints.findBySchool(schoolId).filter { it.active && !it.isHard },
+                    names = names.load(schoolId),
                 )
             }
         }
@@ -93,13 +101,14 @@ class GetGeneration(
     private val access: SchoolAccessPolicy,
     private val generations: GenerationRepository,
     private val accounts: UserAccountRepository,
+    private val names: TimetableNamesLoader,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId): UseCaseResult<GenerationDetails> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
-                GenerationDetails(summaryOf(generation, accounts), generations.findAlternatives(generationId))
+                GenerationDetails(summaryOf(generation, accounts), generations.findAlternatives(generationId), names.load(schoolId))
             }
         }
 }

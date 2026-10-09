@@ -41,13 +41,13 @@ class TimefoldTimetableSolver(private val minimumFirstPass: Duration = Duration.
 
     override fun solve(problem: SchedulingProblem, timeLimit: Duration, stopSignal: StopSignal, listener: SolverListener) {
         val deadline = Instant.now().plus(timeLimit)
-        val weightVectors = WeightVectors.forObjectives(SOLVER_OBJECTIVES)
+        val weightVectors = WeightVectors.forObjectives(ProblemMapping.objectiveCount(problem))
         var plan = ProblemMapping.toPlan(problem)
         StopWatcher(stopSignal).use { watcher ->
             for ((passIndex, weights) in weightVectors.withIndex()) {
                 val remaining = Duration.between(Instant.now(), deadline)
                 if (stopSignal.isStopRequested() || remaining <= Duration.ZERO) break
-                plan.passWeights = plan.passWeights.copy(classFill = weights[0], teacherLoad = weights[1])
+                plan.passWeights = plan.passWeights.copy(weights = weights)
                 plan.score = null
                 val solver = buildPassSolver(passDuration(passIndex, weightVectors.size, timeLimit, remaining), listener)
                 watcher.watch(solver)
@@ -101,8 +101,6 @@ class TimefoldTimetableSolver(private val minimumFirstPass: Duration = Duration.
     }
 
     private companion object {
-        /** Class fill and teacher load usage; further objectives come with planner constraints (US2) and the reference (US3). */
-        const val SOLVER_OBJECTIVES = 2
         const val POLL_MILLIS = 100L
         const val MINIMUM_PASS_MILLIS = 200L
     }

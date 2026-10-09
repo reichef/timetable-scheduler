@@ -6,9 +6,11 @@ import ai.timefold.solver.core.api.score.stream.ConstraintCollectors
 import ai.timefold.solver.core.api.score.stream.ConstraintFactory
 import ai.timefold.solver.core.api.score.stream.ConstraintProvider
 import ai.timefold.solver.core.api.score.stream.Joiners
+import timetablescheduler.adapters.solver.model.AppliedRuleFact
 import timetablescheduler.adapters.solver.model.CourseAssignment
 import timetablescheduler.adapters.solver.model.LessonPlacement
 import timetablescheduler.adapters.solver.model.PassWeights
+import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import kotlin.math.roundToLong
 
 /**
@@ -28,7 +30,62 @@ class TimetableConstraintProvider : ConstraintProvider {
         lessonWithoutTeacher(factory),
         classFill(factory),
         teacherLoadUsage(factory),
+        classRulesHard(factory),
+        classRulesSoft(factory),
+        otherRulesHard(factory),
+        otherRulesSoft(factory),
     )
+
+    /**
+     * Planner constraints about one class, joined by class: the placed lessons each rule covers are grouped per rule
+     * and counted by the domain rule (G5), so solver and domain agree on every violation.
+     */
+    private fun classRuleGroups(factory: ConstraintFactory) =
+        placedLessonsWithCourse(factory)
+            .join(
+                AppliedRuleFact::class.java,
+                Joiners.equal({ _, course -> course.classFact.id }, { rule -> rule.classKey }),
+                Joiners.filtering { _, course, rule -> rule.covers(course) },
+            )
+            .groupBy({ _, _, rule -> rule }, ConstraintCollectors.toList { lesson, course, _ -> assignmentOf(lesson, course) })
+
+    /** Planner constraints about teachers or about a subject in every class, matched lesson by lesson. */
+    private fun otherRuleGroups(factory: ConstraintFactory) =
+        placedLessonsWithCourse(factory)
+            .join(
+                factory.forEach(AppliedRuleFact::class.java).filter { it.classKey == null },
+                Joiners.filtering { _, course, rule -> rule.covers(course) },
+            )
+            .groupBy({ _, _, rule -> rule }, ConstraintCollectors.toList { lesson, course, _ -> assignmentOf(lesson, course) })
+
+    private fun classRulesHard(factory: ConstraintFactory): Constraint =
+        classRuleGroups(factory).filter { rule, _ -> rule.isHard }
+            .penalize(HardSoftScore.ONE_HARD) { rule, lessons -> rule.violations(lessons).toLong() }
+            .asConstraint("Planner constraint for a class (hard)")
+
+    private fun classRulesSoft(factory: ConstraintFactory): Constraint =
+        classRuleGroups(factory).filter { rule, _ -> !rule.isHard }
+            .join(PassWeights::class.java)
+            .penalize(HardSoftScore.ONE_SOFT) { rule, lessons, weights -> softPenalty(rule, rule.violations(lessons), weights) }
+            .asConstraint("Planner constraint for a class (soft)")
+
+    private fun otherRulesHard(factory: ConstraintFactory): Constraint =
+        otherRuleGroups(factory).filter { rule, _ -> rule.isHard }
+            .penalize(HardSoftScore.ONE_HARD) { rule, lessons -> rule.violations(lessons).toLong() }
+            .asConstraint("Planner constraint for teachers or subjects (hard)")
+
+    private fun otherRulesSoft(factory: ConstraintFactory): Constraint =
+        otherRuleGroups(factory).filter { rule, _ -> !rule.isHard }
+            .join(PassWeights::class.java)
+            .penalize(HardSoftScore.ONE_SOFT) { rule, lessons, weights -> softPenalty(rule, rule.violations(lessons), weights) }
+            .asConstraint("Planner constraint for teachers or subjects (soft)")
+
+    /** G3: weight of the rule's objective in this pass times weight factor times violations / normalizer, in soft points. */
+    private fun softPenalty(rule: AppliedRuleFact, violations: Int, weights: PassWeights): Long =
+        scaled(weights.weightOf(rule.objectiveIndex) * rule.weightFactor * violations / rule.normalizer)
+
+    private fun assignmentOf(lesson: LessonPlacement, course: CourseAssignment) =
+        LessonAssignment(course.classFact.id, course.subjectId, course.teacher!!.id, lesson.room!!.id, lesson.timeslot!!.daySlot)
 
     private fun placedLessons(factory: ConstraintFactory) = factory.forEach(LessonPlacement::class.java).filter { it.isPlaced }
 

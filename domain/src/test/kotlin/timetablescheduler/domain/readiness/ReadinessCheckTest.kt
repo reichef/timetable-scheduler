@@ -7,6 +7,9 @@ import timetablescheduler.domain.curriculum.CurriculumEntry
 import timetablescheduler.domain.curriculum.SchoolClass
 import timetablescheduler.domain.curriculum.Subject
 import timetablescheduler.domain.room.Room
+import timetablescheduler.domain.scheduling.constraint.FixationInvalidity
+import timetablescheduler.domain.scheduling.constraint.TeacherFixation
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import timetablescheduler.domain.teacher.Teacher
 import timetablescheduler.domain.validation.ValidationResult
 import kotlin.test.Test
@@ -142,5 +145,19 @@ class ReadinessCheckTest {
         )
 
         assertEquals(emptyList(), issues)
+    }
+
+    @Test
+    fun `a teacher fixation made invalid by later changes is reported with its reason (002 FR-013a)`() {
+        val level6 = level("6", mathe to 4)
+        val class6a = classes(level6, "a").single()
+        val unqualified = teacher("OHNE", 10)
+        val fixation = TeacherFixation(TeacherFixationId.new(), schoolId, class6a.id, mathe.id, unqualified.id, 0)
+
+        val issues = ReadinessCheck.issuesOf(
+            ReadinessInput(30, listOf(raumA), listOf(mathe), listOf(level6), listOf(class6a), listOf(unqualified, teacher("MATH", 10, mathe)), listOf(fixation)),
+        )
+
+        assertEquals(listOf(ReadinessIssue.InvalidTeacherFixation(fixation.id, FixationInvalidity.NOT_QUALIFIED)), issues.filterIsInstance<ReadinessIssue.InvalidTeacherFixation>())
     }
 }

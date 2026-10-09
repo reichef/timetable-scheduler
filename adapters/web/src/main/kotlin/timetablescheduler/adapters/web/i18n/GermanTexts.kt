@@ -100,6 +100,12 @@ object GermanTexts : UiTexts {
             "slot" to "Zeitfenster",
             "timeLimitMinutes" to "Zeitlimit",
             "homeRoomId" to "Klassenraum",
+            "limit" to "Grenzwert",
+            "classId" to "Klasse",
+            "teacherId" to "Lehrkraft",
+            "subjectId" to "Fach",
+            "course" to "Fach dieser Klasse",
+            "separateObjective" to "Gesondert verglichene Soll-Bedingungen",
         )
 
         private fun label(field: String) = fieldLabels[field] ?: field
@@ -120,6 +126,9 @@ object GermanTexts : UiTexts {
             ValidationError.IncorrectCurrentPassword -> "Das aktuelle Passwort ist falsch."
             is ValidationError.HomeRoomTaken -> "Der Raum ist bereits Klassenraum von ${error.otherClassName}."
             is ValidationError.ConfirmationMissing -> "Bitte bestätigen Sie die Hinweise."
+            ValidationError.TeacherNotQualified -> "Die Lehrkraft ist für das Fach nicht qualifiziert."
+            ValidationError.SubjectNotInCurriculum -> "Das Fach steht nicht im Lehrplan der Klasse."
+            is ValidationError.FixedPeriodsExceedLoad -> "Die festgelegten ${error.fixedPeriods} Stunden übersteigen das Deputat von ${error.weeklyLoad} Stunden."
         }
 
         override fun describe(type: DependantType) = when (type) {
@@ -130,6 +139,8 @@ object GermanTexts : UiTexts {
             DependantType.SCHOOL_CLASS -> "Klasse"
             DependantType.TIME_SLOT -> "Zeitfenster"
             DependantType.TEACHER -> "Lehrkraft"
+            DependantType.SCHEDULING_CONSTRAINT -> "Bedingung"
+            DependantType.TEACHER_FIXATION -> "Festgelegte Lehrkraft"
         }
     }
 
@@ -145,6 +156,7 @@ object GermanTexts : UiTexts {
         override val teachersLink = "Lehrkräfte"
         override val readinessLink = "Bereitschaft für die Planung"
         override val generationsLink = "Stundenplanläufe"
+        override val constraintsLink = "Bedingungen"
         override fun featuresLink(count: Int) = "Ausstattung ($count)"
         override fun roomsLink(count: Int) = "Räume ($count)"
         override fun timeGridLink(teachingSlotsPerWeek: Int) = "Zeitraster ($teachingSlotsPerWeek Unterrichtsstunden pro Woche)"
@@ -293,12 +305,15 @@ object GermanTexts : UiTexts {
             is ReadinessIssue.TeacherWithoutQualification -> "Lehrkräfte ohne Qualifikation"
             is ReadinessIssue.TeacherZeroLoad -> "Lehrkräfte ohne Deputat"
             is ReadinessIssue.TeacherLoadExceedsGrid -> "Lehrkräfte mit Deputat über dem Zeitraster"
+            is ReadinessIssue.InvalidTeacherFixation -> "Ungültige Lehrer-Festlegungen"
         }
         override fun missingFeatures(featureNames: List<String>) = " – fehlende Ausstattung: ${featureNames.joinToString(", ")}"
         override fun missingPeriods(periods: Int) = ": $periods Wochenstunden fehlen"
         override fun excessPeriods(periods: Int) = ": $periods Wochenstunden zu viel"
         override fun levelName(identifier: String) = "Stufe $identifier"
     }
+
+    override val constraints: ConstraintTexts = GermanConstraintTexts
 
     override val generations = object : GenerationTexts {
         override val title = "Stundenplanläufe"

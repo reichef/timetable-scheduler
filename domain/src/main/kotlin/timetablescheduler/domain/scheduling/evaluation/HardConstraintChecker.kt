@@ -1,5 +1,7 @@
 package timetablescheduler.domain.scheduling.evaluation
 
+import timetablescheduler.domain.scheduling.constraint.EffectiveConstraints
+import timetablescheduler.domain.scheduling.constraint.RuleViolations
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
@@ -45,8 +47,26 @@ object HardConstraintChecker {
             loadExceeded(problem, lessons) +
             lessons.violating(HardRule.TEACHER_UNAVAILABLE) { problem.teacher(it.teacherId)?.unavailable?.contains(it.daySlot) == true } +
             severalTeachersPerCourse(lessons) +
-            lessonsNotRequired(problem, lessons)
+            lessonsNotRequired(problem, lessons) +
+            fixationViolations(problem, lessons) +
+            plannerConstraintViolations(problem, lessons)
     }
+
+    /** FR-013a: every lesson of a fixed course is taught by the fixed teacher. */
+    private fun fixationViolations(problem: SchedulingProblem, lessons: List<LessonAssignment>): List<HardViolation> =
+        problem.fixations.mapNotNull { fixation ->
+            val others = lessons.filter { it.course == fixation.course && it.teacherId != fixation.teacherId }
+            if (others.isEmpty()) null else HardViolation(HardRule.TEACHER_FIXATION, others)
+        }
+
+    /** Active hard planner constraints (FR-012), counted per class or target by the catalogue rules (G9). */
+    private fun plannerConstraintViolations(problem: SchedulingProblem, lessons: List<LessonAssignment>): List<HardViolation> =
+        EffectiveConstraints.resolve(problem)
+            .filter { it.constraint.isHard }
+            .mapNotNull { applied ->
+                val violation = RuleViolations.of(applied, problem, lessons)
+                if (violation.count == 0) null else HardViolation(HardRule.PLANNER_CONSTRAINT, violation.lessons, applied.constraint.id)
+            }
 
     private fun List<LessonAssignment>.violating(rule: HardRule, isViolation: (LessonAssignment) -> Boolean): List<HardViolation> =
         filter(isViolation).map { HardViolation(rule, listOf(it)) }

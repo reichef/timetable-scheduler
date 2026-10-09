@@ -1,14 +1,19 @@
 package timetablescheduler.adapters.solver
 
+import timetablescheduler.adapters.solver.model.AppliedRuleFact
 import timetablescheduler.adapters.solver.model.ClassFact
 import timetablescheduler.adapters.solver.model.CourseAssignment
 import timetablescheduler.adapters.solver.model.LessonPlacement
+import timetablescheduler.adapters.solver.model.ObjectiveLayout
 import timetablescheduler.adapters.solver.model.PassWeights
 import timetablescheduler.adapters.solver.model.RoomFact
 import timetablescheduler.adapters.solver.model.TeacherFact
 import timetablescheduler.adapters.solver.model.TimeslotFact
 import timetablescheduler.adapters.solver.model.TimetablePlan
 import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.constraint.AppliedConstraint
+import timetablescheduler.domain.scheduling.constraint.EffectiveConstraints
+import timetablescheduler.domain.scheduling.constraint.RuleViolations
 import timetablescheduler.domain.scheduling.problem.ProblemClass
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.CourseKey
@@ -28,6 +33,7 @@ object ProblemMapping {
         }
         val classes = problem.classes.map { ClassFact(it.id, it.priorityWeight) }
         val courses = problem.classes.flatMap { schoolClass -> coursesOf(schoolClass, classes, teachers) }
+        pinFixedTeachers(problem, courses, teachers)
         var nextLessonId = 0
         val lessons = courses.flatMap { course ->
             val suitable = suitableRooms(problem, course, rooms)
@@ -40,12 +46,57 @@ object ProblemMapping {
             this.classes = classes
             this.courses = courses
             this.lessons = lessons
+            this.rules = ruleFactsOf(problem)
             this.passWeights = PassWeights(
-                classFill = 0.5,
-                teacherLoad = 0.5,
+                weights = List(objectiveCount(problem)) { 1.0 / objectiveCount(problem) },
                 totalWeightedDemand = totalWeightedDemand(problem),
                 totalTeacherLoad = teachers.sumOf { it.weeklyLoad }.coerceAtLeast(1),
             )
+        }
+    }
+
+    /**
+     * The objectives the solver weighs (G3): class fill, teacher load usage, one per soft constraint compared
+     * separately (FR-006a) and, if any other soft constraint is active, the other soft constraints combined.
+     */
+    fun objectiveCount(problem: SchedulingProblem): Int =
+        ObjectiveLayout.FIRST_SEPARATE + problem.separateObjectiveIds.size + if (hasOtherSoftConstraints(problem)) 1 else 0
+
+    private fun hasOtherSoftConstraints(problem: SchedulingProblem) =
+        EffectiveConstraints.resolve(problem).any { !it.constraint.isHard && it.constraint.id !in problem.separateObjectiveIds }
+
+    /**
+     * One fact per applied constraint. A soft constraint compared separately is normalized by its own opportunities;
+     * all other soft constraints share one objective normalized by the sum of weight times opportunities (G3), so the
+     * solver's soft score moves exactly like the objective values of the domain.
+     */
+    private fun ruleFactsOf(problem: SchedulingProblem): List<AppliedRuleFact> {
+        val applied = EffectiveConstraints.resolve(problem)
+        fun opportunities(rule: AppliedConstraint) = RuleViolations.of(rule, problem, emptyList()).opportunities
+        val separateOpportunities = applied.filter { it.constraint.id in problem.separateObjectiveIds }
+            .groupBy { it.constraint.id }
+            .mapValues { (_, rules) -> rules.sumOf(::opportunities).toDouble() }
+        val others = applied.filter { !it.constraint.isHard && it.constraint.id !in problem.separateObjectiveIds }
+        val otherNormalizer = others.sumOf { (it.constraint.weight?.factor ?: 1) * opportunities(it) }.toDouble().coerceAtLeast(1.0)
+        val otherIndex = ObjectiveLayout.FIRST_SEPARATE + problem.separateObjectiveIds.size
+        return applied.mapIndexed { index, rule ->
+            val separatePosition = problem.separateObjectiveIds.indexOf(rule.constraint.id)
+            when {
+                rule.constraint.isHard -> AppliedRuleFact(index, rule, problem, objectiveIndex = -1, weightFactor = 0, normalizer = 1.0)
+                separatePosition >= 0 -> AppliedRuleFact(
+                    index, rule, problem, ObjectiveLayout.FIRST_SEPARATE + separatePosition, 1, separateOpportunities.getValue(rule.constraint.id),
+                )
+                else -> AppliedRuleFact(index, rule, problem, otherIndex, rule.constraint.weight?.factor ?: 1, otherNormalizer)
+            }
+        }
+    }
+
+    /** FR-013a: a fixed course keeps its teacher; it is pinned so the solver never changes it. */
+    private fun pinFixedTeachers(problem: SchedulingProblem, courses: List<CourseAssignment>, teachers: List<TeacherFact>) {
+        problem.fixations.forEach { fixation ->
+            val course = courses.firstOrNull { it.classFact.id == fixation.classId && it.subjectId == fixation.subjectId } ?: return@forEach
+            course.teacher = teachers.firstOrNull { it.id == fixation.teacherId } ?: return@forEach
+            course.pinned = true
         }
     }
 

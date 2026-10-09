@@ -3,6 +3,7 @@ package timetablescheduler.application.fakes
 import timetablescheduler.application.MasterDataPorts
 import timetablescheduler.application.MasterDataUseCases
 import timetablescheduler.application.SchedulingPorts
+import timetablescheduler.application.account.InstallationUseCase
 import timetablescheduler.application.scheduling.SchedulingProblemBuilder
 import timetablescheduler.domain.scheduling.evaluation.ObjectiveEvaluator
 import timetablescheduler.domain.scheduling.generation.Alternative
@@ -50,6 +51,8 @@ class MasterDataWorld {
     val classLevels = InMemoryClassLevelRepository()
     val schoolClasses = InMemorySchoolClassRepository(classLevels)
 
+    val constraints = InMemorySchedulingConstraintRepository()
+    val fixations = InMemoryTeacherFixationRepository()
     val generations = InMemoryGenerationRepository()
     val solver = FakeTimetableSolver()
     val executor = ImmediateGenerationExecutor()
@@ -59,7 +62,7 @@ class MasterDataWorld {
     val ports = MasterDataPorts(
         transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage, subjects, classLevels, schoolClasses, teachers,
     )
-    val schedulingPorts = SchedulingPorts(generations, solver, executor, generationLog, clock)
+    val schedulingPorts = SchedulingPorts(constraints, fixations, generations, solver, executor, generationLog, clock)
     val useCases = MasterDataUseCases(ports, schedulingPorts)
 
     val schoolUseCases get() = useCases.schools
@@ -137,6 +140,9 @@ class MasterDataWorld {
         val stored = teachers.findById(teacher.id)!!
         teachers.update(stored.copy(unavailability = stored.unavailability + entries))
     }
+
+    /** The installation use case wired to this world; it seeds the default constraints (002 FR-013c). */
+    fun installation() = InstallationUseCase(transactions, schools, accounts, credentials, hasher, constraints)
 
     /** The scheduling problem of the school's current data, as a generation would see it. */
     fun problemOf(schoolId: SchoolId): SchedulingProblem =

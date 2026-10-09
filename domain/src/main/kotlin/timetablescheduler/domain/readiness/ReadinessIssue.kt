@@ -4,6 +4,8 @@ import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
+import timetablescheduler.domain.scheduling.constraint.FixationInvalidity
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 
 /**
  * A gap or inconsistency that would prevent classes from being fully scheduled (FR-024). Issues are warnings:
@@ -30,4 +32,7 @@ sealed interface ReadinessIssue {
 
     /** `TEACHER_LOAD_EXCEEDS_GRID` */
     data class TeacherLoadExceedsGrid(val teacherId: TeacherId, val excessPeriods: Int) : ReadinessIssue
+
+    /** `INVALID_TEACHER_FIXATION` (002 FR-013a): a fixation no longer fits the master data; blocks generations. */
+    data class InvalidTeacherFixation(val fixationId: TeacherFixationId, val reason: FixationInvalidity) : ReadinessIssue
 }

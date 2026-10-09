@@ -3,10 +3,24 @@ package timetablescheduler.application.fakes
 import timetablescheduler.application.port.GenerationEventLog
 import timetablescheduler.application.port.GenerationExecutor
 import timetablescheduler.application.port.GenerationRepository
+import timetablescheduler.application.port.SchedulingConstraintRepository
+import timetablescheduler.application.port.TeacherFixationRepository
 import timetablescheduler.application.port.SolverListener
 import timetablescheduler.application.port.StopSignal
 import timetablescheduler.application.port.TimetableSolver
+import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.common.SubjectId
+import timetablescheduler.domain.common.TeacherId
+import timetablescheduler.domain.common.TimeSlotId
+import timetablescheduler.domain.scheduling.constraint.ClassScope
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
+import timetablescheduler.domain.scheduling.constraint.TeacherFixation
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
+import timetablescheduler.domain.scheduling.constraint.classScope
+import timetablescheduler.domain.scheduling.constraint.excludedSlots
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
 import timetablescheduler.domain.scheduling.generation.Generation
@@ -125,4 +139,68 @@ class RecordingGenerationEventLog : GenerationEventLog {
     override fun failed(generationId: GenerationId, exceptionClass: String) {
         events += GenerationEvent.Failed(generationId, exceptionClass)
     }
+}
+
+class InMemorySchedulingConstraintRepository : VersionedInMemoryStore<SchedulingConstraintId, SchedulingConstraint>(
+    keyOf = { it.id },
+    versionOf = { it.version },
+    withVersion = { constraint, version -> constraint.copy(version = version) },
+), SchedulingConstraintRepository {
+    override fun insert(constraint: SchedulingConstraint) = super.insert(constraint)
+    override fun update(constraint: SchedulingConstraint): Boolean = super.update(constraint)
+
+    override fun delete(constraintId: SchedulingConstraintId) {
+        entries.remove(constraintId)
+    }
+
+    override fun findById(constraintId: SchedulingConstraintId): SchedulingConstraint? = entries[constraintId]
+    override fun findBySchool(schoolId: SchoolId): List<SchedulingConstraint> = entries.values.filter { it.schoolId == schoolId }
+
+    override fun findReferencingClass(classId: SchoolClassId): List<SchedulingConstraint> = entries.values.filter { it.rule.refersToClass(classId) }
+    override fun findReferencingTeacher(teacherId: TeacherId): List<SchedulingConstraint> = entries.values.filter { it.rule.refersToTeacher(teacherId) }
+    override fun findReferencingSubject(subjectId: SubjectId): List<SchedulingConstraint> = entries.values.filter { it.rule.refersToSubject(subjectId) }
+    override fun findReferencingSlot(slotId: TimeSlotId): List<SchedulingConstraint> =
+        entries.values.filter { constraint -> constraint.rule.excludedSlots.any { it.slotId == slotId } }
+
+    private fun ConstraintRule.refersToClass(classId: SchoolClassId): Boolean = when (this) {
+        is ConstraintRule.SubjectDoublePeriodsInClass -> this.classId == classId
+        is ConstraintRule.ClassExcludedSlots -> this.classId == classId
+        is ConstraintRule.SubjectExcludedSlots -> this.classId == classId
+        else -> classScope == ClassScope.SpecificClass(classId)
+    }
+
+    private fun ConstraintRule.refersToTeacher(teacherId: TeacherId): Boolean = when (this) {
+        is ConstraintRule.TeacherMaxPeriodsPerDay -> this.teacherId == teacherId
+        is ConstraintRule.TeacherMaxGapsPerDay -> this.teacherId == teacherId
+        is ConstraintRule.TeacherExcludedSlots -> this.teacherId == teacherId
+        else -> false
+    }
+
+    private fun ConstraintRule.refersToSubject(subjectId: SubjectId): Boolean = when (this) {
+        is ConstraintRule.SubjectMaxPerDayInClass -> this.subjectId == subjectId
+        is ConstraintRule.SubjectDoublePeriodsInClass -> this.subjectId == subjectId
+        is ConstraintRule.SubjectExcludedSlots -> this.subjectId == subjectId
+        else -> false
+    }
+}
+
+class InMemoryTeacherFixationRepository : VersionedInMemoryStore<TeacherFixationId, TeacherFixation>(
+    keyOf = { it.id },
+    versionOf = { it.version },
+    withVersion = { fixation, version -> fixation.copy(version = version) },
+), TeacherFixationRepository {
+    override fun insert(fixation: TeacherFixation) = super.insert(fixation)
+    override fun update(fixation: TeacherFixation): Boolean = super.update(fixation)
+
+    override fun delete(fixationId: TeacherFixationId) {
+        entries.remove(fixationId)
+    }
+
+    override fun findById(fixationId: TeacherFixationId): TeacherFixation? = entries[fixationId]
+    override fun findBySchool(schoolId: SchoolId): List<TeacherFixation> = entries.values.filter { it.schoolId == schoolId }
+    override fun findByCourse(classId: SchoolClassId, subjectId: SubjectId): TeacherFixation? =
+        entries.values.firstOrNull { it.classId == classId && it.subjectId == subjectId }
+    override fun findByClass(classId: SchoolClassId): List<TeacherFixation> = entries.values.filter { it.classId == classId }
+    override fun findByTeacher(teacherId: TeacherId): List<TeacherFixation> = entries.values.filter { it.teacherId == teacherId }
+    override fun findBySubject(subjectId: SubjectId): List<TeacherFixation> = entries.values.filter { it.subjectId == subjectId }
 }

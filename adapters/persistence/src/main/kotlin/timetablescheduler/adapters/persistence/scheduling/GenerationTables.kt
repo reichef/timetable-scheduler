@@ -59,3 +59,54 @@ object AlternativeSoftViolationTable : Table("alternative_soft_violation") {
     val violations = integer("violations")
     override val primaryKey = PrimaryKey(alternativeId, constraintId)
 }
+
+object GenerationSeparateObjectiveTable : Table("generation_separate_objective") {
+    val generationId = javaUUID("generation_id").references(GenerationTable.id)
+    val position = short("position")
+    val originalConstraintId = javaUUID("original_constraint_id")
+    override val primaryKey = PrimaryKey(generationId, position)
+}
+
+object GenerationInfeasibleConstraintTable : Table("generation_infeasible_constraint") {
+    val generationId = javaUUID("generation_id").references(GenerationTable.id)
+    val originalConstraintId = javaUUID("original_constraint_id")
+    override val primaryKey = PrimaryKey(generationId, originalConstraintId)
+}
+
+/** Snapshot of the constraints in effect at the start (FR-022); plain ids, no references (G7). */
+object GenerationConstraintTable : Table("generation_constraint") {
+    val generationId = javaUUID("generation_id").references(GenerationTable.id)
+    val position = integer("position")
+    val originalConstraintId = javaUUID("original_constraint_id")
+    val type = varchar("type", 40)
+    val kind = varchar("kind", 4)
+    val weight = varchar("weight", 6).nullable()
+    val active = bool("active")
+    val allClasses = bool("all_classes")
+    val classId = javaUUID("class_id").nullable()
+    val teacherId = javaUUID("teacher_id").nullable()
+    val subjectId = javaUUID("subject_id").nullable()
+    val limitValue = integer("limit_value").nullable()
+    val acrossBreaks = bool("across_breaks").nullable()
+    val version = integer("version")
+    override val primaryKey = PrimaryKey(generationId, position)
+}
+
+object GenerationConstraintSlotTable : Table("generation_constraint_slot") {
+    val generationId = javaUUID("generation_id")
+    val position = integer("position")
+    val dayOfWeek = varchar("day_of_week", 9)
+    val slotId = javaUUID("slot_id")
+    override val primaryKey = PrimaryKey(generationId, position, dayOfWeek, slotId)
+}
+
+object GenerationFixationTable : Table("generation_fixation") {
+    val generationId = javaUUID("generation_id").references(GenerationTable.id)
+    val position = integer("position")
+    val originalFixationId = javaUUID("original_fixation_id")
+    val classId = javaUUID("class_id")
+    val subjectId = javaUUID("subject_id")
+    val teacherId = javaUUID("teacher_id")
+    val version = integer("version")
+    override val primaryKey = PrimaryKey(generationId, position)
+}

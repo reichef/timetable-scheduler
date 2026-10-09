@@ -17,6 +17,11 @@ import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.constraint.AppliedConstraint
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.RuleViolations
+import timetablescheduler.domain.scheduling.problem.SchedulingProblem
+import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import java.time.DayOfWeek
 
 // Timefold model (G5). Planning entities and the solution need mutable fields and a no-arg constructor for the
@@ -41,18 +46,72 @@ data class TeacherFact(
 data class ClassFact(val id: SchoolClassId, val priorityWeight: Int)
 
 /**
- * The weights of the current solver pass (G2): every placed lesson is rewarded with the pass weights times its
- * normalized contribution to each objective, scaled to whole numbers by [SCALE].
+ * The weights of the current solver pass (G2) in objective order — class fill, teacher load usage, the soft
+ * constraints compared separately, the other soft constraints (see [ObjectiveLayout]). Every objective's normalized
+ * contribution is multiplied by its weight and scaled to whole soft points by [SCALE].
  */
 data class PassWeights(
-    val classFill: Double,
-    val teacherLoad: Double,
+    val weights: List<Double>,
     val totalWeightedDemand: Double,
     val totalTeacherLoad: Int,
 ) {
+    val classFill: Double get() = weights[ObjectiveLayout.CLASS_FILL]
+    val teacherLoad: Double get() = weights[ObjectiveLayout.TEACHER_LOAD]
+
+    fun weightOf(objectiveIndex: Int): Double = weights[objectiveIndex]
+
     companion object {
         const val SCALE = 1_000_000.0
     }
+}
+
+/**
+ * A planner constraint as it applies to one class or target (domain `AppliedConstraint`), with what the solver needs
+ * to score it: whether it is hard, and for soft ones the objective it belongs to, its weight factor and the
+ * normalizer that turns violations into a share of that objective (G3). Violations are counted by the domain rules,
+ * so solver and domain always agree.
+ */
+class AppliedRuleFact(
+    val id: Int,
+    val applied: AppliedConstraint,
+    private val problem: SchedulingProblem,
+    val objectiveIndex: Int,
+    val weightFactor: Int,
+    val normalizer: Double,
+) {
+    val isHard: Boolean get() = applied.constraint.isHard
+
+    /** Rules about one class are joined by class; all others are matched lesson by lesson. */
+    val classKey: SchoolClassId? = when (val rule = applied.rule) {
+        is ConstraintRule.TeacherMaxPeriodsPerDay, is ConstraintRule.TeacherMaxGapsPerDay, is ConstraintRule.TeacherExcludedSlots -> null
+        is ConstraintRule.SubjectExcludedSlots -> rule.classId
+        is ConstraintRule.SubjectDoublePeriodsInClass -> rule.classId
+        is ConstraintRule.ClassExcludedSlots -> rule.classId
+        else -> applied.classId
+    }
+
+    /** Whether a placed lesson of [course] can count for this rule. */
+    fun covers(course: CourseAssignment): Boolean = when (val rule = applied.rule) {
+        is ConstraintRule.TeacherMaxPeriodsPerDay -> course.teacher?.id == rule.teacherId
+        is ConstraintRule.TeacherMaxGapsPerDay -> course.teacher?.id == rule.teacherId
+        is ConstraintRule.TeacherExcludedSlots -> course.teacher?.id == rule.teacherId
+        is ConstraintRule.SubjectExcludedSlots -> course.subjectId == rule.subjectId && (rule.classId == null || course.classFact.id == rule.classId)
+        is ConstraintRule.SubjectDoublePeriodsInClass -> course.classFact.id == rule.classId && course.subjectId == rule.subjectId
+        is ConstraintRule.SubjectMaxPerDayInClass -> course.classFact.id == applied.classId && course.subjectId == applied.subjectId
+        is ConstraintRule.ClassExcludedSlots -> course.classFact.id == rule.classId
+        else -> course.classFact.id == applied.classId
+    }
+
+    fun violations(lessons: List<LessonAssignment>): Int = RuleViolations.of(applied, problem, lessons).count
+
+    override fun toString(): String = "AppliedRuleFact($id)"
+}
+
+/** Positions of the objectives in weight vectors and objective vectors (matches `ObjectiveValues.asVector`). */
+object ObjectiveLayout {
+    const val CLASS_FILL = 0
+    const val TEACHER_LOAD = 1
+    const val FIRST_SEPARATE = 2
 }
 
 /**
@@ -136,8 +195,11 @@ class TimetablePlan() {
     @field:ProblemFactCollectionProperty
     var classes: List<ClassFact> = emptyList()
 
+    @field:ProblemFactCollectionProperty
+    var rules: List<AppliedRuleFact> = emptyList()
+
     @field:ProblemFactProperty
-    var passWeights: PassWeights = PassWeights(0.5, 0.5, 1.0, 1)
+    var passWeights: PassWeights = PassWeights(listOf(0.5, 0.5), 1.0, 1)
 
     @field:PlanningEntityCollectionProperty
     var courses: List<CourseAssignment> = emptyList()

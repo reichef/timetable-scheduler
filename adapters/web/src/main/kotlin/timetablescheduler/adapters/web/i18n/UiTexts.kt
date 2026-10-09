@@ -30,6 +30,7 @@ interface UiTexts {
     val accounts: AccountTexts
     val readiness: ReadinessTexts
     val generations: GenerationTexts
+    val constraints: ConstraintTexts
     val timetables: TimetableTexts
 }
 
@@ -100,6 +101,7 @@ interface SchoolTexts {
     val teachersLink: String
     val readinessLink: String
     val generationsLink: String
+    val constraintsLink: String
     fun featuresLink(count: Int): String
     fun roomsLink(count: Int): String
     fun timeGridLink(teachingSlotsPerWeek: Int): String

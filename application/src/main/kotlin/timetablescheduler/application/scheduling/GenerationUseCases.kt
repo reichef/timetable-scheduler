@@ -14,7 +14,9 @@ import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationGate
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.generation.GenerationId
+import timetablescheduler.domain.scheduling.generation.InfeasibilityPreCheck
 import timetablescheduler.domain.scheduling.problem.SchedulingInputFingerprint
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.validation.ValidationError
@@ -26,9 +28,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 data class StartRequest(
     val timeLimitMinutes: Int = Generation.DEFAULT_TIME_LIMIT_MINUTES,
     val warningsConfirmed: Boolean = false,
+    val separateObjectiveIds: List<SchedulingConstraintId> = emptyList(),
 ) {
     companion object {
         const val FIELD_WARNINGS_CONFIRMED = "warningsConfirmed"
+        const val FIELD_SEPARATE_OBJECTIVES = "separateObjective"
+        const val MAX_SEPARATE_OBJECTIVES = 3
     }
 }
 
@@ -69,7 +74,8 @@ class StartGeneration(
     private val transactions: TransactionRunner,
     private val access: SchoolAccessPolicy,
     private val readiness: ReadinessReportLoader,
-    private val problems: SchedulingProblemBuilder,
+    private val problems: ConstraintContextLoader,
+    private val names: TimetableNamesLoader,
     private val generations: GenerationRepository,
     private val executor: GenerationExecutor,
     private val runner: GenerationRunner,
@@ -82,9 +88,16 @@ class StartGeneration(
                 access.requireSchoolAccess(actor, schoolId).bind()
                 generations.findRunning(schoolId)?.let { fail(ApplicationError.GenerationRunning(it.id)) }
                 requireReady(schoolId, request)
-                val schedulingProblem = problems.build(schoolId)
+                val stored = problems.load(schoolId)
+                requireValidSeparateObjectives(request, stored)
+                requireNoContradictions(schoolId, stored)
+                val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds)
                 val fingerprint = SchedulingInputFingerprint.of(schedulingProblem)
-                val generation = Generation.start(schoolId, actor, clock.instant(), request.timeLimitMinutes, fingerprint).bind()
+                val generation = Generation.start(schoolId, actor, clock.instant(), request.timeLimitMinutes, fingerprint).bind().copy(
+                    separateObjectiveIds = request.separateObjectiveIds,
+                    constraintSnapshot = stored.constraints.filter { it.active },
+                    fixationSnapshot = stored.fixations,
+                )
                 generations.insert(generation)
                 problem = schedulingProblem
                 generation
@@ -95,6 +108,24 @@ class StartGeneration(
             executor.submit { runner.run(result.value, startedProblem) }
         }
         return result
+    }
+
+    /** FR-006a: at most three active soft constraints of the school can be compared separately. */
+    private fun OutcomeScope.requireValidSeparateObjectives(request: StartRequest, problem: SchedulingProblem) {
+        val ids = request.separateObjectiveIds
+        if (ids.size > StartRequest.MAX_SEPARATE_OBJECTIVES || ids.toSet().size != ids.size) {
+            fail(ApplicationError.Invalid(listOf(ValidationError.OutOfRange(StartRequest.FIELD_SEPARATE_OBJECTIVES, 0, StartRequest.MAX_SEPARATE_OBJECTIVES))))
+        }
+        val activeSoft = problem.constraints.filter { it.active && !it.isHard }.map { it.id }.toSet()
+        if (!activeSoft.containsAll(ids)) fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_SEPARATE_OBJECTIVES))))
+    }
+
+    /** FR-017: hard constraints that can never be met with the master data refuse the start and are named. */
+    private fun OutcomeScope.requireNoContradictions(schoolId: SchoolId, problem: SchedulingProblem) {
+        val contradicting = InfeasibilityPreCheck.contradictionsOf(problem).toSet()
+        if (contradicting.isNotEmpty()) {
+            fail(ApplicationError.ContradictingConstraints(problem.constraints.filter { it.id in contradicting }, names.load(schoolId)))
+        }
     }
 
     /** Blocking issues refuse the start and are named; warnings need the planner's confirmation (FR-010). */

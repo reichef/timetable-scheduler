@@ -2,7 +2,9 @@ package timetablescheduler.domain.scheduling.generation
 
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
+import timetablescheduler.domain.scheduling.constraint.TeacherFixation
 import timetablescheduler.domain.scheduling.pareto.ParetoArchive
 import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
@@ -36,7 +38,10 @@ enum class GenerationStatus { RUNNING, FINISHED, STOPPED, FAILED, FAILED_INFEASI
 
 /**
  * One run of the scheduler (FR-022): who started it when, its time limit (FR-009), status and progress, and the
- * fingerprint of the scheduling input at its start, which tells whether it is outdated (G8).
+ * fingerprint of the scheduling input at its start, which tells whether it is outdated (G8). The snapshot of the
+ * constraints and fixations in effect at the start stays unchanged when they are changed or deleted later; the soft
+ * constraints compared separately (FR-006a) refer to it. [infeasibleConstraintIds] names the hard constraints that can
+ * force violations when the generation ended as infeasible (FR-017).
  */
 data class Generation(
     val id: GenerationId,
@@ -49,6 +54,10 @@ data class Generation(
     val status: GenerationStatus,
     val inputFingerprint: String,
     val alternativesFound: Int,
+    val separateObjectiveIds: List<SchedulingConstraintId> = emptyList(),
+    val constraintSnapshot: List<SchedulingConstraint> = emptyList(),
+    val fixationSnapshot: List<TeacherFixation> = emptyList(),
+    val infeasibleConstraintIds: List<SchedulingConstraintId> = emptyList(),
 ) {
     val isRunning: Boolean get() = status == GenerationStatus.RUNNING
 

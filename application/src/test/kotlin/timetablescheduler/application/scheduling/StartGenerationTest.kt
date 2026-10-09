@@ -3,6 +3,9 @@ package timetablescheduler.application.scheduling
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.domain.scheduling.constraint.ClassScope
+import timetablescheduler.domain.scheduling.constraint.ConstraintKind
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
 import timetablescheduler.domain.scheduling.problem.SchedulingInputFingerprint
@@ -94,5 +97,55 @@ class StartGenerationTest {
 
         assertIs<Generation>(start().value())
         assertNull(world.generations.findRunning(test.school.id))
+    }
+
+    private fun soft(rule: ConstraintRule) =
+        world.useCases.constraints.create.execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.SOFT, null, rule)).value()
+
+    private fun hard(rule: ConstraintRule) =
+        world.useCases.constraints.create.execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.HARD, null, rule)).value()
+
+    @Test
+    fun `up to three active soft constraints are compared as separate objectives (FR-006a)`() {
+        val noGaps = soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id)))
+
+        val generation = test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = listOf(noGaps.id))).value()
+
+        assertEquals(listOf(noGaps.id), generation.separateObjectiveIds)
+        assertEquals(listOf(noGaps.id), world.solver.lastProblem!!.separateObjectiveIds)
+    }
+
+    @Test
+    fun `more than three, hard or switched-off constraints cannot be separate objectives`() {
+        val four = (1..2).map { soft(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), it)) } +
+            soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id))) + soft(ConstraintRule.TeacherMaxPeriodsPerDay(test.schmidt.id, 2))
+        val hardOne = hard(ConstraintRule.TeacherMaxPeriodsPerDay(test.mueller.id, 2))
+        val tooMany = ApplicationError.Invalid(listOf(ValidationError.OutOfRange(StartRequest.FIELD_SEPARATE_OBJECTIVES, 0, 3)))
+        val notSoft = ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_SEPARATE_OBJECTIVES)))
+
+        assertEquals(tooMany, test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = four.map { it.id })).error())
+        assertEquals(notSoft, test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = listOf(hardOne.id))).error())
+    }
+
+    @Test
+    fun `contradicting hard constraints refuse the start and are named (FR-017)`() {
+        val impossible = hard(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), 2))
+
+        val error = assertIs<ApplicationError.ContradictingConstraints>(test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest()).error())
+
+        assertEquals(listOf(impossible.id), error.constraints.map { it.id })
+    }
+
+    @Test
+    fun `a started generation keeps a snapshot of the active constraints and fixations (FR-022)`() {
+        val active = soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id)))
+        val off = soft(ConstraintRule.TeacherMaxPeriodsPerDay(test.schmidt.id, 1))
+        world.useCases.constraints.setActive.execute(test.admin.id, test.school.id, off.id, false, off.version).value()
+        val fixation = world.useCases.fixations.create.execute(test.admin.id, test.school.id, test.class5a.id, test.math.id, test.schmidt.id).value()
+
+        val generation = test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest()).value()
+
+        assertEquals(listOf(active), generation.constraintSnapshot)
+        assertEquals(listOf(fixation), generation.fixationSnapshot)
     }
 }

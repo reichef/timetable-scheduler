@@ -24,4 +24,13 @@ sealed interface ValidationError {
 
     /** A required confirmation (e.g. of readiness warnings before a generation) was not given. */
     data class ConfirmationMissing(val field: String) : ValidationError
+
+    /** A teacher fixation names a teacher not qualified for the subject (002 FR-013a). */
+    data object TeacherNotQualified : ValidationError
+
+    /** The subject is not in the class's curriculum (002 FR-013a). */
+    data object SubjectNotInCurriculum : ValidationError
+
+    /** The periods fixed for a teacher ([fixedPeriods]) exceed the weekly load ([weeklyLoad]) (002 FR-013a). */
+    data class FixedPeriodsExceedLoad(val weeklyLoad: Int, val fixedPeriods: Int) : ValidationError
 }

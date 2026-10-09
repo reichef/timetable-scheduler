@@ -6,6 +6,9 @@ import timetablescheduler.application.port.GenerationRepository
 import timetablescheduler.application.port.SolverListener
 import timetablescheduler.application.port.TimetableSolver
 import timetablescheduler.application.port.TransactionRunner
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
+import timetablescheduler.domain.scheduling.constraint.excludedSlots
 import timetablescheduler.domain.scheduling.evaluation.HardConstraintChecker
 import timetablescheduler.domain.scheduling.evaluation.ObjectiveEvaluator
 import timetablescheduler.domain.scheduling.generation.Alternative
@@ -50,11 +53,21 @@ class GenerationRunner(
         } finally {
             control.release(generation.id)
         }
-        val ended = generation.endAs(status, clock.instant())
-        inTransaction { generations.saveEnd(ended.copy(alternativesFound = collector.keptCount())) }
+        val ended = generation.endAs(status, clock.instant()).copy(
+            alternativesFound = collector.keptCount(),
+            infeasibleConstraintIds = if (status == GenerationStatus.FAILED_INFEASIBLE) constraintsForcingViolations(problem) else emptyList(),
+        )
+        inTransaction { generations.saveEnd(ended) }
         if (collector.discardedCount > 0) eventLog.discarded(generation.id, collector.discardedCount)
         eventLog.finished(generation.id, status, collector.keptCount(), Duration.between(generation.startedAt, checkNotNull(ended.finishedAt)))
     }
+
+    /** G4: only daily minimums and exclusions can force hard violations; the active hard ones are named (FR-017). */
+    private fun constraintsForcingViolations(problem: SchedulingProblem): List<SchedulingConstraintId> =
+        problem.constraints
+            .filter { it.active && it.isHard }
+            .filter { it.rule is ConstraintRule.ClassMinPeriodsPerDay || it.rule.excludedSlots.isNotEmpty() }
+            .map { it.id }
 
     private fun inTransaction(block: () -> Unit) {
         transactions.inTransaction {

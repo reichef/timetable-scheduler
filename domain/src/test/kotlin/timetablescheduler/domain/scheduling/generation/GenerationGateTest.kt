@@ -30,4 +30,11 @@ class GenerationGateTest {
         assertTrue(gate.blocking.isEmpty())
         assertTrue(gate.warnings.isEmpty())
     }
+
+    @Test
+    fun `an invalid teacher fixation blocks the start (G11)`() {
+        val invalid = ReadinessIssue.InvalidTeacherFixation(timetablescheduler.domain.scheduling.constraint.TeacherFixationId.new(), timetablescheduler.domain.scheduling.constraint.FixationInvalidity.EXCEEDS_LOAD)
+
+        assertEquals(listOf(invalid), GenerationGate.classify(listOf(invalid, zeroLoad)).blocking)
+    }
 }
