@@ -5,6 +5,7 @@ import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.OutcomeScope
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.error.outcome
+import timetablescheduler.application.port.ChosenTimetableRepository
 import timetablescheduler.application.port.GenerationExecutor
 import timetablescheduler.application.port.GenerationRepository
 import timetablescheduler.application.port.StopSignal
@@ -12,6 +13,7 @@ import timetablescheduler.application.port.TransactionRunner
 import timetablescheduler.application.readiness.ReadinessReportLoader
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.scheduling.generation.ChosenTimetable
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationGate
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
@@ -29,11 +31,13 @@ data class StartRequest(
     val timeLimitMinutes: Int = Generation.DEFAULT_TIME_LIMIT_MINUTES,
     val warningsConfirmed: Boolean = false,
     val separateObjectiveIds: List<SchedulingConstraintId> = emptyList(),
+    val startFromChosen: Boolean = false,
 ) {
     companion object {
         const val FIELD_WARNINGS_CONFIRMED = "warningsConfirmed"
         const val FIELD_SEPARATE_OBJECTIVES = "separateObjective"
         const val MAX_SEPARATE_OBJECTIVES = 3
+        const val FIELD_START_FROM_CHOSEN = "startFromChosen"
     }
 }
 
@@ -77,6 +81,7 @@ class StartGeneration(
     private val problems: ConstraintContextLoader,
     private val names: TimetableNamesLoader,
     private val generations: GenerationRepository,
+    private val chosenTimetables: ChosenTimetableRepository,
     private val executor: GenerationExecutor,
     private val runner: GenerationRunner,
     private val clock: Clock,
@@ -91,12 +96,14 @@ class StartGeneration(
                 val stored = problems.load(schoolId)
                 requireValidSeparateObjectives(request, stored)
                 requireNoContradictions(schoolId, stored)
-                val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds)
+                val reference = if (request.startFromChosen) requireChosen(schoolId) else null
+                val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds, reference = reference?.lessons)
                 val fingerprint = SchedulingInputFingerprint.of(schedulingProblem)
                 val generation = Generation.start(schoolId, actor, clock.instant(), request.timeLimitMinutes, fingerprint).bind().copy(
                     separateObjectiveIds = request.separateObjectiveIds,
                     constraintSnapshot = stored.constraints.filter { it.active },
                     fixationSnapshot = stored.fixations,
+                    referenceAlternativeId = reference?.alternativeId,
                 )
                 generations.insert(generation)
                 problem = schedulingProblem
@@ -109,6 +116,10 @@ class StartGeneration(
         }
         return result
     }
+
+    /** FR-006b: starting from the chosen timetable needs one. */
+    private fun OutcomeScope.requireChosen(schoolId: SchoolId): ChosenTimetable =
+        chosenTimetables.find(schoolId) ?: fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_START_FROM_CHOSEN))))
 
     /** FR-006a: at most three active soft constraints of the school can be compared separately. */
     private fun OutcomeScope.requireValidSeparateObjectives(request: StartRequest, problem: SchedulingProblem) {
@@ -179,4 +190,7 @@ class SchedulingUseCases(
     val get: GetGeneration,
     val getAlternative: GetAlternative,
     val recoverInterrupted: RecoverInterruptedGenerations,
+    val choose: ChooseAlternative,
+    val getChosen: GetChosenTimetable,
+    val compare: CompareAlternatives,
 )

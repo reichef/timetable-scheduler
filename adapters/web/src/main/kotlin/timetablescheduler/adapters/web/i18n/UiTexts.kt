@@ -1,6 +1,7 @@
 package timetablescheduler.adapters.web.i18n
 
 import timetablescheduler.application.error.DependantType
+import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.readiness.ReadinessIssue
@@ -102,6 +103,7 @@ interface SchoolTexts {
     val readinessLink: String
     val generationsLink: String
     val constraintsLink: String
+    val chosenTimetableLink: String
     fun featuresLink(count: Int): String
     fun roomsLink(count: Int): String
     fun timeGridLink(teachingSlotsPerWeek: Int): String
@@ -272,6 +274,27 @@ interface GenerationTexts {
     val classFill: String
     val teacherLoad: String
     val otherSoft: String
+    val stability: String
+    val startFromChosen: String
+    val compareLink: String
+    val compareTitle: String
+    val xAxis: String
+    val yAxis: String
+    val showChart: String
+    val compareWith: String
+    val diffHint: String
+    val chooseButton: String
+    val chosenMarker: String
+    val confirmChooseTitle: String
+    val confirmChooseIntro: String
+    val confirmChooseButton: String
+    val cancel: String
+    val conflictsTitle: String
+    val conflictsIntro: String
+    fun changedLessons(count: Int): String
+    fun chartCaption(xTitle: String, yTitle: String): String
+    fun diffTitle(first: Int, second: Int): String
+    fun hardRuleName(rule: HardRule): String
     fun statusName(status: GenerationStatus): String
     fun generationTitle(startedAt: String): String
     fun progress(elapsed: String, alternativesFound: Int): String
@@ -291,5 +314,16 @@ interface TimetableTexts {
     val unplacedHeading: String
     val deletedEntry: String
     val slotColumn: String
+    val chosenTitle: String
+    val noChosen: String
+    val toSourceGeneration: String
+    val noLongerFits: String
+    val startFromChosenLink: String
+    val conflictsHeading: String
+    val noLongerRequired: String
+    val noLongerRequiredHeading: String
+    val notPlacedHeading: String
+    fun chosenInfo(chosenAt: String, username: String): String
+    fun lessonAt(className: String, subjectName: String, dayName: String, slotLabel: String): String
     fun unplacedEntry(className: String, subjectName: String, periods: Int): String
 }

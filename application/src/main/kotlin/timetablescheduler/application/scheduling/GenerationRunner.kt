@@ -99,6 +99,7 @@ class GenerationRunner(
                 lessons = candidate.lessons,
                 unplaced = candidate.unplaced.filterValues { it > 0 },
                 softViolations = evaluation.softViolations,
+                changedLessons = evaluation.changedLessons,
             )
             store(archive.offer(alternative, alternative.objectiveValues.asVector()), alternative)
         }

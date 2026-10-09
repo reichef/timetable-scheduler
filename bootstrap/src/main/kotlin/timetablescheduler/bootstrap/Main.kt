@@ -12,6 +12,7 @@ import timetablescheduler.adapters.persistence.curriculum.ExposedSchoolClassRepo
 import timetablescheduler.adapters.persistence.curriculum.ExposedSubjectRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
+import timetablescheduler.adapters.persistence.scheduling.ExposedChosenTimetableRepository
 import timetablescheduler.adapters.persistence.scheduling.ExposedGenerationRepository
 import timetablescheduler.adapters.persistence.scheduling.ExposedSchedulingConstraintRepository
 import timetablescheduler.adapters.persistence.scheduling.ExposedTeacherFixationRepository
@@ -65,6 +66,7 @@ fun main() {
         constraints = constraints,
         fixations = ExposedTeacherFixationRepository(),
         generations = ExposedGenerationRepository(),
+        chosenTimetables = ExposedChosenTimetableRepository(),
         solver = TimefoldTimetableSolver(),
         executor = SingleThreadGenerationExecutor(),
         eventLog = Slf4jGenerationEventLog(),

@@ -39,9 +39,13 @@ import timetablescheduler.application.port.GenerationEventLog
 import timetablescheduler.application.port.GenerationExecutor
 import timetablescheduler.application.port.GenerationRepository
 import timetablescheduler.application.port.TimetableSolver
+import timetablescheduler.application.port.ChosenTimetableRepository
 import timetablescheduler.application.port.SchedulingConstraintRepository
 import timetablescheduler.application.port.TeacherFixationRepository
+import timetablescheduler.application.scheduling.ChooseAlternative
+import timetablescheduler.application.scheduling.CompareAlternatives
 import timetablescheduler.application.scheduling.ConstraintContextLoader
+import timetablescheduler.application.scheduling.GetChosenTimetable
 import timetablescheduler.application.scheduling.CreateConstraint
 import timetablescheduler.application.scheduling.DeleteConstraint
 import timetablescheduler.application.scheduling.GenerationControl
@@ -105,11 +109,13 @@ import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolClassId
+import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.common.TimeSlotId
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.constraint.TeacherFixation
 import timetablescheduler.domain.scheduling.constraint.type
+import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import timetablescheduler.domain.common.SubjectId
 
 /** All ports the use cases need; implemented by the persistence adapter or by in-memory fakes in tests. */
@@ -133,6 +139,7 @@ class SchedulingPorts(
     val constraints: SchedulingConstraintRepository,
     val fixations: TeacherFixationRepository,
     val generations: GenerationRepository,
+    val chosenTimetables: ChosenTimetableRepository,
     val solver: TimetableSolver,
     val executor: GenerationExecutor,
     val eventLog: GenerationEventLog,
@@ -172,11 +179,13 @@ class MasterDataUseCases(private val ports: MasterDataPorts, private val schedul
                 constraintDependants(schedulingPorts.constraints.findReferencingSubject(subjectId), subjects.findById(subjectId)?.name.orEmpty())
             },
             DependantSource { subjectId -> fixationDependants(schedulingPorts.fixations.findBySubject(subjectId)) },
+            DependantSource { subjectId -> chosenTimetableUsing(subjects.findById(subjectId)?.schoolId) { it.subjectId == subjectId } },
         )
     }
 
     private val roomDependantSources: List<DependantSource<RoomId>> = with(ports) {
         listOf(
+            DependantSource { roomId -> chosenTimetableUsing(rooms.findById(roomId)?.schoolId) { it.roomId == roomId } },
             DependantSource { roomId ->
                 val schoolClass = schoolClasses.findByHomeRoom(roomId) ?: return@DependantSource emptyList()
                 val level = classLevels.findById(schoolClass.classLevelId) ?: return@DependantSource emptyList()
@@ -198,8 +207,19 @@ class MasterDataUseCases(private val ports: MasterDataPorts, private val schedul
             DependantRef(DependantType.TEACHER_FIXATION, "$className $subject – $teacher", setOf(fixation.schoolId))
         }
 
+    /** The chosen timetable keeps references to the master data it uses (G7); it blocks their deletion (002 FR-016). */
+    private fun chosenTimetableUsing(schoolId: SchoolId?, uses: (LessonAssignment) -> Boolean): List<DependantRef> {
+        if (schoolId == null) return emptyList()
+        val chosen = schedulingPorts.chosenTimetables.find(schoolId) ?: return emptyList()
+        return if (chosen.lessons.any(uses)) listOf(DependantRef(DependantType.CHOSEN_TIMETABLE, "", setOf(schoolId))) else emptyList()
+    }
+
+    private fun schoolOfClass(classId: SchoolClassId): SchoolId? =
+        ports.schoolClasses.findById(classId)?.let { ports.classLevels.findById(it.classLevelId)?.schoolId }
+
     private val schoolClassDependantSources: List<DependantSource<SchoolClassId>> = with(ports) {
         listOf(
+            DependantSource { classId -> chosenTimetableUsing(schoolOfClass(classId)) { it.classId == classId } },
             DependantSource { classId ->
                 val schoolClass = schoolClasses.findById(classId) ?: return@DependantSource emptyList()
                 val name = classLevels.findById(schoolClass.classLevelId)?.let(schoolClass::displayName).orEmpty()
@@ -211,6 +231,7 @@ class MasterDataUseCases(private val ports: MasterDataPorts, private val schedul
 
     private val teacherDependantSources: List<DependantSource<TeacherId>> = with(ports) {
         listOf(
+            DependantSource { teacherId -> chosenTimetableUsing(teachers.findById(teacherId)?.schoolId) { it.teacherId == teacherId } },
             DependantSource { teacherId ->
                 val name = teachers.findById(teacherId)?.displayName.orEmpty()
                 constraintDependants(schedulingPorts.constraints.findReferencingTeacher(teacherId), name)
@@ -220,6 +241,9 @@ class MasterDataUseCases(private val ports: MasterDataPorts, private val schedul
     }
 
     private val timeSlotDependantSources: List<DependantSource<TimeSlotId>> = listOf(
+        DependantSource { slotId ->
+            ports.schools.findAllIds().flatMap { schoolId -> chosenTimetableUsing(schoolId) { it.daySlot.slotId == slotId } }
+        },
         DependantSource { slotId ->
             schedulingPorts.constraints.findReferencingSlot(slotId).map { constraint ->
                 val label = ports.schools.findTimeGrid(constraint.schoolId).slotById(slotId)?.label.orEmpty()
@@ -338,14 +362,17 @@ class MasterDataUseCases(private val ports: MasterDataPorts, private val schedul
         val names = timetableNames
         SchedulingUseCases(
             start = StartGeneration(
-                transactions, access, readinessReports, constraintContext, names, schedulingPorts.generations, schedulingPorts.executor, runner,
-                schedulingPorts.clock,
+                transactions, access, readinessReports, constraintContext, names, schedulingPorts.generations, schedulingPorts.chosenTimetables,
+                schedulingPorts.executor, runner, schedulingPorts.clock,
             ),
             stop = StopGeneration(transactions, access, schedulingPorts.generations, control),
-            list = ListGenerations(transactions, access, schedulingPorts.generations, accounts, readinessReports, schedulingPorts.constraints, names),
+            list = ListGenerations(transactions, access, schedulingPorts.generations, accounts, readinessReports, schedulingPorts.constraints, names, schedulingPorts.chosenTimetables),
             get = GetGeneration(transactions, access, schedulingPorts.generations, accounts, names),
-            getAlternative = GetAlternative(transactions, access, schedulingPorts.generations, names),
+            getAlternative = GetAlternative(transactions, access, schedulingPorts.generations, names, schedulingPorts.chosenTimetables),
             recoverInterrupted = RecoverInterruptedGenerations(transactions, schedulingPorts.generations, schedulingPorts.clock),
+            choose = ChooseAlternative(transactions, access, schedulingPorts.generations, schedulingPorts.chosenTimetables, constraintContext, names, schedulingPorts.clock),
+            getChosen = GetChosenTimetable(transactions, access, schedulingPorts.chosenTimetables, constraintContext, names, schedulingPorts.generations, accounts),
+            compare = CompareAlternatives(transactions, access, schedulingPorts.generations, names),
         )
     }
 

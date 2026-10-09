@@ -71,3 +71,12 @@ fieldset { border: 1px solid var(--border); border-radius: 4px; }
 form.language-switch { display: flex; gap: 0.25rem; margin: 0 0 0 auto; max-width: none; }
 form.language-switch button { padding: 0.2rem 0.6rem; background: none; color: var(--accent); border: 1px solid var(--border); }
 form.language-switch button.current { background: var(--accent); color: #fff; border-color: var(--accent); cursor: default; }
+
+/* Timetables (002 US3): highlighted cells (differences, conflicts, lessons no longer required), grids side by side. */
+td.highlight { background: #fde68a; }
+.side-by-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); gap: 1rem; }
+svg.trade-off { max-width: 36rem; background: var(--surface); border: 1px solid var(--border); }
+svg.trade-off .axis { stroke: var(--muted); }
+svg.trade-off .front { fill: none; stroke: var(--accent); stroke-dasharray: 4 3; }
+svg.trade-off circle { fill: var(--accent); }
+svg.trade-off text { font-size: 12px; fill: var(--text); }

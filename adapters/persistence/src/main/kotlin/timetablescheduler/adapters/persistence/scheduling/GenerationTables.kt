@@ -17,6 +17,7 @@ object GenerationTable : Table("generation") {
     val status = varchar("status", 17)
     val inputFingerprint = char("input_fingerprint", 64)
     val alternativesFound = integer("alternatives_found")
+    val referenceAlternativeId = javaUUID("reference_alternative_id").nullable()
     override val primaryKey = PrimaryKey(id)
 }
 
@@ -29,6 +30,8 @@ object AlternativeTable : Table("alternative") {
     val separate2 = decimal("separate_2", 5, 4).nullable()
     val separate3 = decimal("separate_3", 5, 4).nullable()
     val otherSoft = decimal("other_soft", 5, 4)
+    val stability = decimal("stability", 5, 4).nullable()
+    val changedLessons = integer("changed_lessons").nullable()
     override val primaryKey = PrimaryKey(id)
 }
 

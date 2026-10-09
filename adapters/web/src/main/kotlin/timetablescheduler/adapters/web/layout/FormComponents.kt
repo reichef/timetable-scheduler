@@ -3,6 +3,7 @@ package timetablescheduler.adapters.web.layout
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import kotlinx.html.FlowContent
+import timetablescheduler.adapters.web.timetable.conflictList
 import kotlinx.html.FORM
 import kotlinx.html.InputType
 import kotlinx.html.a
@@ -92,6 +93,11 @@ suspend fun ApplicationCall.respondBusinessFailure(error: ApplicationError, back
         is ApplicationError.ContradictingConstraints -> respondPage(texts.constraints.contradictionTitle, HttpStatusCode.Conflict) {
             p { +texts.constraints.contradictionIntro }
             constraintList(error.constraints, error.names, texts)
+            if (backLink != null) a(href = backLink) { +texts.common.back }
+        }
+        is ApplicationError.AlternativeConflicts -> respondPage(texts.generations.conflictsTitle, HttpStatusCode.Conflict) {
+            p { +texts.generations.conflictsIntro }
+            conflictList(error.violations, error.constraints, error.names, texts)
             if (backLink != null) a(href = backLink) { +texts.common.back }
         }
         is ApplicationError.GenerationRunning -> respondPage(texts.generations.runningTitle, HttpStatusCode.Conflict) {

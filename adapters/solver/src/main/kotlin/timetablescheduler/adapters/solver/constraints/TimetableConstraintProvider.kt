@@ -30,6 +30,7 @@ class TimetableConstraintProvider : ConstraintProvider {
         lessonWithoutTeacher(factory),
         classFill(factory),
         teacherLoadUsage(factory),
+        stability(factory),
         classRulesHard(factory),
         classRulesSoft(factory),
         otherRulesHard(factory),
@@ -156,6 +157,15 @@ class TimetableConstraintProvider : ConstraintProvider {
             .join(PassWeights::class.java)
             .reward(HardSoftScore.ONE_SOFT) { _, _, weights -> scaled(weights.teacherLoad / weights.totalTeacherLoad) }
             .asConstraint("Teacher load usage")
+
+    /** Stability (FR-006b): each reference lesson kept adds 1 / reference lessons, weighted for the pass. */
+    private fun stability(factory: ConstraintFactory): Constraint =
+        placedLessonsWithCourse(factory)
+            .filter { lesson, course -> lesson.keepsReference(course.teacher) }
+            .join(PassWeights::class.java)
+            .filter { _, _, weights -> weights.stabilityIndex >= 0 }
+            .reward(HardSoftScore.ONE_SOFT) { _, _, weights -> scaled(weights.stability / weights.totalReferenceLessons) }
+            .asConstraint("Stability")
 
     private fun scaled(objectiveShare: Double): Long = (objectiveShare * PassWeights.SCALE).roundToLong()
 }

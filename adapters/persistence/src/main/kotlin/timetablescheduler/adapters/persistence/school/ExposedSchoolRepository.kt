@@ -47,6 +47,8 @@ class ExposedSchoolRepository : SchoolRepository {
             .map { it.toSchool() }
             .sortedBy { it.name.lowercase() }
 
+    override fun findAllIds(): List<SchoolId> = SchoolTable.selectAll().map { SchoolId(it[SchoolTable.id]) }
+
     override fun findByNameIgnoreCase(name: String): School? =
         SchoolTable.selectAll().where { SchoolTable.name.lowerCase() eq name.trim().lowercase() }
             .singleOrNull()?.toSchool()

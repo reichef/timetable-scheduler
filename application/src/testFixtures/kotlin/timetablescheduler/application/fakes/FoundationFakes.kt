@@ -56,6 +56,8 @@ class InMemorySchoolRepository : VersionedInMemoryStore<SchoolId, School>(
 
     private val timeGrids = mutableMapOf<SchoolId, TimeGrid>()
 
+    override fun findAllIds(): List<SchoolId> = entries.keys.toList()
+
     override fun findTimeGrid(schoolId: SchoolId): TimeGrid = timeGrids[schoolId] ?: TimeGrid.empty()
 
     override fun saveTimeGrid(schoolId: SchoolId, timeGrid: TimeGrid) {

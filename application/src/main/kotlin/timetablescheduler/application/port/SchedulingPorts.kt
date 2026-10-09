@@ -3,6 +3,7 @@ package timetablescheduler.application.port
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
+import timetablescheduler.domain.scheduling.generation.ChosenTimetable
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
@@ -65,4 +66,15 @@ interface GenerationEventLog {
     fun discarded(generationId: GenerationId, candidates: Int)
     fun finished(generationId: GenerationId, status: GenerationStatus, alternatives: Int, duration: Duration)
     fun failed(generationId: GenerationId, exceptionClass: String)
+}
+
+/** The school's chosen timetable (FR-021); at most one per school. */
+interface ChosenTimetableRepository {
+    fun find(schoolId: SchoolId): ChosenTimetable?
+
+    /**
+     * Stores [chosen] as the school's timetable: inserted when [expectedVersion] is null and none exists yet, otherwise
+     * replaced if the stored version equals [expectedVersion]. Returns false on a concurrent choice (FR-028).
+     */
+    fun save(chosen: ChosenTimetable, expectedVersion: Int?): Boolean
 }

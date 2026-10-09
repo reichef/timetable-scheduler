@@ -1,6 +1,7 @@
 package timetablescheduler.adapters.web.i18n
 
 import timetablescheduler.application.error.DependantType
+import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.readiness.ReadinessIssue
@@ -141,6 +142,7 @@ object EnglishTexts : UiTexts {
             DependantType.TEACHER -> "Teacher"
             DependantType.SCHEDULING_CONSTRAINT -> "Constraint"
             DependantType.TEACHER_FIXATION -> "Fixed teacher"
+            DependantType.CHOSEN_TIMETABLE -> "Chosen timetable"
         }
     }
 
@@ -157,6 +159,7 @@ object EnglishTexts : UiTexts {
         override val readinessLink = "Readiness for scheduling"
         override val generationsLink = "Generations"
         override val constraintsLink = "Constraints"
+        override val chosenTimetableLink = "Chosen timetable"
         override fun featuresLink(count: Int) = "Room features ($count)"
         override fun roomsLink(count: Int) = "Rooms ($count)"
         override fun timeGridLink(teachingSlotsPerWeek: Int) = "Time grid ($teachingSlotsPerWeek teaching periods per week)"
@@ -347,6 +350,41 @@ object EnglishTexts : UiTexts {
         override val infeasibleHint = "No valid timetable could be built with the hard constraints."
         override val classFill = "Classes filled"
         override val teacherLoad = "Teaching loads used"
+        override val stability = "Stability"
+        override val startFromChosen = "Start from the chosen timetable (as few changes as possible)"
+        override val compareLink = "Compare alternatives"
+        override val compareTitle = "Compare alternatives"
+        override val xAxis = "Horizontal axis"
+        override val yAxis = "Vertical axis"
+        override val showChart = "Show chart"
+        override val compareWith = "Compare with"
+        override val diffHint = "Highlighted cells differ."
+        override val chooseButton = "Choose as timetable"
+        override val chosenMarker = "This is the chosen timetable."
+        override val confirmChooseTitle = "Confirm unplaced lessons"
+        override val confirmChooseIntro = "This alternative does not place all lessons. They stay visible as \"not placed\" in the chosen timetable:"
+        override val confirmChooseButton = "Choose anyway"
+        override val cancel = "Cancel"
+        override val conflictsTitle = "Alternative no longer fits"
+        override val conflictsIntro = "With the current data these lessons violate a hard constraint, so the alternative cannot be chosen:"
+        override fun changedLessons(count: Int) = if (count == 1) "1 lesson changed" else "$count lessons changed"
+        override fun chartCaption(xTitle: String, yTitle: String) = "$xTitle (horizontal) against $yTitle (vertical)"
+        override fun diffTitle(first: Int, second: Int) = "Alternatives $first and $second compared"
+        override fun hardRuleName(rule: HardRule) = when (rule) {
+            HardRule.TEACHER_DOUBLE_BOOKED -> "teacher booked twice"
+            HardRule.CLASS_DOUBLE_BOOKED -> "class booked twice"
+            HardRule.ROOM_DOUBLE_BOOKED -> "room booked twice"
+            HardRule.TEACHER_NOT_QUALIFIED -> "teacher not qualified"
+            HardRule.ROOM_LACKS_FEATURE -> "room lacks a required feature"
+            HardRule.OUTSIDE_HOME_ROOM -> "not in the home room"
+            HardRule.NOT_A_TEACHING_SLOT -> "not a teaching slot"
+            HardRule.TEACHER_LOAD_EXCEEDED -> "weekly load exceeded"
+            HardRule.TEACHER_UNAVAILABLE -> "teacher unavailable"
+            HardRule.SEVERAL_TEACHERS_FOR_COURSE -> "several teachers for one subject of the class"
+            HardRule.LESSON_NOT_REQUIRED -> "lesson no longer required by the curriculum"
+            HardRule.TEACHER_FIXATION -> "fixed teacher not kept"
+            HardRule.PLANNER_CONSTRAINT -> "hard constraint violated"
+        }
         override val otherSoft = "Soft constraints met"
         override fun statusName(status: GenerationStatus) = when (status) {
             GenerationStatus.RUNNING -> "running"
@@ -373,6 +411,17 @@ object EnglishTexts : UiTexts {
         override val unplacedHeading = "Lessons not placed"
         override val deletedEntry = "deleted entry"
         override val slotColumn = "Time"
+        override val chosenTitle = "Chosen timetable"
+        override val noChosen = "No timetable has been chosen yet. Choose an alternative of a generation."
+        override val toSourceGeneration = "To the generation it comes from"
+        override val noLongerFits = "The chosen timetable no longer fits the current data."
+        override val startFromChosenLink = "Start a new generation from this timetable"
+        override val conflictsHeading = "Conflicts with the current data"
+        override val noLongerRequired = "dropped"
+        override val noLongerRequiredHeading = "Lessons dropped by the current curricula"
+        override val notPlacedHeading = "Not placed"
+        override fun chosenInfo(chosenAt: String, username: String) = "Chosen on $chosenAt by $username."
+        override fun lessonAt(className: String, subjectName: String, dayName: String, slotLabel: String) = "$className, $subjectName – $dayName, $slotLabel"
         override fun unplacedEntry(className: String, subjectName: String, periods: Int) =
             "$className: $subjectName – ${if (periods == 1) "1 period" else "$periods periods"}"
     }

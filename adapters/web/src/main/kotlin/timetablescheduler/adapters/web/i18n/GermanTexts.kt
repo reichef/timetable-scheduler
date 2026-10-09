@@ -1,6 +1,7 @@
 package timetablescheduler.adapters.web.i18n
 
 import timetablescheduler.application.error.DependantType
+import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.readiness.ReadinessIssue
@@ -141,6 +142,7 @@ object GermanTexts : UiTexts {
             DependantType.TEACHER -> "Lehrkraft"
             DependantType.SCHEDULING_CONSTRAINT -> "Bedingung"
             DependantType.TEACHER_FIXATION -> "Festgelegte Lehrkraft"
+            DependantType.CHOSEN_TIMETABLE -> "Gewählter Stundenplan"
         }
     }
 
@@ -157,6 +159,7 @@ object GermanTexts : UiTexts {
         override val readinessLink = "Bereitschaft für die Planung"
         override val generationsLink = "Stundenplanläufe"
         override val constraintsLink = "Bedingungen"
+        override val chosenTimetableLink = "Gewählter Stundenplan"
         override fun featuresLink(count: Int) = "Ausstattung ($count)"
         override fun roomsLink(count: Int) = "Räume ($count)"
         override fun timeGridLink(teachingSlotsPerWeek: Int) = "Zeitraster ($teachingSlotsPerWeek Unterrichtsstunden pro Woche)"
@@ -344,6 +347,41 @@ object GermanTexts : UiTexts {
         override val classFill = "Klassen gefüllt"
         override val teacherLoad = "Deputate genutzt"
         override val otherSoft = "Soll-Bedingungen erfüllt"
+        override val stability = "Stabilität"
+        override val startFromChosen = "Vom gewählten Stundenplan ausgehen (möglichst wenige Änderungen)"
+        override val compareLink = "Alternativen vergleichen"
+        override val compareTitle = "Alternativen vergleichen"
+        override val xAxis = "Waagerechte Achse"
+        override val yAxis = "Senkrechte Achse"
+        override val showChart = "Diagramm anzeigen"
+        override val compareWith = "Vergleichen mit"
+        override val diffHint = "Markierte Felder unterscheiden sich."
+        override val chooseButton = "Als Stundenplan wählen"
+        override val chosenMarker = "Dies ist der gewählte Stundenplan."
+        override val confirmChooseTitle = "Nicht verplante Stunden bestätigen"
+        override val confirmChooseIntro = "Diese Alternative verplant nicht alle Stunden. Sie bleiben im gewählten Stundenplan als „nicht verplant“ sichtbar:"
+        override val confirmChooseButton = "Trotzdem wählen"
+        override val cancel = "Abbrechen"
+        override val conflictsTitle = "Alternative passt nicht mehr"
+        override val conflictsIntro = "Mit den aktuellen Daten verletzen diese Stunden eine Muss-Bedingung, daher kann die Alternative nicht gewählt werden:"
+        override fun changedLessons(count: Int) = if (count == 1) "1 Stunde geändert" else "$count Stunden geändert"
+        override fun chartCaption(xTitle: String, yTitle: String) = "$xTitle (waagerecht) gegen $yTitle (senkrecht)"
+        override fun diffTitle(first: Int, second: Int) = "Alternative $first und $second im Vergleich"
+        override fun hardRuleName(rule: HardRule) = when (rule) {
+            HardRule.TEACHER_DOUBLE_BOOKED -> "Lehrkraft doppelt verplant"
+            HardRule.CLASS_DOUBLE_BOOKED -> "Klasse doppelt verplant"
+            HardRule.ROOM_DOUBLE_BOOKED -> "Raum doppelt belegt"
+            HardRule.TEACHER_NOT_QUALIFIED -> "Lehrkraft nicht qualifiziert"
+            HardRule.ROOM_LACKS_FEATURE -> "Raum ohne benötigte Ausstattung"
+            HardRule.OUTSIDE_HOME_ROOM -> "nicht im Klassenraum"
+            HardRule.NOT_A_TEACHING_SLOT -> "kein Unterrichtszeitfenster"
+            HardRule.TEACHER_LOAD_EXCEEDED -> "Deputat überschritten"
+            HardRule.TEACHER_UNAVAILABLE -> "Lehrkraft nicht verfügbar"
+            HardRule.SEVERAL_TEACHERS_FOR_COURSE -> "mehrere Lehrkräfte für ein Fach der Klasse"
+            HardRule.LESSON_NOT_REQUIRED -> "Stunde laut Lehrplan nicht mehr nötig"
+            HardRule.TEACHER_FIXATION -> "festgelegte Lehrkraft nicht eingehalten"
+            HardRule.PLANNER_CONSTRAINT -> "Muss-Bedingung verletzt"
+        }
         override fun statusName(status: GenerationStatus) = when (status) {
             GenerationStatus.RUNNING -> "läuft"
             GenerationStatus.FINISHED -> "abgeschlossen"
@@ -369,6 +407,17 @@ object GermanTexts : UiTexts {
         override val unplacedHeading = "Nicht verplante Stunden"
         override val deletedEntry = "gelöschter Eintrag"
         override val slotColumn = "Zeit"
+        override val chosenTitle = "Gewählter Stundenplan"
+        override val noChosen = "Es wurde noch kein Stundenplan gewählt. Wählen Sie eine Alternative eines Laufs."
+        override val toSourceGeneration = "Zum Lauf, aus dem er stammt"
+        override val noLongerFits = "Der gewählte Stundenplan passt nicht mehr zu den aktuellen Daten."
+        override val startFromChosenLink = "Neuen Lauf ausgehend von diesem Stundenplan starten"
+        override val conflictsHeading = "Konflikte mit den aktuellen Daten"
+        override val noLongerRequired = "entfällt"
+        override val noLongerRequiredHeading = "Laut aktuellem Lehrplan entfallende Stunden"
+        override val notPlacedHeading = "Nicht verplant"
+        override fun chosenInfo(chosenAt: String, username: String) = "Gewählt am $chosenAt von $username."
+        override fun lessonAt(className: String, subjectName: String, dayName: String, slotLabel: String) = "$className, $subjectName – $dayName, $slotLabel"
         override fun unplacedEntry(className: String, subjectName: String, periods: Int) =
             "$className: $subjectName – ${if (periods == 1) "1 Stunde" else "$periods Stunden"}"
     }

@@ -1,5 +1,6 @@
 package timetablescheduler.application.fakes
 
+import timetablescheduler.application.port.ChosenTimetableRepository
 import timetablescheduler.application.port.GenerationEventLog
 import timetablescheduler.application.port.GenerationExecutor
 import timetablescheduler.application.port.GenerationRepository
@@ -23,6 +24,7 @@ import timetablescheduler.domain.scheduling.constraint.classScope
 import timetablescheduler.domain.scheduling.constraint.excludedSlots
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
+import timetablescheduler.domain.scheduling.generation.ChosenTimetable
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
@@ -203,4 +205,16 @@ class InMemoryTeacherFixationRepository : VersionedInMemoryStore<TeacherFixation
     override fun findByClass(classId: SchoolClassId): List<TeacherFixation> = entries.values.filter { it.classId == classId }
     override fun findByTeacher(teacherId: TeacherId): List<TeacherFixation> = entries.values.filter { it.teacherId == teacherId }
     override fun findBySubject(subjectId: SubjectId): List<TeacherFixation> = entries.values.filter { it.subjectId == subjectId }
+}
+
+class InMemoryChosenTimetableRepository : ChosenTimetableRepository {
+    private val chosen = mutableMapOf<SchoolId, ChosenTimetable>()
+
+    override fun find(schoolId: SchoolId): ChosenTimetable? = chosen[schoolId]
+
+    override fun save(chosen: ChosenTimetable, expectedVersion: Int?): Boolean {
+        if (this.chosen[chosen.schoolId]?.version != expectedVersion) return false
+        this.chosen[chosen.schoolId] = chosen
+        return true
+    }
 }

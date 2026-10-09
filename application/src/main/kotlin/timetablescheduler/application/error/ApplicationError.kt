@@ -5,6 +5,7 @@ import timetablescheduler.application.scheduling.TimetableNames
 import timetablescheduler.domain.readiness.ReadinessIssue
 import timetablescheduler.domain.scheduling.constraint.ConstraintType
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
+import timetablescheduler.domain.scheduling.evaluation.HardViolation
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.validation.ValidationError
 
@@ -27,11 +28,18 @@ sealed interface ApplicationError {
     /** Active hard constraints that can never be met together with the master data (002 FR-017). */
     data class ContradictingConstraints(val constraints: List<SchedulingConstraint>, val names: TimetableNames) : ApplicationError
 
+    /** The alternative violates hard constraints under today's data and cannot be chosen (002 FR-021). */
+    data class AlternativeConflicts(
+        val violations: List<HardViolation>,
+        val names: TimetableNames,
+        val constraints: List<SchedulingConstraint> = emptyList(),
+    ) : ApplicationError
+
     /** Another generation of the school is still running (002 FR-011). */
     data class GenerationRunning(val generationId: GenerationId) : ApplicationError
 }
 
-enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLASS, TIME_SLOT, TEACHER, SCHEDULING_CONSTRAINT, TEACHER_FIXATION }
+enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLASS, TIME_SLOT, TEACHER, SCHEDULING_CONSTRAINT, TEACHER_FIXATION, CHOSEN_TIMETABLE }
 
 /**
  * An entry that prevents a deletion (FR-023). For constraints [constraintType] says which catalogue entry it is, so the

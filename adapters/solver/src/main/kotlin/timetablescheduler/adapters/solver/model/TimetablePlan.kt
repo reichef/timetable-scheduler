@@ -47,16 +47,20 @@ data class ClassFact(val id: SchoolClassId, val priorityWeight: Int)
 
 /**
  * The weights of the current solver pass (G2) in objective order — class fill, teacher load usage, the soft
- * constraints compared separately, the other soft constraints (see [ObjectiveLayout]). Every objective's normalized
- * contribution is multiplied by its weight and scaled to whole soft points by [SCALE].
+ * constraints compared separately, the other soft constraints and, when starting from the chosen timetable, stability
+ * (see [ObjectiveLayout]). Every objective's normalized contribution is multiplied by its weight and scaled to whole
+ * soft points by [SCALE]. [stabilityIndex] is -1 without a reference.
  */
 data class PassWeights(
     val weights: List<Double>,
     val totalWeightedDemand: Double,
     val totalTeacherLoad: Int,
+    val stabilityIndex: Int = -1,
+    val totalReferenceLessons: Int = 1,
 ) {
     val classFill: Double get() = weights[ObjectiveLayout.CLASS_FILL]
     val teacherLoad: Double get() = weights[ObjectiveLayout.TEACHER_LOAD]
+    val stability: Double get() = if (stabilityIndex < 0) 0.0 else weights[stabilityIndex]
 
     fun weightOf(objectiveIndex: Int): Double = weights[objectiveIndex]
 
@@ -170,10 +174,22 @@ class LessonPlacement() {
         this.suitableRooms = suitableRooms
     }
 
+    /**
+     * The reference lesson this lesson is matched with when starting from the chosen timetable (FR-006b); the lesson
+     * counts as kept when it stays in the same timeslot and room and its course keeps the teacher. Lessons of a course
+     * are interchangeable, so a fixed one-to-one matching rewards the same timetables as the domain's multiset matching.
+     */
+    var referenceTimeslot: TimeslotFact? = null
+    var referenceRoom: RoomFact? = null
+    var referenceTeacher: TeacherFact? = null
+
     @ValueRangeProvider(id = "suitableRooms")
     fun suitableRoomRange(): List<RoomFact> = suitableRooms
 
     val isPlaced: Boolean get() = timeslot != null && room != null
+
+    fun keepsReference(teacher: TeacherFact?): Boolean =
+        referenceTimeslot != null && timeslot == referenceTimeslot && room == referenceRoom && teacher == referenceTeacher
 
     val classId: SchoolClassId get() = course.classFact.id
 

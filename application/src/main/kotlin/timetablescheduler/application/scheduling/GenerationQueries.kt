@@ -4,6 +4,7 @@ import timetablescheduler.application.access.SchoolAccessPolicy
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.error.outcome
+import timetablescheduler.application.port.ChosenTimetableRepository
 import timetablescheduler.application.port.ClassLevelRepository
 import timetablescheduler.application.port.GenerationRepository
 import timetablescheduler.application.port.RoomRepository
@@ -25,6 +26,7 @@ import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
+import timetablescheduler.domain.scheduling.generation.ChosenTimetable
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationGate
 import timetablescheduler.domain.scheduling.generation.GateResult
@@ -42,6 +44,7 @@ data class GenerationOverview(
     val readiness: ReadinessReport,
     val softConstraints: List<SchedulingConstraint> = emptyList(),
     val names: TimetableNames? = null,
+    val hasChosenTimetable: Boolean = false,
 ) {
     val running: GenerationSummary? get() = generations.firstOrNull { it.generation.isRunning }
 }
@@ -66,9 +69,20 @@ data class TimetableNames(
 
 /**
  * One alternative with its generation and everything needed to draw it per class, teacher or room (FR-019);
- * [number] is its position in the generation's list, as shown in the result table.
+ * [number] is its position in the generation's list, as shown in the result table. [others] are the other
+ * alternatives of the generation with their numbers (to compare with, FR-020), [chosen] the school's current choice
+ * (its version is needed to choose this one, FR-028).
  */
-data class AlternativeDetails(val generation: Generation, val alternative: Alternative, val names: TimetableNames, val number: Int)
+data class AlternativeDetails(
+    val generation: Generation,
+    val alternative: Alternative,
+    val names: TimetableNames,
+    val number: Int,
+    val others: List<Pair<Int, Alternative>> = emptyList(),
+    val chosen: ChosenTimetable? = null,
+) {
+    val isChosen: Boolean get() = chosen?.alternativeId == alternative.id
+}
 
 class ListGenerations(
     private val transactions: TransactionRunner,
@@ -78,6 +92,7 @@ class ListGenerations(
     private val readiness: ReadinessReportLoader,
     private val constraints: SchedulingConstraintRepository,
     private val names: TimetableNamesLoader,
+    private val chosenTimetables: ChosenTimetableRepository,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<GenerationOverview> =
         transactions.inTransaction {
@@ -91,6 +106,7 @@ class ListGenerations(
                     readiness = report,
                     softConstraints = constraints.findBySchool(schoolId).filter { it.active && !it.isHard },
                     names = names.load(schoolId),
+                    hasChosenTimetable = chosenTimetables.find(schoolId) != null,
                 )
             }
         }
@@ -118,6 +134,7 @@ class GetAlternative(
     private val access: SchoolAccessPolicy,
     private val generations: GenerationRepository,
     private val names: TimetableNamesLoader,
+    private val chosenTimetables: ChosenTimetableRepository,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId, alternativeId: AlternativeId): UseCaseResult<AlternativeDetails> =
         transactions.inTransaction {
@@ -127,7 +144,14 @@ class GetAlternative(
                 val alternatives = generations.findAlternatives(generationId)
                 val position = alternatives.indexOfFirst { it.id == alternativeId }
                 if (position < 0) fail(ApplicationError.NotFound)
-                AlternativeDetails(generation, alternatives[position], names.load(schoolId), number = position + 1)
+                AlternativeDetails(
+                    generation,
+                    alternatives[position],
+                    names.load(schoolId),
+                    number = position + 1,
+                    others = alternatives.mapIndexed { index, alternative -> index + 1 to alternative }.filter { it.second.id != alternativeId },
+                    chosen = chosenTimetables.find(schoolId),
+                )
             }
         }
 }

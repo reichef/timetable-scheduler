@@ -1,6 +1,9 @@
 package timetablescheduler.adapters.web.generation
 
 import timetablescheduler.adapters.web.TestSystem
+import timetablescheduler.application.error.UseCaseResult
+import timetablescheduler.application.scheduling.StartRequest
+import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.DaySlot
 import timetablescheduler.domain.scheduling.solution.CourseKey
@@ -36,6 +39,22 @@ class GenerationTestData(system: TestSystem) {
 
     /** All three lessons placed. */
     fun complete() = TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, true), lesson(german, MONDAY, false)), emptyMap())
+
+    /** German on Tuesday instead of Monday: as complete as [complete], but a different week. */
+    fun germanOnTuesday() = TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, true), lesson(german, TUESDAY, false)), emptyMap())
+
+    /**
+     * Runs a generation that finds [complete] and stores [others] as further alternatives; returns the generation with
+     * the paths of its alternatives in this order.
+     */
+    fun generationWith(vararg others: TimetableCandidate): Pair<Generation, List<String>> {
+        world.solver.candidates = { listOf(complete()) }
+        val admin = world.accounts.findByUsernameIgnoreCase(TestSystem.ADMIN)!!
+        val generation = (world.useCases.scheduling.start.execute(admin.id, schoolId, StartRequest(timeLimitMinutes = 1)) as UseCaseResult.Success).value
+        others.forEach { world.storeAlternative(generation, it) }
+        val paths = world.generations.findAlternatives(generation.id).map { "$generationsPath/${generation.id.value}/alternatives/${it.id.value}" }
+        return generation to paths
+    }
 
     /** German is missing. */
     fun withoutGerman() = TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, false)), mapOf(CourseKey(class5a.id, german.id) to 1))

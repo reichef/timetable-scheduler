@@ -6,10 +6,14 @@ import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import timetablescheduler.domain.scheduling.solution.ObjectiveValues
+import timetablescheduler.domain.scheduling.solution.Stability
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
 
-/** The objective values of an alternative and how often each soft constraint is violated (FR-018). */
-data class Evaluation(val values: ObjectiveValues, val softViolations: Map<SchedulingConstraintId, Int>)
+/**
+ * The objective values of an alternative, how often each soft constraint is violated (FR-018) and, when compared with
+ * the chosen timetable, how many of its lessons changed (FR-006b).
+ */
+data class Evaluation(val values: ObjectiveValues, val softViolations: Map<SchedulingConstraintId, Int>, val changedLessons: Int? = null)
 
 /** Computes the objectives of an alternative (FR-006, G3); all values are normalized to 0…1, higher is better. */
 object ObjectiveEvaluator {
@@ -23,8 +27,10 @@ object ObjectiveEvaluator {
                 teacherLoadUsage = teacherLoadUsage(problem, candidate.lessons),
                 separate = problem.separateObjectiveIds.map { id -> soft[id]?.let { 1.0 - it.violations.toDouble() / it.opportunities } ?: 1.0 },
                 otherSoft = combinedSatisfaction(soft.filterKeys { it !in separateIds }.values),
+                stability = problem.reference?.let { Stability.of(it, candidate.lessons) },
             ),
             softViolations = soft.mapValues { it.value.violations },
+            changedLessons = problem.reference?.let { Stability.changedLessons(it, candidate.lessons) },
         )
     }
 

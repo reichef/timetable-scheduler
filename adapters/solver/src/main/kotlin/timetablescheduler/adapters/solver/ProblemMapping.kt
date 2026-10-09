@@ -39,6 +39,7 @@ object ProblemMapping {
             val suitable = suitableRooms(problem, course, rooms)
             if (suitable.isEmpty()) emptyList() else List(course.requiredPeriods) { LessonPlacement(nextLessonId++, course, suitable) }
         }
+        problem.reference?.let { startFromReference(it, timeslots, teachers, courses, lessons) }
         return TimetablePlan().apply {
             this.timeslots = timeslots
             this.rooms = rooms
@@ -51,16 +52,52 @@ object ProblemMapping {
                 weights = List(objectiveCount(problem)) { 1.0 / objectiveCount(problem) },
                 totalWeightedDemand = totalWeightedDemand(problem),
                 totalTeacherLoad = teachers.sumOf { it.weeklyLoad }.coerceAtLeast(1),
+                stabilityIndex = if (problem.reference != null) objectiveCount(problem) - 1 else -1,
+                totalReferenceLessons = problem.reference?.size?.coerceAtLeast(1) ?: 1,
             )
         }
     }
 
     /**
      * The objectives the solver weighs (G3): class fill, teacher load usage, one per soft constraint compared
-     * separately (FR-006a) and, if any other soft constraint is active, the other soft constraints combined.
+     * separately (FR-006a), the other soft constraints combined if any is active and, when starting from the chosen
+     * timetable, stability as the last one (FR-006b).
      */
     fun objectiveCount(problem: SchedulingProblem): Int =
-        ObjectiveLayout.FIRST_SEPARATE + problem.separateObjectiveIds.size + if (hasOtherSoftConstraints(problem)) 1 else 0
+        ObjectiveLayout.FIRST_SEPARATE + problem.separateObjectiveIds.size +
+            (if (hasOtherSoftConstraints(problem)) 1 else 0) +
+            (if (problem.reference != null) 1 else 0)
+
+    /**
+     * FR-006b: every lesson is matched with a reference lesson of its course and starts there (warm start), as far as
+     * timeslot and room still exist; the course keeps the reference teacher unless it is fixed or no longer qualified.
+     * Lessons that now break a hard constraint are moved by the solver; unmatched lessons are constructed as usual.
+     */
+    private fun startFromReference(
+        reference: List<LessonAssignment>,
+        timeslots: List<TimeslotFact>,
+        teachers: List<TeacherFact>,
+        courses: List<CourseAssignment>,
+        lessons: List<LessonPlacement>,
+    ) {
+        val timeslotByDaySlot = timeslots.associateBy { it.daySlot }
+        val referenceByCourse = reference.groupBy { it.course }
+        val lessonsByCourse = lessons.groupBy { it.course }
+        courses.forEach { course ->
+            val referenceLessons = referenceByCourse[CourseKey(course.classFact.id, course.subjectId)].orEmpty()
+            val referenceTeacher = referenceLessons.firstOrNull()?.let { lesson -> teachers.firstOrNull { it.id == lesson.teacherId } }
+            if (!course.pinned && referenceTeacher != null && referenceTeacher in course.qualifiedTeachers) course.teacher = referenceTeacher
+            lessonsByCourse[course].orEmpty().zip(referenceLessons).forEach { (lesson, referenceLesson) ->
+                lesson.referenceTimeslot = timeslotByDaySlot[referenceLesson.daySlot]
+                lesson.referenceRoom = lesson.suitableRooms.firstOrNull { it.id == referenceLesson.roomId }
+                lesson.referenceTeacher = teachers.firstOrNull { it.id == referenceLesson.teacherId }
+                if (lesson.referenceTimeslot != null && lesson.referenceRoom != null) {
+                    lesson.timeslot = lesson.referenceTimeslot
+                    lesson.room = lesson.referenceRoom
+                }
+            }
+        }
+    }
 
     private fun hasOtherSoftConstraints(problem: SchedulingProblem) =
         EffectiveConstraints.resolve(problem).any { !it.constraint.isHard && it.constraint.id !in problem.separateObjectiveIds }

@@ -54,6 +54,7 @@ class MasterDataWorld {
     val constraints = InMemorySchedulingConstraintRepository()
     val fixations = InMemoryTeacherFixationRepository()
     val generations = InMemoryGenerationRepository()
+    val chosenTimetables = InMemoryChosenTimetableRepository()
     val solver = FakeTimetableSolver()
     val executor = ImmediateGenerationExecutor()
     val generationLog = RecordingGenerationEventLog()
@@ -62,7 +63,7 @@ class MasterDataWorld {
     val ports = MasterDataPorts(
         transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage, subjects, classLevels, schoolClasses, teachers,
     )
-    val schedulingPorts = SchedulingPorts(constraints, fixations, generations, solver, executor, generationLog, clock)
+    val schedulingPorts = SchedulingPorts(constraints, fixations, generations, chosenTimetables, solver, executor, generationLog, clock)
     val useCases = MasterDataUseCases(ports, schedulingPorts)
 
     val schoolUseCases get() = useCases.schools

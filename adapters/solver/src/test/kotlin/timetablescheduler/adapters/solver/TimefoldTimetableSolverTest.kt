@@ -6,6 +6,7 @@ import timetablescheduler.domain.scheduling.evaluation.ObjectiveEvaluator
 import timetablescheduler.domain.scheduling.pareto.Dominance
 import timetablescheduler.domain.scheduling.pareto.ParetoArchive
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
+import timetablescheduler.domain.scheduling.solution.Stability
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
@@ -103,5 +104,24 @@ class TimefoldTimetableSolverTest {
         val kept = archive.entries.map { it.objectives }
         assertTrue(kept.isNotEmpty())
         kept.forEach { first -> kept.forEach { second -> assertFalse(Dominance.dominates(first, second)) } }
+    }
+
+    @Test
+    fun `starting from a reference keeps most of it when one lesson no longer fits (FR-006b)`() {
+        val original = SeededSchools.solvable().problem()
+        val reference = solve(original, seconds = 20).candidates
+            .filter { it.unplacedPeriods() == 0 && original.violations(it).isEmpty() }
+            .first()
+        val moved = reference.lessons.first()
+        val problem = original.copy(
+            teachers = original.teachers.map { if (it.id == moved.teacherId) it.copy(unavailable = it.unavailable + moved.daySlot) else it },
+            reference = reference.lessons,
+        )
+
+        val reported = solve(problem, seconds = 15).candidates
+
+        reported.forEach { assertEquals(emptyList(), problem.violations(it)) }
+        val leastChanged = reported.filter { it.unplacedPeriods() == 0 }.minOf { Stability.changedLessons(reference.lessons, it.lessons) }
+        assertTrue(leastChanged in 1..1 + 3, "changed lessons: $leastChanged")
     }
 }

@@ -21,6 +21,9 @@ import timetablescheduler.adapters.web.school.schoolIdParameter
 import timetablescheduler.adapters.web.timetable.TimetableView
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
+import timetablescheduler.adapters.web.timetable.chosenTimetablePath
+import timetablescheduler.adapters.web.timetable.selectedEntity
+import timetablescheduler.application.scheduling.ChooseOutcome
 import timetablescheduler.application.scheduling.SchedulingUseCases
 import timetablescheduler.application.scheduling.StartRequest
 import timetablescheduler.domain.common.AccountId
@@ -41,20 +44,25 @@ private suspend fun ApplicationCall.showStartFormAgain(
     schoolId: SchoolId,
     errors: List<ValidationError>,
     enteredTimeLimit: String,
+    startFromChosen: Boolean,
 ) {
     respondResult(scheduling.list.execute(actor, schoolId)) {
-        respondGenerationList(it, errors, enteredTimeLimit, HttpStatusCode.UnprocessableEntity)
+        respondGenerationList(it, errors, enteredTimeLimit, HttpStatusCode.UnprocessableEntity, startFromChosen)
     }
 }
 
-/** Generations: start, progress, stop, results and alternatives (002 US1, contracts/web-routes.md). */
+/**
+ * Generations: start, progress, stop, results, alternatives, their comparison and choosing one (002 US1, US3,
+ * contracts/web-routes.md).
+ */
 fun Route.generationRoutes(dependencies: WebDependencies) {
     val scheduling = dependencies.useCases.scheduling
 
     authenticate(SESSION_AUTH) {
         get("/schools/{schoolId}/generations") {
             val schoolId = call.schoolIdParameter() ?: return@get
-            call.respondResult(scheduling.list.execute(call.actor, schoolId)) { call.respondGenerationList(it) }
+            val startFromChosen = call.parameters[StartRequest.FIELD_START_FROM_CHOSEN] == "true"
+            call.respondResult(scheduling.list.execute(call.actor, schoolId)) { call.respondGenerationList(it, startFromChosen = startFromChosen) }
         }
 
         post("/schools/{schoolId}/generations") {
@@ -62,6 +70,7 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val input = FormInput(form)
             val timeLimit = input.int("timeLimitMinutes")
+            val startFromChosen = form[StartRequest.FIELD_START_FROM_CHOSEN] == "true"
             val result = if (timeLimit == null) UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
             else scheduling.start.execute(
                 call.actor,
@@ -70,12 +79,13 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
                     timeLimitMinutes = timeLimit,
                     warningsConfirmed = form[StartRequest.FIELD_WARNINGS_CONFIRMED] == "true",
                     separateObjectiveIds = form.uuids(StartRequest.FIELD_SEPARATE_OBJECTIVES).map(::SchedulingConstraintId),
+                    startFromChosen = startFromChosen,
                 ),
             )
             call.respondFormResult(
                 result,
                 generationsPath(schoolId),
-                onInvalid = { errors -> call.showStartFormAgain(scheduling, call.actor, schoolId, errors, form.text("timeLimitMinutes")) },
+                onInvalid = { errors -> call.showStartFormAgain(scheduling, call.actor, schoolId, errors, form.text("timeLimitMinutes"), startFromChosen) },
             ) { generation -> call.seeOther(generationPath(generation)) }
         }
 
@@ -104,6 +114,47 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val view = TimetableView.fromParameter(call.parameters["view"])
             call.respondResult(scheduling.getAlternative.execute(call.actor, schoolId, generationId, alternativeId)) { details ->
                 call.respondAlternative(details, view, selectedEntity(view, call.parameters["id"], details.names))
+            }
+        }
+
+        get("/schools/{schoolId}/generations/{generationId}/compare") {
+            val schoolId = call.schoolIdParameter() ?: return@get
+            val generationId = call.generationIdParameter() ?: return@get
+            val descending = call.parameters["dir"] != "asc"
+            call.respondResult(scheduling.get.execute(call.actor, schoolId, generationId)) {
+                call.respondComparison(it, call.parameters["x"], call.parameters["y"], call.parameters["sort"], descending)
+            }
+        }
+
+        get("/schools/{schoolId}/generations/{generationId}/alternatives/{alternativeId}/diff/{otherId}") {
+            val schoolId = call.schoolIdParameter() ?: return@get
+            val generationId = call.generationIdParameter() ?: return@get
+            val alternativeId = call.alternativeIdParameter() ?: return@get
+            val otherId = call.idParameter("otherId")?.let(::AlternativeId) ?: return@get
+            val view = TimetableView.fromParameter(call.parameters["view"])
+            call.respondResult(scheduling.compare.execute(call.actor, schoolId, generationId, alternativeId, otherId)) { comparison ->
+                call.respondDiff(comparison, view, selectedEntity(view, call.parameters["id"], comparison.names))
+            }
+        }
+
+        post("/schools/{schoolId}/generations/{generationId}/alternatives/{alternativeId}/choose") {
+            val schoolId = call.schoolIdParameter() ?: return@post
+            val generationId = call.generationIdParameter() ?: return@post
+            val alternativeId = call.alternativeIdParameter() ?: return@post
+            val form = call.receiveCheckedForm()
+            val enteredVersion = form.text(FIELD_CHOSEN_VERSION).trim()
+            // An unreadable version can never match the current choice and is answered as a concurrent change.
+            val expectedVersion = if (enteredVersion.isEmpty()) null else enteredVersion.toIntOrNull() ?: -1
+            val result = scheduling.choose.execute(
+                call.actor, schoolId, generationId, alternativeId, expectedVersion, unplacedConfirmed = form[FIELD_UNPLACED_CONFIRMED] == "true",
+            )
+            val backLink = "${generationsPath(schoolId)}/${generationId.value}/alternatives/${alternativeId.value}"
+            call.respondResult(result, backLink) { outcome ->
+                when (outcome) {
+                    is ChooseOutcome.Chosen -> call.seeOther(chosenTimetablePath(schoolId))
+                    is ChooseOutcome.ConfirmationRequired ->
+                        call.respondChooseConfirmation(outcome.generation, outcome.alternative, outcome.unplaced, outcome.names, enteredVersion)
+                }
             }
         }
     }

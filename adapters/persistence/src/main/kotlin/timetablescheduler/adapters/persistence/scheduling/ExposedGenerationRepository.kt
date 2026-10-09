@@ -55,6 +55,7 @@ class ExposedGenerationRepository : GenerationRepository {
             it[status] = generation.status.name
             it[inputFingerprint] = generation.inputFingerprint
             it[alternativesFound] = generation.alternativesFound
+            it[referenceAlternativeId] = generation.referenceAlternativeId?.value
         }
         GenerationSeparateObjectiveTable.batchInsert(generation.separateObjectiveIds.withIndex()) { (index, constraintId) ->
             this[GenerationSeparateObjectiveTable.generationId] = generation.id.value
@@ -146,6 +147,8 @@ class ExposedGenerationRepository : GenerationRepository {
             it[separate2] = values.separate.getOrNull(1)?.let(::decimalOf)
             it[separate3] = values.separate.getOrNull(2)?.let(::decimalOf)
             it[otherSoft] = decimalOf(values.otherSoft)
+            it[stability] = values.stability?.let(::decimalOf)
+            it[changedLessons] = alternative.changedLessons
         }
         insertLessons(alternative)
         AlternativeUnplacedTable.batchInsert(alternative.unplaced.entries) { (course, periods) ->
@@ -208,6 +211,7 @@ class ExposedGenerationRepository : GenerationRepository {
                 lessons = lessons[id].orEmpty(),
                 unplaced = unplaced[id].orEmpty().toMap(),
                 softViolations = softViolations[id].orEmpty().toMap(),
+                changedLessons = row[AlternativeTable.changedLessons],
             )
         }
     }
@@ -217,7 +221,7 @@ class ExposedGenerationRepository : GenerationRepository {
         teacherLoadUsage = this[AlternativeTable.teacherLoadUsage].toDouble(),
         separate = listOfNotNull(this[AlternativeTable.separate1], this[AlternativeTable.separate2], this[AlternativeTable.separate3]).map { it.toDouble() },
         otherSoft = this[AlternativeTable.otherSoft].toDouble(),
-        stability = null,
+        stability = this[AlternativeTable.stability]?.toDouble(),
     )
 
     private fun ResultRow.toLesson() = LessonAssignment(
@@ -291,6 +295,7 @@ class ExposedGenerationRepository : GenerationRepository {
         status = GenerationStatus.valueOf(this[GenerationTable.status]),
         inputFingerprint = this[GenerationTable.inputFingerprint],
         alternativesFound = this[GenerationTable.alternativesFound],
+        referenceAlternativeId = this[GenerationTable.referenceAlternativeId]?.let(::AlternativeId),
     )
 
     private fun decimalOf(value: Double): BigDecimal = BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP)

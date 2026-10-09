@@ -58,6 +58,7 @@ data class Generation(
     val constraintSnapshot: List<SchedulingConstraint> = emptyList(),
     val fixationSnapshot: List<TeacherFixation> = emptyList(),
     val infeasibleConstraintIds: List<SchedulingConstraintId> = emptyList(),
+    val referenceAlternativeId: AlternativeId? = null,
 ) {
     val isRunning: Boolean get() = status == GenerationStatus.RUNNING
 
@@ -105,6 +106,7 @@ data class Alternative(
     val lessons: List<LessonAssignment>,
     val unplaced: Map<CourseKey, Int>,
     val softViolations: Map<SchedulingConstraintId, Int>,
+    val changedLessons: Int? = null,
 ) {
     val candidate: TimetableCandidate get() = TimetableCandidate(lessons, unplaced)
 

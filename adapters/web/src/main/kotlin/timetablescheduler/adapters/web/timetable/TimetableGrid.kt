@@ -1,7 +1,14 @@
 package timetablescheduler.adapters.web.timetable
 
 import kotlinx.html.FlowContent
+import kotlinx.html.FormMethod
+import kotlinx.html.InputType
 import kotlinx.html.br
+import kotlinx.html.button
+import kotlinx.html.form
+import kotlinx.html.input
+import kotlinx.html.option
+import kotlinx.html.select
 import kotlinx.html.table
 import kotlinx.html.td
 import kotlinx.html.th
@@ -56,6 +63,54 @@ fun lessonLines(lesson: LessonAssignment, view: TimetableView, names: TimetableN
         TimetableView.TEACHER -> listOf(className, subject, room)
         TimetableView.ROOM -> listOf(className, subject, teacher)
     }
+}
+
+/** One lesson in a sentence, e.g. in conflict lists: class, subject, day and slot. */
+fun lessonDescription(lesson: LessonAssignment, names: TimetableNames, texts: UiTexts): String {
+    val deleted = texts.timetables.deletedEntry
+    return texts.timetables.lessonAt(
+        names.classNames[lesson.classId] ?: deleted,
+        names.subjectNames[lesson.subjectId] ?: deleted,
+        texts.common.dayName(lesson.daySlot.day),
+        names.timeGrid.slots.firstOrNull { it.id == lesson.daySlot.slotId }?.label ?: deleted,
+    )
+}
+
+/** The entities a view can show, sorted by name: classes, teachers or rooms. */
+fun selectableEntities(view: TimetableView, names: TimetableNames): List<Pair<String, String>> = when (view) {
+    TimetableView.CLASS -> names.classNames.map { (id, name) -> "${id.value}" to name }
+    TimetableView.TEACHER -> names.teacherNames.map { (id, name) -> "${id.value}" to name }
+    TimetableView.ROOM -> names.roomNames.map { (id, name) -> "${id.value}" to name }
+}.sortedBy { it.second.lowercase() }
+
+/** The class, teacher or room to show: the requested one, else the first of the view. */
+fun selectedEntity(view: TimetableView, requestedId: String?, names: TimetableNames): String? =
+    requestedId?.takeIf { it.isNotBlank() } ?: selectableEntities(view, names).firstOrNull()?.first
+
+/** Plain GET forms to switch between class, teacher and room views of the page at [path]; work without any script. */
+fun FlowContent.viewSelection(path: String, names: TimetableNames, view: TimetableView, entityId: String?, texts: UiTexts) {
+    TimetableView.entries.forEach { candidateView ->
+        form(action = path, method = FormMethod.get, classes = "inline") {
+            input(type = InputType.hidden, name = "view") { value = candidateView.parameter }
+            select {
+                name = "id"
+                selectableEntities(candidateView, names).forEach { (id, name) ->
+                    option {
+                        value = id
+                        selected = candidateView == view && id == entityId
+                        +name
+                    }
+                }
+            }
+            button { +"${texts.timetables.show}: ${viewName(candidateView, texts)}" }
+        }
+    }
+}
+
+fun viewName(view: TimetableView, texts: UiTexts) = when (view) {
+    TimetableView.CLASS -> texts.timetables.viewClass
+    TimetableView.TEACHER -> texts.timetables.viewTeacher
+    TimetableView.ROOM -> texts.timetables.viewRoom
 }
 
 /** The display name of a class, teacher or room id in [view]. */

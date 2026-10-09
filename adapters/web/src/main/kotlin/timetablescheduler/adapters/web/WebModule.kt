@@ -25,6 +25,7 @@ import timetablescheduler.adapters.web.auth.authRoutes
 import timetablescheduler.adapters.web.classlevel.classLevelRoutes
 import timetablescheduler.adapters.web.constraint.constraintRoutes
 import timetablescheduler.adapters.web.generation.generationRoutes
+import timetablescheduler.adapters.web.timetable.chosenTimetableRoutes
 import timetablescheduler.adapters.web.layout.CsrfViolation
 import timetablescheduler.adapters.web.i18n.languageRoutes
 import timetablescheduler.adapters.web.i18n.texts
@@ -67,6 +68,7 @@ fun Application.webModule(dependencies: WebDependencies, settings: WebSettings) 
         readinessRoutes(dependencies)
         generationRoutes(dependencies)
         constraintRoutes(dependencies)
+        chosenTimetableRoutes(dependencies)
     }
 }
 
