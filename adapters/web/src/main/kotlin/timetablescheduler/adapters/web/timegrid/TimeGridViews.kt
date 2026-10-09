@@ -22,8 +22,9 @@ import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
 import timetablescheduler.adapters.web.auth.UserSession
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
-import timetablescheduler.adapters.web.layout.germanName
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.layout.textField
@@ -46,94 +47,93 @@ data class SlotFormInput(val label: String, val startTime: String, val endTime: 
 
 private fun TimeSlot.toFormInput() = SlotFormInput(label, "$startTime", "$endTime", kind.name)
 
-private fun SlotKind.germanName() = if (this == SlotKind.TEACHING) "Unterricht" else "Pause"
-
 suspend fun ApplicationCall.respondTimeGrid(
     view: TimeGridView,
     errors: List<ValidationError> = emptyList(),
     enteredSlot: SlotFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val schoolId = view.school.id
     val version = view.school.version
-    respondPage("Zeitraster – ${view.school.name}", status) { session ->
-        validationErrors(errors)
-        teachingDaysForm(session, schoolId, view.timeGrid.teachingDays, version)
-        weeklyGridTable(schoolId, view.timeGrid)
-        p { +"Unterrichtsstunden pro Woche: ${view.timeGrid.teachingSlotsPerWeek()}" }
-        h2 { +"Zeitfenster hinzufügen" }
+    respondPage(texts.timeGrid.title(view.school.name), status) { session ->
+        validationErrors(errors, texts)
+        teachingDaysForm(session, schoolId, view.timeGrid.teachingDays, version, texts)
+        weeklyGridTable(schoolId, view.timeGrid, texts)
+        p { +texts.timeGrid.teachingSlotsPerWeek(view.timeGrid.teachingSlotsPerWeek()) }
+        h2 { +texts.timeGrid.addSlot }
         form(action = "${timeGridPath(schoolId)}/slots", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "$version")
-            slotFields(enteredSlot)
-            button { +"Hinzufügen" }
+            slotFields(enteredSlot, texts)
+            button { +texts.common.add }
         }
-        p { a(href = "/schools/${schoolId.value}") { +"Zur Schule" } }
+        p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
 
-private fun FlowContent.teachingDaysForm(session: UserSession?, schoolId: SchoolId, teachingDays: Set<DayOfWeek>, version: Int) {
+private fun FlowContent.teachingDaysForm(session: UserSession?, schoolId: SchoolId, teachingDays: Set<DayOfWeek>, version: Int, texts: UiTexts) {
     form(action = "${timeGridPath(schoolId)}/days", method = FormMethod.post) {
         csrfField(session)
         hiddenField("version", "$version")
-        dayCheckboxes("Unterrichtstage", DayOfWeek.entries, teachingDays)
-        button { +"Unterrichtstage speichern" }
+        dayCheckboxes(texts.timeGrid.teachingDays, DayOfWeek.entries, teachingDays, texts)
+        button { +texts.timeGrid.saveTeachingDays }
     }
 }
 
 /** Days × slots overview; breaks are marked so planners can tell them apart at a glance (acceptance 1.4). */
-private fun FlowContent.weeklyGridTable(schoolId: SchoolId, timeGrid: TimeGrid) {
+private fun FlowContent.weeklyGridTable(schoolId: SchoolId, timeGrid: TimeGrid, texts: UiTexts) {
     val days = timeGrid.teachingDays.sorted()
     table {
         tr {
-            th { +"Zeitfenster" }
-            th { +"Zeit" }
-            th { +"Art" }
-            days.forEach { th { +it.germanName() } }
-            th { +"Aktionen" }
+            th { +texts.timeGrid.slotColumn }
+            th { +texts.timeGrid.timeColumn }
+            th { +texts.timeGrid.kindColumn }
+            days.forEach { th { +texts.common.dayName(it) } }
+            th { +texts.timeGrid.actionsColumn }
         }
         timeGrid.slots.forEach { slot ->
             tr(classes = if (slot.kind == SlotKind.BREAK) "break" else null) {
                 td { +slot.label }
                 td { +"${slot.startTime}–${slot.endTime}" }
-                td { +slot.kind.germanName() }
+                td { +texts.timeGrid.slotKindName(slot.kind) }
                 days.forEach { day -> td { +(if (slot in timeGrid.slotsOn(day)) "✓" else "–") } }
                 td {
-                    a(href = slotPath(schoolId, slot.id)) { +"Bearbeiten" }
+                    a(href = slotPath(schoolId, slot.id)) { +texts.common.edit }
                     +" "
-                    a(href = "${slotPath(schoolId, slot.id)}/delete") { +"Löschen" }
+                    a(href = "${slotPath(schoolId, slot.id)}/delete") { +texts.common.delete }
                 }
             }
         }
     }
 }
 
-private fun FORM.slotFields(entered: SlotFormInput?) {
-    textField("label", "Bezeichnung", entered?.label)
+private fun FORM.slotFields(entered: SlotFormInput?, texts: UiTexts) {
+    textField("label", texts.timeGrid.label, entered?.label)
     label {
-        +"Beginn"
+        +texts.timeGrid.start
         input(type = InputType.time, name = "startTime") { value = entered?.startTime.orEmpty() }
     }
     label {
-        +"Ende"
+        +texts.timeGrid.end
         input(type = InputType.time, name = "endTime") { value = entered?.endTime.orEmpty() }
     }
     label {
-        +"Art"
+        +texts.timeGrid.kind
         select {
             name = "kind"
             SlotKind.entries.forEach { kind ->
                 option {
                     value = kind.name
                     selected = entered?.kind == kind.name
-                    +kind.germanName()
+                    +texts.timeGrid.slotKindName(kind)
                 }
             }
         }
     }
 }
 
-private fun FORM.dayCheckboxes(title: String, days: List<DayOfWeek>, checkedDays: Set<DayOfWeek>) {
+private fun FORM.dayCheckboxes(title: String, days: List<DayOfWeek>, checkedDays: Set<DayOfWeek>, texts: UiTexts) {
     fieldSet {
         legend { +title }
         days.forEach { day ->
@@ -142,7 +142,7 @@ private fun FORM.dayCheckboxes(title: String, days: List<DayOfWeek>, checkedDays
                     value = day.name
                     checked = day in checkedDays
                 }
-                +day.germanName()
+                +texts.common.dayName(day)
             }
         }
     }
@@ -155,40 +155,41 @@ suspend fun ApplicationCall.respondSlotEditor(
     entered: SlotFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val schoolId = view.school.id
     val version = view.school.version
     val excludedDays = view.timeGrid.exclusions.filter { it.slotId == slot.id }.map { it.dayOfWeek }.toSet()
-    respondPage("Zeitfenster ${slot.label}", status) { session ->
-        validationErrors(errors)
+    respondPage(texts.timeGrid.slotTitle(slot.label), status) { session ->
+        validationErrors(errors, texts)
         form(action = slotPath(schoolId, slot.id), method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "$version")
-            slotFields(entered ?: slot.toFormInput())
-            button { +"Speichern" }
+            slotFields(entered ?: slot.toFormInput(), texts)
+            button { +texts.common.save }
         }
-        h2 { +"Tage ohne dieses Zeitfenster" }
+        h2 { +texts.timeGrid.daysWithoutSlot }
         form(action = "${slotPath(schoolId, slot.id)}/exclusions", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "$version")
-            dayCheckboxes("Entfällt am", view.timeGrid.teachingDays.sorted(), excludedDays)
-            button { +"Speichern" }
+            dayCheckboxes(texts.timeGrid.notHeldOn, view.timeGrid.teachingDays.sorted(), excludedDays, texts)
+            button { +texts.common.save }
         }
-        p { a(href = "${slotPath(schoolId, slot.id)}/delete") { +"Zeitfenster löschen" } }
-        p { a(href = timeGridPath(schoolId)) { +"Zum Zeitraster" } }
+        p { a(href = "${slotPath(schoolId, slot.id)}/delete") { +texts.timeGrid.deleteSlot } }
+        p { a(href = timeGridPath(schoolId)) { +texts.timeGrid.toTimeGrid } }
     }
 }
 
 suspend fun ApplicationCall.respondSlotDeletionConfirmation(schoolId: SchoolId, preview: SlotDeletionPreview) {
+    val texts = texts
     val slot = preview.slot
-    respondPage("Zeitfenster löschen") { session ->
-        p { +"Zeitfenster „${slot.label}“ (${slot.startTime}–${slot.endTime}) wirklich löschen?" }
-        val removals = "${preview.exclusionCount} Tagesausnahme(n) und ${preview.unavailabilityCount} Sperrzeiten von Lehrkräften"
-        p { +"Dabei werden $removals entfernt." }
+    respondPage(texts.timeGrid.deleteSlotTitle) { session ->
+        p { +texts.timeGrid.deleteQuestion(slot.label, slot.startTime, slot.endTime) }
+        p { +texts.timeGrid.deleteRemovals(preview.exclusionCount, preview.unavailabilityCount) }
         form(action = "${slotPath(schoolId, slot.id)}/delete", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${preview.schoolVersion}")
-            button(classes = "danger") { +"Endgültig löschen" }
+            button(classes = "danger") { +texts.timeGrid.deletePermanently }
         }
-        p { a(href = timeGridPath(schoolId)) { +"Abbrechen" } }
+        p { a(href = timeGridPath(schoolId)) { +texts.common.cancel } }
     }
 }

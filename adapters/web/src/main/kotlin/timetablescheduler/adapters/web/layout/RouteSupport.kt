@@ -88,15 +88,3 @@ class FormInput(val form: Parameters) {
 fun FORM.hiddenField(name: String, fieldValue: String) {
     input(type = InputType.hidden, name = name) { value = fieldValue }
 }
-
-private val germanDayNames = mapOf(
-    DayOfWeek.MONDAY to "Montag",
-    DayOfWeek.TUESDAY to "Dienstag",
-    DayOfWeek.WEDNESDAY to "Mittwoch",
-    DayOfWeek.THURSDAY to "Donnerstag",
-    DayOfWeek.FRIDAY to "Freitag",
-    DayOfWeek.SATURDAY to "Samstag",
-    DayOfWeek.SUNDAY to "Sonntag",
-)
-
-fun DayOfWeek.germanName(): String = germanDayNames.getValue(this)

@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import timetablescheduler.application.port.UserAccountRepository
+import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.AccountId
@@ -28,6 +29,7 @@ class ExposedUserAccountRepository : UserAccountRepository {
             it[role] = account.role.name
             it[active] = account.active
             it[version] = account.version
+            it[preferredLanguage] = account.preferredLanguage?.code
         }
         insertSchoolAssignments(account)
     }
@@ -44,6 +46,13 @@ class ExposedUserAccountRepository : UserAccountRepository {
         AccountSchoolTable.deleteWhere { AccountSchoolTable.accountId eq account.id.value }
         insertSchoolAssignments(account)
         return true
+    }
+
+    /** Only the owner changes the language, so no version check (R19); `update` never writes this column. */
+    override fun updatePreferredLanguage(accountId: AccountId, language: InterfaceLanguage) {
+        UserAccountTable.update({ UserAccountTable.id eq accountId.value }) {
+            it[preferredLanguage] = language.code
+        }
     }
 
     override fun findById(accountId: AccountId): UserAccount? =
@@ -96,6 +105,7 @@ class ExposedUserAccountRepository : UserAccountRepository {
             active = this[UserAccountTable.active],
             schoolIds = schoolIdsOf(listOf(accountId))[accountId].orEmpty(),
             version = this[UserAccountTable.version],
+            preferredLanguage = InterfaceLanguage.fromCode(this[UserAccountTable.preferredLanguage]),
         )
     }
 }

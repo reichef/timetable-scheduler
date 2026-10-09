@@ -5,6 +5,7 @@ import timetablescheduler.application.access.DependantSource
 import timetablescheduler.application.access.SchoolAccessPolicy
 import timetablescheduler.application.account.AccountUseCases
 import timetablescheduler.application.account.ActivateAccount
+import timetablescheduler.application.account.ChangeOwnLanguage
 import timetablescheduler.application.account.ChangeOwnPassword
 import timetablescheduler.application.account.CreateAccount
 import timetablescheduler.application.account.DeactivateAccount
@@ -143,6 +144,7 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             activate = ActivateAccount(transactions, access, accounts),
             resetPassword = ResetPassword(transactions, access, accounts, credentials, hasher),
             changeOwnPassword = ChangeOwnPassword(transactions, accounts, credentials, hasher),
+            changeOwnLanguage = ChangeOwnLanguage(transactions, accounts),
         )
     }
 

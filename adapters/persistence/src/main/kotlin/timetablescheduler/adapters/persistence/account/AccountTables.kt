@@ -11,6 +11,7 @@ object UserAccountTable : Table("user_account") {
     val role = varchar("role", 16)
     val active = bool("active")
     val version = integer("version")
+    val preferredLanguage = varchar("preferred_language", 2).nullable()
     override val primaryKey = PrimaryKey(id)
 }
 

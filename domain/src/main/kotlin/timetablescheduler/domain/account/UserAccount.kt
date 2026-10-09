@@ -19,6 +19,8 @@ data class UserAccount(
     val active: Boolean,
     val schoolIds: Set<SchoolId>,
     val version: Int,
+    /** Chosen by the user; null until the first active choice (FR-039, FR-042). */
+    val preferredLanguage: InterfaceLanguage? = null,
 ) {
     fun isActivePlanner(): Boolean = active && role == Role.PLANNER
 
@@ -29,6 +31,8 @@ data class UserAccount(
         validation.add(lastSchoolError(newSchoolIds))
         return validation.result { copy(role = newRole, schoolIds = newSchoolIds) }
     }
+
+    fun withPreferredLanguage(language: InterfaceLanguage): UserAccount = copy(preferredLanguage = language)
 
     fun deactivated(): UserAccount = copy(active = false)
 

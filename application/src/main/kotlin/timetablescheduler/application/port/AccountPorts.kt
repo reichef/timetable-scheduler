@@ -1,5 +1,6 @@
 package timetablescheduler.application.port
 
+import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
@@ -9,6 +10,9 @@ interface UserAccountRepository {
 
     /** Saves [account] if its stored version still equals `account.version`; returns false otherwise. */
     fun update(account: UserAccount): Boolean
+
+    /** Saves the owner's interface language without optimistic locking and without changing the version (R19). */
+    fun updatePreferredLanguage(accountId: AccountId, language: InterfaceLanguage)
 
     fun findById(accountId: AccountId): UserAccount?
 

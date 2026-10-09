@@ -11,6 +11,11 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import org.slf4j.LoggerFactory
+import timetablescheduler.adapters.web.i18n.EnglishTexts
+import timetablescheduler.adapters.web.i18n.GermanTexts
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.switchLanguage
+import timetablescheduler.application.error.DependantType
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -54,7 +59,14 @@ class LogConfidentialityTest {
         listOfNotNull(formattedMessage, argumentArray?.joinToString(), throwableProxy?.message, throwableProxy?.className).joinToString(" | ")
 
     @Test
-    fun `business errors name the teacher on the page but logs never contain names, form values or passwords`() = testApplication {
+    fun `business errors name the teacher on the page but logs never contain names, form values or passwords`() =
+        businessAndTechnicalErrorsKeepLogsClean(GermanTexts)
+
+    @Test
+    fun `the same holds with the English interface`() = businessAndTechnicalErrorsKeepLogsClean(EnglishTexts)
+
+    /** Runs the confidential steps in the language of [texts] (FR-048) and checks pages and log output. */
+    private fun businessAndTechnicalErrorsKeepLogsClean(texts: UiTexts) = testApplication {
         val system = TestSystem().installed()
         val schoolId = system.firstSchoolId()
         val schoolPath = "/schools/${schoolId.value}"
@@ -63,6 +75,7 @@ class LogConfidentialityTest {
         }
         val client = startWith(system)
         client.login()
+        client.switchLanguage(texts.language.code)
 
         client.submitChecked("$schoolPath/subjects", "name" to "Mathematik")
         val mathe = system.world.subjects.findByNameIgnoreCase(schoolId, "Mathematik")!!
@@ -77,10 +90,12 @@ class LogConfidentialityTest {
 
         assertEquals(HttpStatusCode.UnprocessableEntity, invalid.status)
         assertEquals(HttpStatusCode.Conflict, blocked.status)
-        assertTrue("Lehrkraft: Anna Schmidt (SCHA)" in blocked.bodyAsText(), "business message names the dependant for the planner")
+        val teacherType = texts.errors.describe(DependantType.TEACHER)
+        assertTrue("$teacherType: Anna Schmidt (SCHA)" in blocked.bodyAsText(), "business message names the dependant for the planner")
         assertEquals(HttpStatusCode.InternalServerError, technical.status)
         assertFalse("Anna Schmidt" in technicalPage)
-        assertTrue("Fehlerkennung" in technicalPage)
+        assertTrue(texts.errors.unexpectedError in technicalPage)
+        assertTrue(texts.errors.correlationId in technicalPage)
 
         val logLines = capturedLog.list.map { it.fullText() }
         assertTrue(logLines.any { "IllegalStateException" in it }, "technical error is logged by class")

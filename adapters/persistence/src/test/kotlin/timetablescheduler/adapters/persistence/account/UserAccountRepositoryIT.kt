@@ -2,6 +2,8 @@ package timetablescheduler.adapters.persistence.account
 
 import timetablescheduler.adapters.persistence.PostgresTestBase
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.school.School
@@ -154,5 +156,50 @@ class UserAccountRepositoryIT : PostgresTestBase() {
 
         val storedHash = assertNotNull(inTransaction { credentials.findPasswordHash(account.id) })
         assertTrue(hasher.matches("zweites-passwort", storedHash))
+    }
+
+    @Test
+    fun `preferred language is stored without touching version, role or active flag`() {
+        val nord = newSchool("Gymnasium Nord")
+        val planner = newPlanner("mueller", nord)
+        inTransaction {
+            schools.insert(nord)
+            accounts.insert(planner)
+        }
+        assertNull(inTransaction { accounts.findById(planner.id) }!!.preferredLanguage)
+
+        inTransaction { accounts.updatePreferredLanguage(planner.id, InterfaceLanguage.ENGLISH) }
+
+        assertEquals(planner.copy(preferredLanguage = InterfaceLanguage.ENGLISH), inTransaction { accounts.findById(planner.id) })
+    }
+
+    @Test
+    fun `versioned update keeps the saved language`() {
+        val nord = newSchool("Gymnasium Nord")
+        val planner = newPlanner("mueller", nord)
+        inTransaction {
+            schools.insert(nord)
+            accounts.insert(planner)
+            accounts.updatePreferredLanguage(planner.id, InterfaceLanguage.ENGLISH)
+        }
+
+        assertTrue(inTransaction { accounts.update(planner.deactivated()) })
+
+        assertEquals(InterfaceLanguage.ENGLISH, inTransaction { accounts.findById(planner.id) }!!.preferredLanguage)
+    }
+
+    @Test
+    fun `database accepts only de and en as language`() {
+        val nord = newSchool("Gymnasium Nord")
+        inTransaction {
+            schools.insert(nord)
+            accounts.insert(newPlanner("mueller", nord))
+        }
+
+        val rejected = runCatching {
+            inTransaction { TransactionManager.current().exec("UPDATE user_account SET preferred_language = 'fr'") }
+        }
+
+        assertTrue(rejected.isFailure)
     }
 }

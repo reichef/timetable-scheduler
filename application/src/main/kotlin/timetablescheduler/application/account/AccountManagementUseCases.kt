@@ -203,4 +203,5 @@ class AccountUseCases(
     val activate: ActivateAccount,
     val resetPassword: ResetPassword,
     val changeOwnPassword: ChangeOwnPassword,
+    val changeOwnLanguage: ChangeOwnLanguage,
 )

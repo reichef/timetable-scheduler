@@ -16,41 +16,53 @@ import kotlinx.html.a
 import kotlinx.html.button
 import kotlinx.html.div
 import kotlinx.html.form
+import kotlinx.html.input
 import kotlinx.html.p
 import timetablescheduler.adapters.web.WebDependencies
-import timetablescheduler.adapters.web.layout.Messages
+import timetablescheduler.adapters.web.i18n.interfaceLanguage
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.receiveCheckedForm
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.layout.seeOther
 import timetablescheduler.adapters.web.layout.textField
 import timetablescheduler.application.error.UseCaseResult
+import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 
 const val SESSION_AUTH = "session"
 
+/** Hidden login-form field; only present after an active language choice on the login page (FR-042). */
+private const val CHOSEN_LANGUAGE_FIELD = "chosenLanguage"
+
 fun Route.authRoutes(dependencies: WebDependencies) {
     get("/") { call.seeOther("/login") }
 
-    get("/login") { call.respondLoginPage(HttpStatusCode.OK, loginFailed = false, username = null) }
+    get("/login") {
+        val chosenLanguage = if (call.request.queryParameters["chosen"] != null) call.interfaceLanguage() else null
+        call.respondLoginPage(HttpStatusCode.OK, loginFailed = false, username = null, chosenLanguage = chosenLanguage)
+    }
 
     // The login form itself carries no CSRF token: there is no session yet to bind it to.
     post("/login") {
         val form = call.receiveParameters()
         val username = form["username"].orEmpty()
-        when (val result = dependencies.useCases.login.execute(username, form["password"].orEmpty())) {
+        val chosenLanguage = InterfaceLanguage.fromCode(form[CHOSEN_LANGUAGE_FIELD])
+        when (val result = dependencies.useCases.login.execute(username, form["password"].orEmpty(), chosenLanguage)) {
             is UseCaseResult.Success -> {
-                call.sessions.set(UserSession.startFor(result.value.accountId))
+                call.sessions.set(UserSession.startFor(result.value.accountId, result.value.language))
                 call.seeOther(if (result.value.role == Role.PLANNER) "/schools" else "/home")
             }
-            is UseCaseResult.Failure -> call.respondLoginPage(HttpStatusCode.Unauthorized, loginFailed = true, username = username)
+            is UseCaseResult.Failure ->
+                call.respondLoginPage(HttpStatusCode.Unauthorized, loginFailed = true, username = username, chosenLanguage = chosenLanguage)
         }
     }
 
     authenticate(SESSION_AUTH) {
         get("/home") {
-            call.respondPage("Start") {
-                p { +Messages.TEACHER_HOME }
-                p { a(href = "/schools") { +"Planer: zur Schule" } }
+            val texts = call.texts
+            call.respondPage(texts.common.start) {
+                p { +texts.auth.teacherHome }
+                p { a(href = "/schools") { +texts.auth.plannerLinkToSchool } }
             }
         }
 
@@ -62,13 +74,20 @@ fun Route.authRoutes(dependencies: WebDependencies) {
     }
 }
 
-private suspend fun ApplicationCall.respondLoginPage(status: HttpStatusCode, loginFailed: Boolean, username: String?) {
-    respondPage(Messages.LOGIN_TITLE, status) {
-        if (loginFailed) div(classes = "errors") { p { +Messages.LOGIN_FAILED } }
+private suspend fun ApplicationCall.respondLoginPage(
+    status: HttpStatusCode,
+    loginFailed: Boolean,
+    username: String?,
+    chosenLanguage: InterfaceLanguage?,
+) {
+    val texts = texts
+    respondPage(texts.auth.loginTitle, status) {
+        if (loginFailed) div(classes = "errors") { p { +texts.auth.loginFailed } }
         form(action = "/login", method = FormMethod.post) {
-            textField("username", "Benutzername", username)
-            textField("password", "Passwort", null, InputType.password)
-            button { +Messages.LOGIN_TITLE }
+            if (chosenLanguage != null) input(type = InputType.hidden, name = CHOSEN_LANGUAGE_FIELD) { value = chosenLanguage.code }
+            textField("username", texts.auth.username, username)
+            textField("password", texts.auth.password, null, InputType.password)
+            button { +texts.auth.loginTitle }
         }
     }
 }

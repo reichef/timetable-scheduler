@@ -16,6 +16,8 @@ import kotlinx.html.table
 import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
@@ -45,12 +47,9 @@ data class CurriculumFormInput(val identifier: String, val periodsBySubject: Map
 /** Entered values of the class form. */
 data class ClassFormInput(val suffix: String, val priorityWeight: String)
 
-private fun FlowContent.gridWarning(warning: ReadinessIssue.LevelExceedsGrid?, weeklyPeriods: Int, teachingSlotsPerWeek: Int) {
+private fun FlowContent.gridWarning(warning: ReadinessIssue.LevelExceedsGrid?, weeklyPeriods: Int, teachingSlotsPerWeek: Int, texts: UiTexts) {
     if (warning == null) return
-    div(classes = "warning") {
-        +"Der Lehrplan passt nicht in das Zeitraster: $weeklyPeriods Wochenstunden, aber nur $teachingSlotsPerWeek "
-        +"Unterrichtsstunden pro Woche (${warning.excessPeriods} zu viel). Gespeichert ist er trotzdem."
-    }
+    div(classes = "warning") { +texts.classLevels.gridWarning(weeklyPeriods, teachingSlotsPerWeek, warning.excessPeriods) }
 }
 
 suspend fun ApplicationCall.respondClassLevelList(
@@ -60,10 +59,11 @@ suspend fun ApplicationCall.respondClassLevelList(
     enteredIdentifier: String? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
-    respondPage("Klassenstufen", status) { session ->
-        p { +"Das Zeitraster bietet ${overview.teachingSlotsPerWeek} Unterrichtsstunden pro Woche." }
+    val texts = texts
+    respondPage(texts.classLevels.title, status) { session ->
+        p { +texts.classLevels.gridOffers(overview.teachingSlotsPerWeek) }
         table {
-            tr { th { +"Stufe" }; th { +"Wochenstunden" }; th { +"Klassen" } }
+            tr { th { +texts.classLevels.levelColumn }; th { +texts.classLevels.weeklyPeriodsColumn }; th { +texts.classLevels.classesColumn } }
             overview.levels.forEach { summary ->
                 tr {
                     td { a(href = levelPath(summary.level)) { +summary.level.identifier } }
@@ -77,14 +77,14 @@ suspend fun ApplicationCall.respondClassLevelList(
                 }
             }
         }
-        h2 { +"Klassenstufe anlegen" }
-        validationErrors(errors)
+        h2 { +texts.classLevels.createLevel }
+        validationErrors(errors, texts)
         form(action = levelsPath(schoolId), method = FormMethod.post) {
             csrfField(session)
-            textField("identifier", "Bezeichnung (z. B. 6)", enteredIdentifier)
-            button { +"Anlegen" }
+            textField("identifier", texts.classLevels.levelIdentifierLabel, enteredIdentifier)
+            button { +texts.common.create }
         }
-        p { a(href = "/schools/${schoolId.value}") { +"Zur Schule" } }
+        p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
 
@@ -94,19 +94,20 @@ suspend fun ApplicationCall.respondClassLevelDetails(
     entered: CurriculumFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val level = details.level
     val storedPeriods = level.curriculum.associate { it.subjectId to "${it.periodsPerWeek}" }
-    respondPage("Klassenstufe ${level.identifier}", status) { session ->
-        gridWarning(details.warning, level.weeklyPeriods(), details.teachingSlotsPerWeek)
-        p { +"Summe: ${level.weeklyPeriods()} Wochenstunden (Zeitraster: ${details.teachingSlotsPerWeek} Unterrichtsstunden pro Woche)" }
-        validationErrors(errors)
-        h2 { +"Lehrplan" }
+    respondPage(texts.classLevels.levelTitle(level.identifier), status) { session ->
+        gridWarning(details.warning, level.weeklyPeriods(), details.teachingSlotsPerWeek, texts)
+        p { +texts.classLevels.levelSum(level.weeklyPeriods(), details.teachingSlotsPerWeek) }
+        validationErrors(errors, texts)
+        h2 { +texts.classLevels.curriculum }
         form(action = levelPath(level), method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${level.version}")
-            textField("identifier", "Bezeichnung", entered?.identifier ?: level.identifier)
+            textField("identifier", texts.common.identifier, entered?.identifier ?: level.identifier)
             table {
-                tr { th { +"Fach" }; th { +"Wochenstunden (leer = nicht unterrichtet)" } }
+                tr { th { +texts.classLevels.subjectColumn }; th { +texts.classLevels.periodsInputColumn } }
                 details.subjects.forEach { subject ->
                     tr {
                         td {
@@ -122,22 +123,22 @@ suspend fun ApplicationCall.respondClassLevelDetails(
                     }
                 }
             }
-            button { +"Speichern" }
+            button { +texts.common.save }
         }
-        h2 { +"Klassen" }
+        h2 { +texts.classLevels.classesColumn }
         p {
             details.classes.forEachIndexed { index, schoolClass ->
                 if (index > 0) +", "
                 a(href = classPath(level.schoolId, schoolClass)) { +schoolClass.displayName(level) }
             }
         }
-        p { a(href = "${levelPath(level)}/classes/new") { +"Klasse anlegen" } }
+        p { a(href = "${levelPath(level)}/classes/new") { +texts.classLevels.createClass } }
         form(action = "${levelPath(level)}/delete", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${level.version}")
-            button(classes = "danger") { +"Klassenstufe löschen" }
+            button(classes = "danger") { +texts.classLevels.deleteLevel }
         }
-        p { a(href = levelsPath(level.schoolId)) { +"Zu den Klassenstufen" } }
+        p { a(href = levelsPath(level.schoolId)) { +texts.classLevels.toLevels } }
     }
 }
 
@@ -147,16 +148,17 @@ suspend fun ApplicationCall.respondNewClassForm(
     entered: ClassFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val level = proposal.level
-    respondPage("Neue Klasse in Stufe ${level.identifier}", status) { session ->
-        validationErrors(errors)
+    respondPage(texts.classLevels.newClassTitle(level.identifier), status) { session ->
+        validationErrors(errors, texts)
         form(action = "${levelPath(level)}/classes", method = FormMethod.post) {
             csrfField(session)
-            textField("suffix", "Klassenzusatz", entered?.suffix ?: proposal.suffix)
-            textField("priorityWeight", "Gewichtung (1–100)", entered?.priorityWeight ?: "${SchoolClass.DEFAULT_PRIORITY_WEIGHT}", InputType.number)
-            button { +"Anlegen" }
+            textField("suffix", texts.classLevels.suffixLabel, entered?.suffix ?: proposal.suffix)
+            textField("priorityWeight", texts.classLevels.weightLabel, entered?.priorityWeight ?: "${SchoolClass.DEFAULT_PRIORITY_WEIGHT}", InputType.number)
+            button { +texts.common.create }
         }
-        p { a(href = levelPath(level)) { +"Zur Klassenstufe" } }
+        p { a(href = levelPath(level)) { +texts.classLevels.toLevel } }
     }
 }
 
@@ -166,13 +168,14 @@ suspend fun ApplicationCall.respondSchoolClassDetails(
     entered: ClassFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val schoolClass = details.schoolClass
     val path = classPath(details.level.schoolId, schoolClass)
     val subjectNames = details.subjects.associate { it.id to it.name }
-    respondPage("Klasse ${details.displayName}", status) { session ->
-        h2 { +"Lehrplan (aus Stufe ${details.level.identifier})" }
+    respondPage(texts.classLevels.classTitle(details.displayName), status) { session ->
+        h2 { +texts.classLevels.curriculumFromLevel(details.level.identifier) }
         table {
-            tr { th { +"Fach" }; th { +"Wochenstunden" } }
+            tr { th { +texts.classLevels.subjectColumn }; th { +texts.classLevels.weeklyPeriodsColumn } }
             details.curriculum.forEach { entry ->
                 tr {
                     td { +subjectNames[entry.subjectId].orEmpty() }
@@ -180,21 +183,21 @@ suspend fun ApplicationCall.respondSchoolClassDetails(
                 }
             }
         }
-        p { +"Summe: ${details.curriculum.sumOf { it.periodsPerWeek }} Wochenstunden" }
-        h2 { +"Klasse bearbeiten" }
-        validationErrors(errors)
+        p { +texts.classLevels.classSum(details.curriculum.sumOf { it.periodsPerWeek }) }
+        h2 { +texts.classLevels.editClass }
+        validationErrors(errors, texts)
         form(action = path, method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${schoolClass.version}")
-            textField("suffix", "Klassenzusatz", entered?.suffix ?: schoolClass.suffix)
-            textField("priorityWeight", "Gewichtung (1–100)", entered?.priorityWeight ?: "${schoolClass.priorityWeight}", InputType.number)
-            button { +"Speichern" }
+            textField("suffix", texts.classLevels.suffixLabel, entered?.suffix ?: schoolClass.suffix)
+            textField("priorityWeight", texts.classLevels.weightLabel, entered?.priorityWeight ?: "${schoolClass.priorityWeight}", InputType.number)
+            button { +texts.common.save }
         }
         form(action = "$path/delete", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${schoolClass.version}")
-            button(classes = "danger") { +"Klasse löschen" }
+            button(classes = "danger") { +texts.classLevels.deleteClass }
         }
-        p { a(href = levelPath(details.level)) { +"Zur Klassenstufe" } }
+        p { a(href = levelPath(details.level)) { +texts.classLevels.toLevel } }
     }
 }

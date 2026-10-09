@@ -14,17 +14,19 @@ import kotlinx.html.legend
 import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.ul
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.validation.ValidationError
 
 /** Lists business errors above a form (SC-003: every violated rule is named). */
-fun FlowContent.validationErrors(errors: List<ValidationError>) {
+fun FlowContent.validationErrors(errors: List<ValidationError>, texts: UiTexts) {
     if (errors.isEmpty()) return
     div(classes = "errors") {
-        p { +Messages.INVALID_INPUT }
-        ul { errors.forEach { li { +Messages.describe(it) } } }
+        p { +texts.errors.invalidInput }
+        ul { errors.forEach { li { +texts.errors.describe(it) } } }
     }
 }
 
@@ -38,10 +40,10 @@ fun FORM.textField(name: String, labelText: String, currentValue: String?, input
 }
 
 /** Room features as checkboxes named [fieldName]; nothing is shown while the school has no features. */
-fun FORM.featureCheckboxes(fieldName: String, features: List<RoomFeature>, checkedIds: Set<RoomFeatureId>) {
+fun FORM.featureCheckboxes(fieldName: String, features: List<RoomFeature>, checkedIds: Set<RoomFeatureId>, texts: UiTexts) {
     if (features.isEmpty()) return
     fieldSet {
-        legend { +"Ausstattung" }
+        legend { +texts.common.roomFeatures }
         features.forEach { feature ->
             label {
                 input(type = InputType.checkBox, name = fieldName) {
@@ -59,29 +61,31 @@ fun FORM.featureCheckboxes(fieldName: String, features: List<RoomFeature>, check
  * entries the planner may see; they are not logged with that content).
  */
 suspend fun ApplicationCall.respondBusinessFailure(error: ApplicationError, backLink: String? = null) {
+    val texts = texts
     when (error) {
-        ApplicationError.NotFound -> respondMessage(HttpStatusCode.NotFound, Messages.NOT_FOUND)
-        ApplicationError.AccessDenied -> respondMessage(HttpStatusCode.Forbidden, Messages.ACCESS_DENIED)
-        ApplicationError.AuthenticationFailed -> respondMessage(HttpStatusCode.Unauthorized, Messages.LOGIN_FAILED)
-        ApplicationError.VersionConflict -> respondPage("Konflikt", HttpStatusCode.Conflict) {
-            p { +Messages.VERSION_CONFLICT }
-            if (backLink != null) a(href = backLink) { +Messages.RELOAD }
+        ApplicationError.NotFound -> respondMessage(HttpStatusCode.NotFound, texts.errors.notFound)
+        ApplicationError.AccessDenied -> respondMessage(HttpStatusCode.Forbidden, texts.errors.accessDenied)
+        ApplicationError.AuthenticationFailed -> respondMessage(HttpStatusCode.Unauthorized, texts.auth.loginFailed)
+        ApplicationError.VersionConflict -> respondPage(texts.errors.conflictTitle, HttpStatusCode.Conflict) {
+            p { +texts.errors.versionConflict }
+            if (backLink != null) a(href = backLink) { +texts.errors.reload }
         }
-        is ApplicationError.DeletionBlocked -> respondPage("Löschen nicht möglich", HttpStatusCode.Conflict) {
-            p { +Messages.DELETION_BLOCKED }
+        is ApplicationError.DeletionBlocked -> respondPage(texts.errors.deletionBlockedTitle, HttpStatusCode.Conflict) {
+            p { +texts.errors.deletionBlocked }
             ul {
-                error.visibleDependants.forEach { li { +"${Messages.describe(it.type)}: ${it.displayName}" } }
-                if (error.hiddenDependantCount > 0) li { +Messages.hiddenDependants(error.hiddenDependantCount) }
+                error.visibleDependants.forEach { li { +"${texts.errors.describe(it.type)}: ${it.displayName}" } }
+                if (error.hiddenDependantCount > 0) li { +texts.errors.hiddenDependants(error.hiddenDependantCount) }
             }
-            if (backLink != null) a(href = backLink) { +"Zurück" }
+            if (backLink != null) a(href = backLink) { +texts.common.back }
         }
-        is ApplicationError.Invalid -> respondPage("Ungültige Eingabe", HttpStatusCode.UnprocessableEntity) {
-            validationErrors(error.errors)
-            if (backLink != null) a(href = backLink) { +"Zurück" }
+        is ApplicationError.Invalid -> respondPage(texts.errors.invalidInputTitle, HttpStatusCode.UnprocessableEntity) {
+            validationErrors(error.errors, texts)
+            if (backLink != null) a(href = backLink) { +texts.common.back }
         }
     }
 }
 
 suspend fun ApplicationCall.respondMessage(status: HttpStatusCode, message: String) {
-    respondPage(if (status.value >= 500) "Fehler" else "Hinweis", status) { p { +message } }
+    val texts = texts
+    respondPage(if (status.value >= 500) texts.common.errorTitle else texts.common.noticeTitle, status) { p { +message } }
 }

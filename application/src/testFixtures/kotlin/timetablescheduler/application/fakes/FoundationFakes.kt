@@ -6,6 +6,7 @@ import timetablescheduler.application.port.PasswordHasher
 import timetablescheduler.application.port.SchoolRepository
 import timetablescheduler.application.port.TransactionRunner
 import timetablescheduler.application.port.UserAccountRepository
+import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
@@ -68,7 +69,13 @@ class InMemoryUserAccountRepository : VersionedInMemoryStore<AccountId, UserAcco
     withVersion = { account, version -> account.copy(version = version) },
 ), UserAccountRepository {
     override fun insert(account: UserAccount) = super.insert(account)
-    override fun update(account: UserAccount): Boolean = super.update(account)
+    /** Like the database: `update` keeps the stored language, `updatePreferredLanguage` keeps the version. */
+    override fun update(account: UserAccount): Boolean =
+        super.update(account.copy(preferredLanguage = entries[account.id]?.preferredLanguage))
+
+    override fun updatePreferredLanguage(accountId: AccountId, language: InterfaceLanguage) {
+        entries[accountId]?.let { entries[accountId] = it.withPreferredLanguage(language) }
+    }
     override fun findById(accountId: AccountId): UserAccount? = entries[accountId]
     override fun findByUsernameIgnoreCase(username: String): UserAccount? =
         entries.values.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) }

@@ -14,6 +14,7 @@ import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
 import kotlinx.html.ul
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.featureCheckboxes
 import timetablescheduler.adapters.web.layout.hiddenField
@@ -40,10 +41,11 @@ suspend fun ApplicationCall.respondRoomList(
     entered: RoomFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val featureNames = overview.features.associate { it.id to it.name }
-    respondPage("Räume", status) { session ->
+    respondPage(texts.rooms.roomsTitle, status) { session ->
         table {
-            tr { th { +"Raum" }; th { +"Ausstattung" } }
+            tr { th { +texts.rooms.roomColumn }; th { +texts.common.roomFeatures } }
             overview.rooms.forEach { room ->
                 tr {
                     td { a(href = "${roomsPath(schoolId)}/${room.id.value}") { +room.identifier } }
@@ -51,16 +53,16 @@ suspend fun ApplicationCall.respondRoomList(
                 }
             }
         }
-        h2 { +"Raum anlegen" }
-        validationErrors(errors)
+        h2 { +texts.rooms.createRoom }
+        validationErrors(errors, texts)
         form(action = roomsPath(schoolId), method = FormMethod.post) {
             csrfField(session)
-            textField("identifier", "Bezeichnung", entered?.identifier)
-            featureCheckboxes("featureId", overview.features, entered?.featureIds.orEmpty())
-            button { +"Anlegen" }
+            textField("identifier", texts.common.identifier, entered?.identifier)
+            featureCheckboxes("featureId", overview.features, entered?.featureIds.orEmpty(), texts)
+            button { +texts.common.create }
         }
-        p { a(href = featuresPath(schoolId)) { +"Ausstattung verwalten" } }
-        p { a(href = "/schools/${schoolId.value}") { +"Zur Schule" } }
+        p { a(href = featuresPath(schoolId)) { +texts.rooms.manageFeatures } }
+        p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
 
@@ -73,21 +75,22 @@ suspend fun ApplicationCall.respondRoomDetails(
 ) {
     val room = details.room
     val roomPath = "${roomsPath(schoolId)}/${room.id.value}"
-    respondPage("Raum ${room.identifier}", status) { session ->
-        validationErrors(errors)
+    val texts = texts
+    respondPage(texts.rooms.roomTitle(room.identifier), status) { session ->
+        validationErrors(errors, texts)
         form(action = roomPath, method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${room.version}")
-            textField("identifier", "Bezeichnung", entered?.identifier ?: room.identifier)
-            featureCheckboxes("featureId", details.features, entered?.featureIds ?: room.featureIds)
-            button { +"Speichern" }
+            textField("identifier", texts.common.identifier, entered?.identifier ?: room.identifier)
+            featureCheckboxes("featureId", details.features, entered?.featureIds ?: room.featureIds, texts)
+            button { +texts.common.save }
         }
         form(action = "$roomPath/delete", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${room.version}")
-            button(classes = "danger") { +"Raum löschen" }
+            button(classes = "danger") { +texts.rooms.deleteRoom }
         }
-        p { a(href = roomsPath(schoolId)) { +"Zur Raumliste" } }
+        p { a(href = roomsPath(schoolId)) { +texts.rooms.toRoomList } }
     }
 }
 
@@ -98,7 +101,8 @@ suspend fun ApplicationCall.respondFeatureList(
     enteredName: String? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
-    respondPage("Ausstattung", status) { session ->
+    val texts = texts
+    respondPage(texts.common.roomFeatures, status) { session ->
         ul {
             features.forEach { feature ->
                 li {
@@ -106,18 +110,18 @@ suspend fun ApplicationCall.respondFeatureList(
                     +" "
                     form(action = "${featuresPath(schoolId)}/${feature.id.value}/delete", method = FormMethod.post, classes = "inline") {
                         csrfField(session)
-                        button(classes = "link") { +"löschen" }
+                        button(classes = "link") { +texts.common.delete }
                     }
                 }
             }
         }
-        h2 { +"Ausstattung anlegen" }
-        validationErrors(errors)
+        h2 { +texts.rooms.createFeature }
+        validationErrors(errors, texts)
         form(action = featuresPath(schoolId), method = FormMethod.post) {
             csrfField(session)
-            textField("name", "Name", enteredName)
-            button { +"Anlegen" }
+            textField("name", texts.common.name, enteredName)
+            button { +texts.common.create }
         }
-        p { a(href = roomsPath(schoolId)) { +"Zu den Räumen" } }
+        p { a(href = roomsPath(schoolId)) { +texts.rooms.toRooms } }
     }
 }

@@ -17,6 +17,8 @@ import kotlinx.html.table
 import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
@@ -31,26 +33,19 @@ const val OWN_PASSWORD_PATH = "/account/password"
 
 fun accountPath(account: UserAccount) = "$ACCOUNTS_PATH/${account.id.value}"
 
-fun Role.germanName() = when (this) {
-    Role.PLANNER -> "Planer"
-    Role.TEACHER -> "Lehrkraft"
-}
-
-private fun UserAccount.stateName() = if (active) "aktiv" else "deaktiviert"
-
 /** Entered values of the new-account form; the password is never shown again. */
 data class AccountFormInput(val username: String, val role: String)
 
-private fun FORM.roleSelect(selectedRole: String?) {
+private fun FORM.roleSelect(selectedRole: String?, texts: UiTexts) {
     label {
-        +"Rolle"
+        +texts.accounts.role
         select {
             name = "role"
             Role.entries.forEach { role ->
                 option {
                     value = role.name
                     selected = selectedRole == role.name
-                    +role.germanName()
+                    +texts.common.roleName(role)
                 }
             }
         }
@@ -63,25 +58,26 @@ suspend fun ApplicationCall.respondAccountList(
     entered: AccountFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
-    respondPage("Konten", status) { session ->
+    val texts = texts
+    respondPage(texts.accounts.title, status) { session ->
         table {
-            tr { th { +"Benutzername" }; th { +"Rolle" }; th { +"Status" } }
+            tr { th { +texts.auth.username }; th { +texts.accounts.roleColumn }; th { +texts.accounts.statusColumn } }
             accounts.forEach { account ->
                 tr {
                     td { a(href = accountPath(account)) { +account.username } }
-                    td { +account.role.germanName() }
-                    td { +account.stateName() }
+                    td { +texts.common.roleName(account.role) }
+                    td { +texts.accounts.stateName(account.active) }
                 }
             }
         }
-        h2 { +"Konto anlegen" }
-        validationErrors(errors)
+        h2 { +texts.accounts.createAccount }
+        validationErrors(errors, texts)
         form(action = ACCOUNTS_PATH, method = FormMethod.post) {
             csrfField(session)
-            textField("username", "Benutzername", entered?.username)
-            roleSelect(entered?.role ?: Role.TEACHER.name)
-            textField("initialPassword", "Anfangspasswort (mindestens 10 Zeichen)", null, InputType.password)
-            button { +"Anlegen" }
+            textField("username", texts.auth.username, entered?.username)
+            roleSelect(entered?.role ?: Role.TEACHER.name, texts)
+            textField("initialPassword", texts.accounts.initialPassword, null, InputType.password)
+            button { +texts.common.create }
         }
     }
 }
@@ -91,29 +87,32 @@ suspend fun ApplicationCall.respondAccountDetails(
     errors: List<ValidationError> = emptyList(),
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
-    respondPage("Konto ${account.username}", status) { session ->
-        p { +"Status: ${account.stateName()}" }
-        validationErrors(errors)
-        h2 { +"Rolle" }
+    val texts = texts
+    respondPage(texts.accounts.accountTitle(account.username), status) { session ->
+        p { +texts.accounts.status(account.active) }
+        validationErrors(errors, texts)
+        h2 { +texts.accounts.role }
         form(action = accountPath(account), method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${account.version}")
-            roleSelect(account.role.name)
-            button { +"Speichern" }
+            roleSelect(account.role.name, texts)
+            button { +texts.common.save }
         }
-        h2 { +if (account.active) "Deaktivieren" else "Aktivieren" }
+        h2 { +if (account.active) texts.accounts.deactivateHeading else texts.accounts.activateHeading }
         form(action = "${accountPath(account)}/${if (account.active) "deactivate" else "activate"}", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${account.version}")
-            button(classes = if (account.active) "danger" else null) { +if (account.active) "Konto deaktivieren" else "Konto aktivieren" }
+            button(classes = if (account.active) "danger" else null) {
+                +if (account.active) texts.accounts.deactivateButton else texts.accounts.activateButton
+            }
         }
-        h2 { +"Passwort zurücksetzen" }
+        h2 { +texts.accounts.resetPassword }
         form(action = "${accountPath(account)}/password", method = FormMethod.post) {
             csrfField(session)
-            textField("newPassword", "Neues Passwort (mindestens 10 Zeichen)", null, InputType.password)
-            button { +"Zurücksetzen" }
+            textField("newPassword", texts.accounts.newPassword, null, InputType.password)
+            button { +texts.accounts.resetButton }
         }
-        p { a(href = ACCOUNTS_PATH) { +"Zur Kontenliste" } }
+        p { a(href = ACCOUNTS_PATH) { +texts.accounts.toAccounts } }
     }
 }
 
@@ -122,14 +121,15 @@ suspend fun ApplicationCall.respondOwnPasswordForm(
     changed: Boolean = false,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
-    respondPage("Passwort ändern", status) { session ->
-        if (changed) p(classes = "notice") { +"Das Passwort wurde geändert." }
-        validationErrors(errors)
+    val texts = texts
+    respondPage(texts.accounts.ownPasswordTitle, status) { session ->
+        if (changed) p(classes = "notice") { +texts.accounts.passwordChanged }
+        validationErrors(errors, texts)
         form(action = OWN_PASSWORD_PATH, method = FormMethod.post) {
             csrfField(session)
-            textField("currentPassword", "Aktuelles Passwort", null, InputType.password)
-            textField("newPassword", "Neues Passwort (mindestens 10 Zeichen)", null, InputType.password)
-            button { +"Ändern" }
+            textField("currentPassword", texts.accounts.currentPassword, null, InputType.password)
+            textField("newPassword", texts.accounts.newPassword, null, InputType.password)
+            button { +texts.accounts.changeButton }
         }
     }
 }

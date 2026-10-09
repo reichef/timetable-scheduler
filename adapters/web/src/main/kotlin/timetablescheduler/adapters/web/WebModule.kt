@@ -24,7 +24,8 @@ import timetablescheduler.adapters.web.account.accountRoutes
 import timetablescheduler.adapters.web.auth.authRoutes
 import timetablescheduler.adapters.web.classlevel.classLevelRoutes
 import timetablescheduler.adapters.web.layout.CsrfViolation
-import timetablescheduler.adapters.web.layout.Messages
+import timetablescheduler.adapters.web.i18n.languageRoutes
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.respondMessage
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.room.roomRoutes
@@ -53,6 +54,7 @@ fun Application.webModule(dependencies: WebDependencies, settings: WebSettings) 
     routing {
         staticResources("/static", "static")
         authRoutes(dependencies)
+        languageRoutes(dependencies, settings)
         schoolRoutes(dependencies)
         roomRoutes(dependencies)
         timeGridRoutes(dependencies)
@@ -84,14 +86,16 @@ private fun Application.installSessions(settings: WebSettings) {
 private fun Application.installErrorPages() {
     install(StatusPages) {
         exception<CsrfViolation> { call, _ ->
-            call.respondMessage(HttpStatusCode.Forbidden, Messages.ACCESS_DENIED)
+            call.respondMessage(HttpStatusCode.Forbidden, call.texts.errors.accessDenied)
         }
         exception<Throwable> { call, cause ->
-            val correlationId = call.callId ?: "unbekannt"
+            val correlationId = call.callId ?: "-"
             technicalErrorLog.error("Unexpected error {} (correlationId={})", cause.javaClass.name, correlationId)
-            call.respondPage("Fehler", HttpStatusCode.InternalServerError) {
-                p { +Messages.UNEXPECTED_ERROR }
-                p { +"${Messages.CORRELATION_ID}: $correlationId" }
+            // The language comes from session, cookie or header only, so this page needs no database access (R19).
+            val texts = call.texts
+            call.respondPage(texts.common.errorTitle, HttpStatusCode.InternalServerError) {
+                p { +texts.errors.unexpectedError }
+                p { +"${texts.errors.correlationId}: $correlationId" }
             }
         }
     }

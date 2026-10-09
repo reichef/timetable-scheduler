@@ -18,8 +18,9 @@ import kotlinx.html.table
 import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
-import timetablescheduler.adapters.web.layout.germanName
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
 import timetablescheduler.adapters.web.layout.textField
@@ -44,10 +45,10 @@ fun Unavailability.formValue() = "${dayOfWeek.name}:${slotId.value}"
 /** Entered general data, kept when the form is shown again after an error. */
 data class TeacherFormInput(val name: String, val shortCode: String, val weeklyLoad: String)
 
-private fun FORM.generalFields(entered: TeacherFormInput?, teachingSlotsPerWeek: Int) {
-    textField("name", "Name", entered?.name)
-    textField("shortCode", "Kürzel (2–8 Großbuchstaben oder Ziffern)", entered?.shortCode)
-    textField("weeklyLoad", "Deputat (höchstens $teachingSlotsPerWeek Wochenstunden)", entered?.weeklyLoad, InputType.number)
+private fun FORM.generalFields(entered: TeacherFormInput?, teachingSlotsPerWeek: Int, texts: UiTexts) {
+    textField("name", texts.common.name, entered?.name)
+    textField("shortCode", texts.teachers.shortCodeLabel, entered?.shortCode)
+    textField("weeklyLoad", texts.teachers.loadLabel(teachingSlotsPerWeek), entered?.weeklyLoad, InputType.number)
 }
 
 suspend fun ApplicationCall.respondTeacherList(
@@ -58,9 +59,10 @@ suspend fun ApplicationCall.respondTeacherList(
     entered: TeacherFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
-    respondPage("Lehrkräfte", status) { session ->
+    val texts = texts
+    respondPage(texts.teachers.title, status) { session ->
         table {
-            tr { th { +"Name" }; th { +"Kürzel" }; th { +"Deputat" } }
+            tr { th { +texts.common.name }; th { +texts.teachers.shortCodeColumn }; th { +texts.teachers.loadColumn } }
             teachers.forEach { teacher ->
                 tr {
                     td { a(href = teacherPath(teacher)) { +teacher.name } }
@@ -69,21 +71,21 @@ suspend fun ApplicationCall.respondTeacherList(
                 }
             }
         }
-        h2 { +"Lehrkraft anlegen" }
-        validationErrors(errors)
+        h2 { +texts.teachers.createTeacher }
+        validationErrors(errors, texts)
         form(action = teachersPath(schoolId), method = FormMethod.post) {
             csrfField(session)
-            generalFields(entered, teachingSlotsPerWeek)
-            button { +"Anlegen" }
+            generalFields(entered, teachingSlotsPerWeek, texts)
+            button { +texts.common.create }
         }
-        p { a(href = "/schools/${schoolId.value}") { +"Zur Schule" } }
+        p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
 
-private fun FORM.qualificationCheckboxes(subjects: List<Subject>, teacher: Teacher) {
+private fun FORM.qualificationCheckboxes(subjects: List<Subject>, teacher: Teacher, texts: UiTexts) {
     fieldSet {
-        legend { +"Fächer" }
-        if (subjects.isEmpty()) p { +"Es sind noch keine Fächer angelegt." }
+        legend { +texts.teachers.subjectsLegend }
+        if (subjects.isEmpty()) p { +texts.teachers.noSubjects }
         subjects.forEach { subject ->
             label {
                 input(type = InputType.checkBox, name = QUALIFICATION_FIELD) {
@@ -97,17 +99,17 @@ private fun FORM.qualificationCheckboxes(subjects: List<Subject>, teacher: Teach
 }
 
 /** Days × teaching slots; a cell offers a checkbox only where the slot exists on that day (FR-021). */
-private fun FORM.unavailabilityGrid(grid: TimeGrid, teacher: Teacher) {
+private fun FORM.unavailabilityGrid(grid: TimeGrid, teacher: Teacher, texts: UiTexts) {
     val days = grid.teachingDays.sorted()
     val teachingSlots = grid.slots.filter { slot -> days.any { day -> grid.teachingSlotsOn(day).contains(slot) } }
     if (teachingSlots.isEmpty()) {
-        p { +"Das Zeitraster hat noch keine Unterrichtsstunden." }
+        p { +texts.teachers.noTeachingSlots }
         return
     }
     table {
         tr {
-            th { +"Zeitfenster" }
-            days.forEach { th { +it.germanName() } }
+            th { +texts.teachers.slotColumn }
+            days.forEach { th { +texts.common.dayName(it) } }
         }
         teachingSlots.forEach { slot ->
             tr {
@@ -136,36 +138,38 @@ suspend fun ApplicationCall.respondTeacherDetails(
     entered: TeacherFormInput? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val teacher = details.teacher
     val path = teacherPath(teacher)
-    respondPage("Lehrkraft ${teacher.displayName}", status) { session ->
-        validationErrors(errors)
-        h2 { +"Allgemein" }
+    respondPage(texts.teachers.teacherTitle(teacher.displayName), status) { session ->
+        validationErrors(errors, texts)
+        h2 { +texts.teachers.general }
         form(action = path, method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${teacher.version}")
-            generalFields(entered ?: TeacherFormInput(teacher.name, teacher.shortCode, "${teacher.weeklyLoad}"), details.timeGrid.teachingSlotsPerWeek())
-            button { +"Speichern" }
+            val current = entered ?: TeacherFormInput(teacher.name, teacher.shortCode, "${teacher.weeklyLoad}")
+            generalFields(current, details.timeGrid.teachingSlotsPerWeek(), texts)
+            button { +texts.common.save }
         }
-        h2 { +"Qualifikationen" }
+        h2 { +texts.teachers.qualifications }
         form(action = "$path/qualifications", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${teacher.version}")
-            qualificationCheckboxes(details.subjects, teacher)
-            button { +"Qualifikationen speichern" }
+            qualificationCheckboxes(details.subjects, teacher, texts)
+            button { +texts.teachers.saveQualifications }
         }
-        h2 { +"Sperrzeiten (angekreuzt = nicht verfügbar)" }
+        h2 { +texts.teachers.unavailabilityTitle }
         form(action = "$path/unavailability", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${teacher.version}")
-            unavailabilityGrid(details.timeGrid, teacher)
-            button { +"Sperrzeiten speichern" }
+            unavailabilityGrid(details.timeGrid, teacher, texts)
+            button { +texts.teachers.saveUnavailability }
         }
         form(action = "$path/delete", method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${teacher.version}")
-            button(classes = "danger") { +"Lehrkraft löschen" }
+            button(classes = "danger") { +texts.teachers.deleteTeacher }
         }
-        p { a(href = teachersPath(teacher.schoolId)) { +"Zur Lehrkräfteliste" } }
+        p { a(href = teachersPath(teacher.schoolId)) { +texts.teachers.toTeachers } }
     }
 }

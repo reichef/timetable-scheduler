@@ -10,6 +10,8 @@ import kotlinx.html.form
 import kotlinx.html.h2
 import kotlinx.html.li
 import kotlinx.html.ul
+import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
@@ -29,28 +31,29 @@ suspend fun ApplicationCall.respondSchoolDashboard(
     enteredName: String? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
+    val texts = texts
     val school = dashboard.school
     respondPage(school.name, status) { session ->
-        sectionLinks(school, dashboard)
-        readinessSummary(school.id, readinessIssueCount)
-        h2 { +"Umbenennen" }
-        validationErrors(errors)
+        sectionLinks(school, dashboard, texts)
+        readinessSummary(school.id, readinessIssueCount, texts)
+        h2 { +texts.school.rename }
+        validationErrors(errors, texts)
         form(action = schoolPath(school), method = FormMethod.post) {
             csrfField(session)
             hiddenField("version", "${school.version}")
-            textField("name", "Name", enteredName ?: school.name)
-            button { +"Speichern" }
+            textField("name", texts.common.name, enteredName ?: school.name)
+            button { +texts.common.save }
         }
     }
 }
 
-private fun FlowContent.sectionLinks(school: School, dashboard: SchoolDashboard) {
+private fun FlowContent.sectionLinks(school: School, dashboard: SchoolDashboard, texts: UiTexts) {
     ul {
-        li { a(href = "${schoolPath(school)}/room-features") { +"Ausstattung (${dashboard.roomFeatureCount})" } }
-        li { a(href = "${schoolPath(school)}/rooms") { +"Räume (${dashboard.roomCount})" } }
-        li { a(href = "${schoolPath(school)}/time-grid") { +"Zeitraster (${dashboard.teachingSlotsPerWeek} Unterrichtsstunden pro Woche)" } }
-        li { a(href = "${schoolPath(school)}/subjects") { +"Fächer" } }
-        li { a(href = "${schoolPath(school)}/class-levels") { +"Klassenstufen und Klassen" } }
-        li { a(href = "${schoolPath(school)}/teachers") { +"Lehrkräfte" } }
+        li { a(href = "${schoolPath(school)}/room-features") { +texts.school.featuresLink(dashboard.roomFeatureCount) } }
+        li { a(href = "${schoolPath(school)}/rooms") { +texts.school.roomsLink(dashboard.roomCount) } }
+        li { a(href = "${schoolPath(school)}/time-grid") { +texts.school.timeGridLink(dashboard.teachingSlotsPerWeek) } }
+        li { a(href = "${schoolPath(school)}/subjects") { +texts.school.subjectsLink } }
+        li { a(href = "${schoolPath(school)}/class-levels") { +texts.school.classLevelsLink } }
+        li { a(href = "${schoolPath(school)}/teachers") { +texts.school.teachersLink } }
     }
 }

@@ -39,9 +39,24 @@ set -a; . ./.env; set +a                      # load the configuration into the 
 ./gradlew :bootstrap:run                      # http://localhost:8080 – applies Flyway migrations on start
 ```
 
-Log in at `http://localhost:8080/login` with the initial planner. Planners manage further accounts under *Konten*.
+Log in at `http://localhost:8080/login` with the initial planner. Planners manage further accounts under *Konten* (*Accounts*).
 The end-to-end validation scenarios are listed in the
 [quickstart](specs/001-scheduling-master-data/quickstart.md).
+
+## Interface language
+
+The interface is available in German and English. Every page has a language switch in the header (also on the
+login page):
+
+- Before a user chooses, the browser's preferred language is used (German if it is neither German nor English).
+- A choice made while logged in is saved with the account and applies on every later login, on any device.
+- A choice on the login page is remembered in the browser (cookie `TTS_LANG`, only for showing the login page) and
+  saved with the account at the next login if the account has no language yet.
+- If a form has unsaved input, a small script asks before switching (it is the only browser script; without
+  JavaScript the switch works without that warning).
+
+Data entered by users (names, identifiers, short codes) is never translated. Texts live in
+`adapters/web/.../i18n/GermanTexts.kt` and `EnglishTexts.kt`; a missing text in either language fails the build.
 
 ## Project structure
 
