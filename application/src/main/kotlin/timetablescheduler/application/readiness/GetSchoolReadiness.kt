@@ -40,10 +40,8 @@ data class ReadinessReport(
     fun featureName(featureId: RoomFeatureId): String = features[featureId]?.name.orEmpty()
 }
 
-/** FR-024: computes the readiness overview on demand; nothing is stored and nothing blocks saving (FR-025). */
-class GetSchoolReadiness(
-    private val transactions: TransactionRunner,
-    private val access: SchoolAccessPolicy,
+/** Loads the readiness report of a school without an access check; callers check access first. */
+class ReadinessReportLoader(
     private val schools: SchoolRepository,
     private val rooms: RoomRepository,
     private val roomFeatures: RoomFeatureRepository,
@@ -52,29 +50,40 @@ class GetSchoolReadiness(
     private val classes: SchoolClassRepository,
     private val teachers: TeacherRepository,
 ) {
+    fun load(schoolId: SchoolId): ReadinessReport {
+        val schoolSubjects = subjects.findBySchool(schoolId).sortedBy { it.name.lowercase() }
+        val schoolLevels = levels.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
+        val schoolTeachers = teachers.findBySchool(schoolId).sortedWith(compareBy({ it.name.lowercase() }, { it.shortCode }))
+        val input = ReadinessInput(
+            teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek(),
+            rooms = rooms.findBySchool(schoolId),
+            subjects = schoolSubjects,
+            levels = schoolLevels,
+            classes = classes.findBySchool(schoolId),
+            teachers = schoolTeachers,
+        )
+        return ReadinessReport(
+            schoolId = schoolId,
+            issues = ReadinessCheck.issuesOf(input),
+            subjects = schoolSubjects.associateBy { it.id },
+            levels = schoolLevels.associateBy { it.id },
+            teachers = schoolTeachers.associateBy { it.id },
+            features = roomFeatures.findBySchool(schoolId).associateBy { it.id },
+        )
+    }
+}
+
+/** FR-024: computes the readiness overview on demand; nothing is stored and nothing blocks saving (FR-025). */
+class GetSchoolReadiness(
+    private val transactions: TransactionRunner,
+    private val access: SchoolAccessPolicy,
+    private val reports: ReadinessReportLoader,
+) {
     fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<ReadinessReport> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
-                val schoolSubjects = subjects.findBySchool(schoolId).sortedBy { it.name.lowercase() }
-                val schoolLevels = levels.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
-                val schoolTeachers = teachers.findBySchool(schoolId).sortedWith(compareBy({ it.name.lowercase() }, { it.shortCode }))
-                val input = ReadinessInput(
-                    teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek(),
-                    rooms = rooms.findBySchool(schoolId),
-                    subjects = schoolSubjects,
-                    levels = schoolLevels,
-                    classes = classes.findBySchool(schoolId),
-                    teachers = schoolTeachers,
-                )
-                ReadinessReport(
-                    schoolId = schoolId,
-                    issues = ReadinessCheck.issuesOf(input),
-                    subjects = schoolSubjects.associateBy { it.id },
-                    levels = schoolLevels.associateBy { it.id },
-                    teachers = schoolTeachers.associateBy { it.id },
-                    features = roomFeatures.findBySchool(schoolId).associateBy { it.id },
-                )
+                reports.load(schoolId)
             }
         }
 }

@@ -4,6 +4,7 @@ import timetablescheduler.application.error.DependantType
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.domain.scheduling.generation.GenerationStatus
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek
@@ -28,6 +29,8 @@ interface UiTexts {
     val teachers: TeacherTexts
     val accounts: AccountTexts
     val readiness: ReadinessTexts
+    val generations: GenerationTexts
+    val timetables: TimetableTexts
 }
 
 fun textsFor(language: InterfaceLanguage): UiTexts = when (language) {
@@ -96,6 +99,7 @@ interface SchoolTexts {
     val classLevelsLink: String
     val teachersLink: String
     val readinessLink: String
+    val generationsLink: String
     fun featuresLink(count: Int): String
     fun roomsLink(count: Int): String
     fun timeGridLink(teachingSlotsPerWeek: Int): String
@@ -168,6 +172,8 @@ interface ClassLevelTexts {
     val toLevel: String
     val editClass: String
     val deleteClass: String
+    val homeRoomLabel: String
+    val noHomeRoom: String
     fun gridOffers(teachingSlotsPerWeek: Int): String
     fun levelTitle(identifier: String): String
     fun gridWarning(weeklyPeriods: Int, teachingSlotsPerWeek: Int, excessPeriods: Int): String
@@ -232,4 +238,56 @@ interface ReadinessTexts {
     fun missingPeriods(periods: Int): String
     fun excessPeriods(periods: Int): String
     fun levelName(identifier: String): String
+}
+
+/** Generations and their alternatives (002 US1). */
+interface GenerationTexts {
+    val title: String
+    val startHeading: String
+    val timeLimitLabel: String
+    val startButton: String
+    val warningsIntro: String
+    val warningsConfirm: String
+    val blockedTitle: String
+    val blockedIntro: String
+    val toReadiness: String
+    val runningTitle: String
+    val runningExists: String
+    val toRunning: String
+    val startedColumn: String
+    val startedByColumn: String
+    val statusColumn: String
+    val alternativesColumn: String
+    val noGenerations: String
+    val stopButton: String
+    val alternativesHeading: String
+    val noAlternatives: String
+    val unplacedColumn: String
+    val softViolationsColumn: String
+    val openAlternative: String
+    val toGenerations: String
+    val infeasibleHint: String
+    val classFill: String
+    val teacherLoad: String
+    val otherSoft: String
+    fun statusName(status: GenerationStatus): String
+    fun generationTitle(startedAt: String): String
+    fun progress(elapsed: String, alternativesFound: Int): String
+    fun alternativeTitle(number: Int): String
+    fun percent(value: Double): String
+    fun dateTime(at: java.time.Instant): String
+    fun duration(seconds: Long): String
+}
+
+/** Weekly grids of alternatives (002 FR-019). */
+interface TimetableTexts {
+    val viewClass: String
+    val viewTeacher: String
+    val viewRoom: String
+    val show: String
+    val objectivesHeading: String
+    val unplacedHeading: String
+    val deletedEntry: String
+    val slotColumn: String
+    fun unplacedEntry(className: String, subjectName: String, periods: Int): String
 }

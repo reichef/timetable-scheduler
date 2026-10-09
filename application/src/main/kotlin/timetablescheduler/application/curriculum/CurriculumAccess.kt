@@ -3,6 +3,7 @@ package timetablescheduler.application.curriculum
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.OutcomeScope
 import timetablescheduler.application.port.ClassLevelRepository
+import timetablescheduler.application.port.RoomRepository
 import timetablescheduler.application.port.SchoolClassRepository
 import timetablescheduler.application.port.SubjectRepository
 import timetablescheduler.domain.common.ClassLevelId
@@ -12,6 +13,7 @@ import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.curriculum.ClassLevel
 import timetablescheduler.domain.curriculum.SchoolClass
 import timetablescheduler.domain.curriculum.Subject
+import timetablescheduler.domain.room.Room
 import timetablescheduler.domain.validation.ValidationError
 
 // Entries are only reachable through their own school; entries of other schools answer "not found".
@@ -38,6 +40,10 @@ internal fun OutcomeScope.loadClassOfSchool(
     val schoolClass = classes.findById(classId).orNotFound()
     return schoolClass to loadLevelOfSchool(levels, schoolId, schoolClass.classLevelId)
 }
+
+/** The school's rooms in the order planners know them, for choosing a home room. */
+internal fun roomsByIdentifier(rooms: RoomRepository, schoolId: SchoolId): List<Room> =
+    rooms.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
 
 internal fun OutcomeScope.requireVersion(storedVersion: Int, expectedVersion: Int) {
     if (storedVersion != expectedVersion) fail(ApplicationError.VersionConflict)

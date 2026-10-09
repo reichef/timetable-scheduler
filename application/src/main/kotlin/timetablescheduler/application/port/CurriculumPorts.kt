@@ -2,6 +2,7 @@ package timetablescheduler.application.port
 
 import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
+import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
@@ -45,4 +46,7 @@ interface SchoolClassRepository {
     fun findById(classId: SchoolClassId): SchoolClass?
     fun findByLevel(levelId: ClassLevelId): List<SchoolClass>
     fun findBySchool(schoolId: SchoolId): List<SchoolClass>
+
+    /** The class using [roomId] as its home room, if any (002 FR-002a). */
+    fun findByHomeRoom(roomId: RoomId): SchoolClass?
 }

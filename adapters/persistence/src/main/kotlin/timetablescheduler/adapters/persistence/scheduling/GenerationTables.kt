@@ -1,0 +1,61 @@
+package timetablescheduler.adapters.persistence.scheduling
+
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.java.javaUUID
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
+import timetablescheduler.adapters.persistence.account.UserAccountTable
+import timetablescheduler.adapters.persistence.school.SchoolTable
+
+object GenerationTable : Table("generation") {
+    val id = javaUUID("id")
+    val schoolId = javaUUID("school_id").references(SchoolTable.id)
+    val startedBy = javaUUID("started_by").references(UserAccountTable.id)
+    val startedAt = timestampWithTimeZone("started_at")
+    val finishedAt = timestampWithTimeZone("finished_at").nullable()
+    val timeLimitMinutes = integer("time_limit_minutes")
+    val maxAlternatives = integer("max_alternatives")
+    val status = varchar("status", 17)
+    val inputFingerprint = char("input_fingerprint", 64)
+    val alternativesFound = integer("alternatives_found")
+    override val primaryKey = PrimaryKey(id)
+}
+
+object AlternativeTable : Table("alternative") {
+    val id = javaUUID("id")
+    val generationId = javaUUID("generation_id").references(GenerationTable.id)
+    val classFill = decimal("class_fill", 5, 4)
+    val teacherLoadUsage = decimal("teacher_load_usage", 5, 4)
+    val separate1 = decimal("separate_1", 5, 4).nullable()
+    val separate2 = decimal("separate_2", 5, 4).nullable()
+    val separate3 = decimal("separate_3", 5, 4).nullable()
+    val otherSoft = decimal("other_soft", 5, 4)
+    override val primaryKey = PrimaryKey(id)
+}
+
+/** Lessons keep plain ids without references to master data (G7). */
+object AlternativeLessonTable : Table("alternative_lesson") {
+    val alternativeId = javaUUID("alternative_id").references(AlternativeTable.id)
+    val position = integer("position")
+    val classId = javaUUID("class_id")
+    val subjectId = javaUUID("subject_id")
+    val teacherId = javaUUID("teacher_id")
+    val roomId = javaUUID("room_id")
+    val dayOfWeek = varchar("day_of_week", 9)
+    val timeSlotId = javaUUID("time_slot_id")
+    override val primaryKey = PrimaryKey(alternativeId, position)
+}
+
+object AlternativeUnplacedTable : Table("alternative_unplaced") {
+    val alternativeId = javaUUID("alternative_id").references(AlternativeTable.id)
+    val classId = javaUUID("class_id")
+    val subjectId = javaUUID("subject_id")
+    val periods = integer("periods")
+    override val primaryKey = PrimaryKey(alternativeId, classId, subjectId)
+}
+
+object AlternativeSoftViolationTable : Table("alternative_soft_violation") {
+    val alternativeId = javaUUID("alternative_id").references(AlternativeTable.id)
+    val constraintId = javaUUID("constraint_id")
+    val violations = integer("violations")
+    override val primaryKey = PrimaryKey(alternativeId, constraintId)
+}

@@ -34,6 +34,23 @@ import timetablescheduler.application.curriculum.UpdateSchoolClass
 import timetablescheduler.application.curriculum.UpdateSubject
 import timetablescheduler.application.port.ClassLevelRepository
 import timetablescheduler.application.readiness.GetSchoolReadiness
+import timetablescheduler.application.readiness.ReadinessReportLoader
+import timetablescheduler.application.port.GenerationEventLog
+import timetablescheduler.application.port.GenerationExecutor
+import timetablescheduler.application.port.GenerationRepository
+import timetablescheduler.application.port.TimetableSolver
+import timetablescheduler.application.scheduling.GenerationControl
+import timetablescheduler.application.scheduling.GenerationRunner
+import timetablescheduler.application.scheduling.GetAlternative
+import timetablescheduler.application.scheduling.GetGeneration
+import timetablescheduler.application.scheduling.ListGenerations
+import timetablescheduler.application.scheduling.RecoverInterruptedGenerations
+import timetablescheduler.application.scheduling.SchedulingProblemBuilder
+import timetablescheduler.application.scheduling.SchedulingUseCases
+import timetablescheduler.application.scheduling.StartGeneration
+import timetablescheduler.application.scheduling.StopGeneration
+import timetablescheduler.application.scheduling.TimetableNamesLoader
+import java.time.Clock
 import timetablescheduler.application.port.PasswordCredentialRepository
 import timetablescheduler.application.port.PasswordHasher
 import timetablescheduler.application.port.RoomFeatureRepository
@@ -75,6 +92,7 @@ import timetablescheduler.application.teacher.UpdateTeacher
 import timetablescheduler.application.teacher.UpdateUnavailability
 import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
+import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SubjectId
 
 /** All ports the use cases need; implemented by the persistence adapter or by in-memory fakes in tests. */
@@ -93,8 +111,17 @@ class MasterDataPorts(
     val teachers: TeacherRepository,
 )
 
+/** The ports of feature 002 (timetable generation); implemented by the persistence and solver adapters or by fakes. */
+class SchedulingPorts(
+    val generations: GenerationRepository,
+    val solver: TimetableSolver,
+    val executor: GenerationExecutor,
+    val eventLog: GenerationEventLog,
+    val clock: Clock,
+)
+
 /** Wires every use case from the ports in one place, so production and tests use identical wiring. */
-class MasterDataUseCases(ports: MasterDataPorts) {
+class MasterDataUseCases(ports: MasterDataPorts, schedulingPorts: SchedulingPorts) {
     val access = SchoolAccessPolicy(ports.accounts)
 
     val login = LoginUseCase(
@@ -121,6 +148,16 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             },
             DependantSource { subjectId ->
                 teachers.findQualifiedFor(subjectId).map { DependantRef(DependantType.TEACHER, it.displayName, setOf(it.schoolId)) }
+            },
+        )
+    }
+
+    private val roomDependantSources: List<DependantSource<RoomId>> = with(ports) {
+        listOf(
+            DependantSource { roomId ->
+                val schoolClass = schoolClasses.findByHomeRoom(roomId) ?: return@DependantSource emptyList()
+                val level = classLevels.findById(schoolClass.classLevelId) ?: return@DependantSource emptyList()
+                listOf(DependantRef(DependantType.SCHOOL_CLASS, schoolClass.displayName(level), setOf(level.schoolId)))
             },
         )
     }
@@ -162,7 +199,7 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             deleteFeature = DeleteRoomFeature(transactions, access, roomFeatures, roomFeatureDependantSources),
             createRoom = CreateRoom(transactions, access, rooms, roomFeatures),
             updateRoom = UpdateRoom(transactions, access, rooms, roomFeatures),
-            deleteRoom = DeleteRoom(transactions, access, rooms),
+            deleteRoom = DeleteRoom(transactions, access, rooms, roomDependantSources),
             listRooms = ListRooms(transactions, access, rooms, roomFeatures),
             getRoom = GetRoom(transactions, access, rooms, roomFeatures),
         )
@@ -180,11 +217,11 @@ class MasterDataUseCases(ports: MasterDataPorts) {
             deleteClassLevel = DeleteClassLevel(transactions, access, classLevels, classLevelDependantSources),
             listClassLevels = ListClassLevels(transactions, access, schools, classLevels, schoolClasses),
             getClassLevel = GetClassLevel(transactions, access, schools, classLevels, schoolClasses, subjects),
-            proposeClassSuffix = ProposeClassSuffix(transactions, access, classLevels, schoolClasses),
-            createSchoolClass = CreateSchoolClass(transactions, access, classLevels, schoolClasses),
-            updateSchoolClass = UpdateSchoolClass(transactions, access, classLevels, schoolClasses),
+            proposeClassSuffix = ProposeClassSuffix(transactions, access, classLevels, schoolClasses, rooms),
+            createSchoolClass = CreateSchoolClass(transactions, access, classLevels, schoolClasses, rooms),
+            updateSchoolClass = UpdateSchoolClass(transactions, access, classLevels, schoolClasses, rooms),
             deleteSchoolClass = DeleteSchoolClass(transactions, access, classLevels, schoolClasses),
-            getSchoolClass = GetSchoolClass(transactions, access, classLevels, schoolClasses, subjects),
+            getSchoolClass = GetSchoolClass(transactions, access, classLevels, schoolClasses, subjects, rooms),
         )
     }
 
@@ -200,8 +237,27 @@ class MasterDataUseCases(ports: MasterDataPorts) {
         )
     }
 
-    val readiness = with(ports) {
-        GetSchoolReadiness(transactions, access, schools, rooms, roomFeatures, subjects, classLevels, schoolClasses, teachers)
+    private val readinessReports = with(ports) {
+        ReadinessReportLoader(schools, rooms, roomFeatures, subjects, classLevels, schoolClasses, teachers)
+    }
+
+    val readiness = GetSchoolReadiness(ports.transactions, access, readinessReports)
+
+    val scheduling = with(ports) {
+        val control = GenerationControl()
+        val problems = SchedulingProblemBuilder(schools, rooms, subjects, classLevels, schoolClasses, teachers)
+        val runner = GenerationRunner(transactions, schedulingPorts.generations, schedulingPorts.solver, control, schedulingPorts.eventLog, schedulingPorts.clock)
+        val names = TimetableNamesLoader(schools, rooms, subjects, classLevels, schoolClasses, teachers)
+        SchedulingUseCases(
+            start = StartGeneration(
+                transactions, access, readinessReports, problems, schedulingPorts.generations, schedulingPorts.executor, runner, schedulingPorts.clock,
+            ),
+            stop = StopGeneration(transactions, access, schedulingPorts.generations, control),
+            list = ListGenerations(transactions, access, schedulingPorts.generations, accounts, readinessReports),
+            get = GetGeneration(transactions, access, schedulingPorts.generations, accounts),
+            getAlternative = GetAlternative(transactions, access, schedulingPorts.generations, names),
+            recoverInterrupted = RecoverInterruptedGenerations(transactions, schedulingPorts.generations, schedulingPorts.clock),
+        )
     }
 
     val timeGrid = with(ports) {

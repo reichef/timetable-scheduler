@@ -17,7 +17,7 @@ import timetablescheduler.domain.readiness.ReadinessIssue
 fun readinessPath(schoolId: SchoolId) = "/schools/${schoolId.value}/readiness"
 
 /** One list entry: a link to the affected entry and what is wrong with it. */
-private fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIssue, texts: UiTexts) {
+internal fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIssue, texts: UiTexts) {
     val school = "/schools/${report.schoolId.value}"
     when (issue) {
         is ReadinessIssue.SubjectNoSuitableRoom -> {

@@ -3,6 +3,7 @@ package timetablescheduler.adapters.persistence.curriculum
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import timetablescheduler.adapters.persistence.room.RoomFeatureTable
+import timetablescheduler.adapters.persistence.room.RoomTable
 import timetablescheduler.adapters.persistence.school.SchoolTable
 import timetablescheduler.domain.curriculum.ClassLevel
 import timetablescheduler.domain.curriculum.SchoolClass
@@ -44,5 +45,6 @@ object SchoolClassTable : Table("school_class") {
     val suffix = varchar("suffix", SchoolClass.SUFFIX_MAX_LENGTH)
     val priorityWeight = integer("priority_weight")
     val version = integer("version")
+    val homeRoomId = javaUUID("home_room_id").references(RoomTable.id).nullable()
     override val primaryKey = PrimaryKey(id)
 }

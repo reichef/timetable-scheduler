@@ -16,6 +16,8 @@ import kotlinx.html.p
 import kotlinx.html.ul
 import timetablescheduler.adapters.web.i18n.UiTexts
 import timetablescheduler.adapters.web.i18n.texts
+import timetablescheduler.adapters.web.readiness.issueEntry
+import timetablescheduler.adapters.web.readiness.readinessPath
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.room.RoomFeature
@@ -77,6 +79,15 @@ suspend fun ApplicationCall.respondBusinessFailure(error: ApplicationError, back
                 if (error.hiddenDependantCount > 0) li { +texts.errors.hiddenDependants(error.hiddenDependantCount) }
             }
             if (backLink != null) a(href = backLink) { +texts.common.back }
+        }
+        is ApplicationError.GenerationBlocked -> respondPage(texts.generations.blockedTitle, HttpStatusCode.Conflict) {
+            p { +texts.generations.blockedIntro }
+            ul { error.blockingIssues.forEach { issue -> li { issueEntry(error.names, issue, texts) } } }
+            a(href = readinessPath(error.names.schoolId)) { +texts.generations.toReadiness }
+        }
+        is ApplicationError.GenerationRunning -> respondPage(texts.generations.runningTitle, HttpStatusCode.Conflict) {
+            p { +texts.generations.runningExists }
+            if (backLink != null) a(href = "$backLink/${error.generationId.value}") { +texts.generations.toRunning }
         }
         is ApplicationError.Invalid -> respondPage(texts.errors.invalidInputTitle, HttpStatusCode.UnprocessableEntity) {
             validationErrors(error.errors, texts)

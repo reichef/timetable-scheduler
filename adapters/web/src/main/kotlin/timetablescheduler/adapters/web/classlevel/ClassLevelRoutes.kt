@@ -17,6 +17,7 @@ import timetablescheduler.adapters.web.layout.respondFormResult
 import timetablescheduler.adapters.web.layout.respondResult
 import timetablescheduler.adapters.web.layout.seeOther
 import timetablescheduler.adapters.web.layout.text
+import timetablescheduler.adapters.web.layout.uuids
 import timetablescheduler.adapters.web.layout.version
 import timetablescheduler.adapters.web.school.schoolIdParameter
 import timetablescheduler.application.curriculum.CurriculumUseCases
@@ -24,6 +25,7 @@ import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.ClassLevelId
+import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
@@ -56,7 +58,10 @@ private fun CurriculumFormInput.toEntries(): List<CurriculumEntry>? =
         .filterValues { it.isNotEmpty() && it != "0" }
         .map { (subjectId, period) -> CurriculumEntry(subjectId, period.toIntOrNull() ?: return null) }
 
-private fun Parameters.classInput() = ClassFormInput(text("suffix"), text("priorityWeight"))
+private fun Parameters.classInput() = ClassFormInput(text("suffix"), text("priorityWeight"), text("homeRoomId"))
+
+/** The chosen home room; empty or malformed means none (a foreign id is rejected by the use case). */
+private fun Parameters.homeRoomId(): RoomId? = uuids("homeRoomId").firstOrNull()?.let(::RoomId)
 
 /** Parses the class form; a weight that is no whole number is reported like a business-rule violation. */
 private fun Parameters.parseClass(save: (suffix: String, priorityWeight: Int) -> UseCaseResult<SchoolClass>): UseCaseResult<SchoolClass> {
@@ -150,7 +155,7 @@ private fun Route.schoolClassRoutes(curriculum: CurriculumUseCases) {
         val levelId = call.levelIdParameter() ?: return@post
         val form = call.receiveCheckedForm()
         call.respondFormResult(
-            form.parseClass { suffix, weight -> curriculum.createSchoolClass.execute(call.actor, schoolId, levelId, suffix, weight) },
+            form.parseClass { suffix, weight -> curriculum.createSchoolClass.execute(call.actor, schoolId, levelId, suffix, weight, form.homeRoomId()) },
             backLink = "${levelsPath(schoolId)}/${levelId.value}",
             onInvalid = { errors ->
                 call.respondResult(curriculum.proposeClassSuffix.execute(call.actor, schoolId, levelId)) {
@@ -171,7 +176,7 @@ private fun Route.schoolClassRoutes(curriculum: CurriculumUseCases) {
         val classId = call.classIdParameter() ?: return@post
         val form = call.receiveCheckedForm()
         call.respondFormResult(
-            form.parseClass { suffix, weight -> curriculum.updateSchoolClass.execute(call.actor, schoolId, classId, suffix, weight, form.version()) },
+            form.parseClass { suffix, weight -> curriculum.updateSchoolClass.execute(call.actor, schoolId, classId, suffix, weight, form.version(), form.homeRoomId()) },
             backLink = "/schools/${schoolId.value}/classes/${classId.value}",
             onInvalid = { errors ->
                 call.respondResult(curriculum.getSchoolClass.execute(call.actor, schoolId, classId)) {

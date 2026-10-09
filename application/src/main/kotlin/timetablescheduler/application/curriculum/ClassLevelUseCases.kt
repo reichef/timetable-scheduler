@@ -22,6 +22,8 @@ import timetablescheduler.domain.curriculum.Subject
 import timetablescheduler.domain.curriculum.SuffixProposal
 import timetablescheduler.domain.readiness.LevelExceedsGridRule
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.application.port.RoomRepository
+import timetablescheduler.domain.room.Room
 
 /** A saved level and, if its curriculum does not fit into the weekly grid, the non-blocking warning (FR-025). */
 data class ClassLevelSaved(val level: ClassLevel, val warning: ReadinessIssue.LevelExceedsGrid?)
@@ -38,7 +40,8 @@ data class ClassLevelDetails(
     val warning: ReadinessIssue.LevelExceedsGrid?,
 )
 
-data class ClassProposal(val level: ClassLevel, val suffix: String?)
+/** The new-class form: proposed suffix and the rooms that can be chosen as home room (002 FR-002a). */
+data class ClassProposal(val level: ClassLevel, val suffix: String?, val rooms: List<Room> = emptyList())
 
 /** Rejects an identifier another level of the same school already uses (FR-010, case-insensitive). */
 private fun OutcomeScope.requireUniqueIdentifier(levels: ClassLevelRepository, level: ClassLevel) {
@@ -165,13 +168,14 @@ class ProposeClassSuffix(
     private val access: SchoolAccessPolicy,
     private val levels: ClassLevelRepository,
     private val classes: SchoolClassRepository,
+    private val rooms: RoomRepository,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, levelId: ClassLevelId): UseCaseResult<ClassProposal> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val level = loadLevelOfSchool(levels, schoolId, levelId)
-                ClassProposal(level, SuffixProposal.next(classes.findByLevel(levelId).map { it.suffix }))
+                ClassProposal(level, SuffixProposal.next(classes.findByLevel(levelId).map { it.suffix }), roomsByIdentifier(rooms, schoolId))
             }
         }
 }

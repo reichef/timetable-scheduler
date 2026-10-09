@@ -36,6 +36,7 @@ private val ownLanguageNames = mapOf(InterfaceLanguage.GERMAN to "Deutsch", Inte
 suspend fun ApplicationCall.respondPage(
     pageTitle: String,
     status: HttpStatusCode = HttpStatusCode.OK,
+    refreshSeconds: Int? = null,
     content: FlowContent.(UserSession?) -> Unit,
 ) {
     val session = sessions.get<UserSession>()
@@ -46,6 +47,8 @@ suspend fun ApplicationCall.respondPage(
         head {
             meta(charset = "utf-8")
             meta(name = "viewport", content = "width=device-width, initial-scale=1")
+            // Pages of running work reload themselves without any script (002 G6).
+            if (refreshSeconds != null) meta { httpEquiv = "refresh"; this.content = "$refreshSeconds" }
             title("$pageTitle – ${texts.common.appTitle}")
             link(rel = "stylesheet", href = "/static/app.css")
             script(src = "/static/language-switch.js") { defer = true }

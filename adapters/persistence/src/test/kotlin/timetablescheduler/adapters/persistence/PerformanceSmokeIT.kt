@@ -12,7 +12,13 @@ import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
 import timetablescheduler.adapters.persistence.teacher.ExposedTeacherRepository
 import timetablescheduler.adapters.persistence.teacher.ExposedTimeSlotUsage
 import timetablescheduler.application.MasterDataPorts
+import timetablescheduler.adapters.persistence.scheduling.ExposedGenerationRepository
 import timetablescheduler.application.MasterDataUseCases
+import timetablescheduler.application.SchedulingPorts
+import timetablescheduler.application.fakes.FakeTimetableSolver
+import timetablescheduler.application.fakes.ImmediateGenerationExecutor
+import timetablescheduler.application.fakes.RecordingGenerationEventLog
+import java.time.Clock
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
@@ -54,6 +60,7 @@ class PerformanceSmokeIT : PostgresTestBase() {
             transactions, schools, accounts, ExposedPasswordCredentialRepository(), BcryptPasswordHasher(), rooms, features,
             ExposedTimeSlotUsage(), subjects, levels, classes, teachers,
         ),
+        SchedulingPorts(ExposedGenerationRepository(), FakeTimetableSolver(), ImmediateGenerationExecutor(), RecordingGenerationEventLog(), Clock.systemUTC()),
     )
 
     private fun <T> ValidationResult<T>.valid(): T = (this as ValidationResult.Valid).value

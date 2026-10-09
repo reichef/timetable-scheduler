@@ -17,6 +17,7 @@ import timetablescheduler.application.port.SchoolClassRepository
 import timetablescheduler.application.port.SubjectRepository
 import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
+import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
@@ -187,6 +188,7 @@ class ExposedSchoolClassRepository : SchoolClassRepository {
             it[suffix] = schoolClass.suffix
             it[priorityWeight] = schoolClass.priorityWeight
             it[version] = schoolClass.version
+            it[homeRoomId] = schoolClass.homeRoomId?.value
         }
     }
 
@@ -194,6 +196,7 @@ class ExposedSchoolClassRepository : SchoolClassRepository {
         SchoolClassTable.update({ (SchoolClassTable.id eq schoolClass.id.value) and (SchoolClassTable.version eq schoolClass.version) }) {
             it[suffix] = schoolClass.suffix
             it[priorityWeight] = schoolClass.priorityWeight
+            it[homeRoomId] = schoolClass.homeRoomId?.value
             it[version] = schoolClass.version + 1
         } == 1
 
@@ -213,6 +216,9 @@ class ExposedSchoolClassRepository : SchoolClassRepository {
             .where { ClassLevelTable.schoolId eq schoolId.value }
             .map { it.toSchoolClass() }
 
+    override fun findByHomeRoom(roomId: RoomId): SchoolClass? =
+        SchoolClassTable.selectAll().where { SchoolClassTable.homeRoomId eq roomId.value }.singleOrNull()?.toSchoolClass()
+
     private fun ResultRow.toSchoolClass() =
         SchoolClass(
             id = SchoolClassId(this[SchoolClassTable.id]),
@@ -220,5 +226,6 @@ class ExposedSchoolClassRepository : SchoolClassRepository {
             suffix = this[SchoolClassTable.suffix],
             priorityWeight = this[SchoolClassTable.priorityWeight],
             version = this[SchoolClassTable.version],
+            homeRoomId = this[SchoolClassTable.homeRoomId]?.let(::RoomId),
         )
 }

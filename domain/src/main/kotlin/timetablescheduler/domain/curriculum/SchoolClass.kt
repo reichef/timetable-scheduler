@@ -37,6 +37,7 @@ data class SchoolClass(
     companion object {
         const val FIELD_SUFFIX = "suffix"
         const val FIELD_PRIORITY_WEIGHT = "priorityWeight"
+        const val FIELD_HOME_ROOM = "homeRoomId"
         const val SUFFIX_MAX_LENGTH = 5
         const val MIN_PRIORITY_WEIGHT = 1
         const val MAX_PRIORITY_WEIGHT = 100

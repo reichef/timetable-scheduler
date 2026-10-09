@@ -12,17 +12,21 @@ import timetablescheduler.adapters.persistence.curriculum.ExposedSchoolClassRepo
 import timetablescheduler.adapters.persistence.curriculum.ExposedSubjectRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
+import timetablescheduler.adapters.persistence.scheduling.ExposedGenerationRepository
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
 import timetablescheduler.adapters.persistence.teacher.ExposedTeacherRepository
 import timetablescheduler.adapters.persistence.teacher.ExposedTimeSlotUsage
+import timetablescheduler.adapters.solver.TimefoldTimetableSolver
 import timetablescheduler.adapters.web.WebDependencies
 import timetablescheduler.adapters.web.WebSettings
 import timetablescheduler.adapters.web.webModule
 import timetablescheduler.application.MasterDataPorts
 import timetablescheduler.application.MasterDataUseCases
+import timetablescheduler.application.SchedulingPorts
 import timetablescheduler.application.account.InstallationOutcome
 import timetablescheduler.application.account.InstallationUseCase
 import timetablescheduler.application.error.UseCaseResult
+import java.time.Clock
 
 private val log = LoggerFactory.getLogger("timetablescheduler.bootstrap.Main")
 
@@ -54,7 +58,18 @@ fun main() {
         schoolClasses = ExposedSchoolClassRepository(),
         teachers = ExposedTeacherRepository(),
     )
-    val dependencies = WebDependencies(MasterDataUseCases(ports))
+    val schedulingPorts = SchedulingPorts(
+        generations = ExposedGenerationRepository(),
+        solver = TimefoldTimetableSolver(),
+        executor = SingleThreadGenerationExecutor(),
+        eventLog = Slf4jGenerationEventLog(),
+        clock = Clock.systemUTC(),
+    )
+    val useCases = MasterDataUseCases(ports, schedulingPorts)
+    // Edge case "server restart": generations that were running cannot continue (002 FR-022).
+    val interrupted = useCases.scheduling.recoverInterrupted.execute()
+    if (interrupted > 0) log.warn("Generations interrupted by the restart marked as failed: {}", interrupted)
+    val dependencies = WebDependencies(useCases)
     embeddedServer(Netty, port = 8080) {
         webModule(dependencies, WebSettings(config.devMode, config.sessionSignKey))
     }.start(wait = true)

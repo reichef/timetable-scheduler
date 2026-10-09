@@ -1,0 +1,137 @@
+package timetablescheduler.application.scheduling
+
+import timetablescheduler.application.error.ApplicationError
+import timetablescheduler.application.error.UseCaseResult
+import timetablescheduler.application.fakes.GenerationEvent
+import timetablescheduler.domain.scheduling.generation.Generation
+import timetablescheduler.domain.scheduling.generation.GenerationStatus
+import timetablescheduler.domain.scheduling.pareto.Dominance
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+class GenerationRunnerTest {
+
+    private val test = SchedulingTestSchool()
+    private val world = test.world
+
+    private fun <T> UseCaseResult<T>.value(): T = assertIs<UseCaseResult.Success<T>>(this).value
+
+    private fun startedGeneration(): Generation =
+        test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1, warningsConfirmed = true)).value()
+
+    private fun alternativesOf(generation: Generation) = world.generations.findAlternatives(generation.id)
+
+    @Test
+    fun `admitted candidates are stored with objective values and unplaced lessons`() {
+        world.solver.candidates = { listOf(test.halfFilled()) }
+
+        val generation = startedGeneration()
+
+        val alternative = alternativesOf(generation).single()
+        assertEquals(0.5, alternative.objectiveValues.classFill)
+        assertEquals(1, alternative.unplacedPeriods())
+        assertEquals(GenerationStatus.FINISHED, world.generations.findById(generation.id)!!.status)
+        assertEquals(1, world.generations.findById(generation.id)!!.alternativesFound)
+    }
+
+    @Test
+    fun `candidates violating a hard constraint are discarded and only counted in the log (G4)`() {
+        world.solver.candidates = { listOf(test.invalid(), test.complete()) }
+
+        val generation = startedGeneration()
+
+        assertEquals(listOf(test.complete().lessons.toSet()), alternativesOf(generation).map { it.lessons.toSet() })
+        assertTrue(GenerationEvent.Discarded(generation.id, 1) in world.generationLog.events)
+    }
+
+    @Test
+    fun `a dominated alternative is removed when a better one is found`() {
+        world.solver.candidates = { listOf(test.halfFilled(), test.complete()) }
+
+        val generation = startedGeneration()
+
+        assertEquals(1.0, alternativesOf(generation).single().objectiveValues.classFill)
+    }
+
+    @Test
+    fun `stored alternatives never dominate each other (SC-003)`() {
+        world.solver.candidates = { listOf(test.halfFilled(), test.complete(test.mueller), test.complete(test.schmidt), test.halfFilled(test.mueller)) }
+
+        val generation = startedGeneration()
+
+        val vectors = alternativesOf(generation).map { it.objectiveValues.asVector() }
+        assertEquals(2, vectors.size)
+        vectors.forEach { first -> vectors.forEach { second -> assertFalse(Dominance.dominates(first, second)) } }
+    }
+
+    @Test
+    fun `a stop request ends the generation as stopped and keeps the alternatives found so far`() {
+        world.executor.deferred = true
+        world.solver.candidates = { listOf(test.halfFilled(), test.complete()) }
+        val generation = startedGeneration()
+
+        test.scheduling.stop.execute(test.admin.id, test.school.id, generation.id).value()
+        world.executor.runPending()
+
+        assertEquals(GenerationStatus.STOPPED, world.generations.findById(generation.id)!!.status)
+    }
+
+    @Test
+    fun `a solver failure ends the generation as failed and logs only class name and id`() {
+        world.solver.candidates = { listOf(test.complete()) }
+        world.solver.failure = IllegalStateException("Anna Schmidt could not be placed")
+
+        val generation = startedGeneration()
+
+        assertEquals(GenerationStatus.FAILED, world.generations.findById(generation.id)!!.status)
+        assertEquals(1, alternativesOf(generation).size)
+        assertTrue(GenerationEvent.Failed(generation.id, IllegalStateException::class.java.name) in world.generationLog.events)
+        assertFalse(world.generationLog.events.toString().contains("Schmidt"))
+    }
+
+    @Test
+    fun `without any valid alternative and with an infeasible pass the generation fails as infeasible (G4)`() {
+        world.solver.candidates = { listOf(test.invalid()) }
+        world.solver.infeasiblePasses = 1
+
+        val generation = startedGeneration()
+
+        assertEquals(GenerationStatus.FAILED_INFEASIBLE, world.generations.findById(generation.id)!!.status)
+    }
+
+    @Test
+    fun `an infeasible pass after a valid alternative still ends as finished (G4)`() {
+        world.solver.candidates = { listOf(test.complete()) }
+        world.solver.infeasiblePasses = 2
+
+        val generation = startedGeneration()
+
+        assertEquals(GenerationStatus.FINISHED, world.generations.findById(generation.id)!!.status)
+        assertEquals(1, alternativesOf(generation).size)
+    }
+
+    @Test
+    fun `start and end are logged with ids, status and counts only`() {
+        world.solver.candidates = { listOf(test.complete()) }
+
+        val generation = startedGeneration()
+
+        assertEquals(GenerationEvent.Started(generation.id), world.generationLog.events.first())
+        val finished = assertIs<GenerationEvent.Finished>(world.generationLog.events.last())
+        assertEquals(GenerationStatus.FINISHED, finished.status)
+        assertEquals(1, finished.alternatives)
+    }
+
+    @Test
+    fun `stopping a generation of another school answers not found`() {
+        val other = world.school("Gymnasium Süd")
+
+        assertEquals(
+            ApplicationError.NotFound,
+            assertIs<UseCaseResult.Failure>(test.scheduling.stop.execute(test.admin.id, other.id, startedGeneration().id)).error,
+        )
+    }
+}

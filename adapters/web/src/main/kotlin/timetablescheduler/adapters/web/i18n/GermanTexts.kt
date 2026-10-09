@@ -4,10 +4,15 @@ import timetablescheduler.application.error.DependantType
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.domain.scheduling.generation.GenerationStatus
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** German interface texts — the reference language with the school terminology (R14). */
 object GermanTexts : UiTexts {
@@ -93,6 +98,8 @@ object GermanTexts : UiTexts {
             "subjects" to "Fächer",
             "dayOfWeek" to "Wochentag",
             "slot" to "Zeitfenster",
+            "timeLimitMinutes" to "Zeitlimit",
+            "homeRoomId" to "Klassenraum",
         )
 
         private fun label(field: String) = fieldLabels[field] ?: field
@@ -111,6 +118,8 @@ object GermanTexts : UiTexts {
             ValidationError.LastSchoolRemoved -> "Es muss mindestens eine Schule zugeordnet sein."
             is ValidationError.NoActivePlannerLeft -> "Es muss mindestens ein aktiver Planer bleiben."
             ValidationError.IncorrectCurrentPassword -> "Das aktuelle Passwort ist falsch."
+            is ValidationError.HomeRoomTaken -> "Der Raum ist bereits Klassenraum von ${error.otherClassName}."
+            is ValidationError.ConfirmationMissing -> "Bitte bestätigen Sie die Hinweise."
         }
 
         override fun describe(type: DependantType) = when (type) {
@@ -135,6 +144,7 @@ object GermanTexts : UiTexts {
         override val classLevelsLink = "Klassenstufen und Klassen"
         override val teachersLink = "Lehrkräfte"
         override val readinessLink = "Bereitschaft für die Planung"
+        override val generationsLink = "Stundenplanläufe"
         override fun featuresLink(count: Int) = "Ausstattung ($count)"
         override fun roomsLink(count: Int) = "Räume ($count)"
         override fun timeGridLink(teachingSlotsPerWeek: Int) = "Zeitraster ($teachingSlotsPerWeek Unterrichtsstunden pro Woche)"
@@ -211,6 +221,8 @@ object GermanTexts : UiTexts {
         override val toLevel = "Zur Klassenstufe"
         override val editClass = "Klasse bearbeiten"
         override val deleteClass = "Klasse löschen"
+        override val homeRoomLabel = "Klassenraum"
+        override val noHomeRoom = "kein Klassenraum"
         override fun gridOffers(teachingSlotsPerWeek: Int) = "Das Zeitraster bietet $teachingSlotsPerWeek Unterrichtsstunden pro Woche."
         override fun levelTitle(identifier: String) = "Klassenstufe $identifier"
         override fun gridWarning(weeklyPeriods: Int, teachingSlotsPerWeek: Int, excessPeriods: Int) =
@@ -286,5 +298,63 @@ object GermanTexts : UiTexts {
         override fun missingPeriods(periods: Int) = ": $periods Wochenstunden fehlen"
         override fun excessPeriods(periods: Int) = ": $periods Wochenstunden zu viel"
         override fun levelName(identifier: String) = "Stufe $identifier"
+    }
+
+    override val generations = object : GenerationTexts {
+        override val title = "Stundenplanläufe"
+        override val startHeading = "Neuen Lauf starten"
+        override val timeLimitLabel = "Zeitlimit in Minuten (1–60)"
+        override val startButton = "Lauf starten"
+        override val warningsIntro = "Hinweise aus der Bereitschaftsprüfung:"
+        override val warningsConfirm = "Ich habe die Hinweise gelesen und möchte trotzdem starten."
+        override val blockedTitle = "Start nicht möglich"
+        override val blockedIntro = "Diese Probleme müssen vor der Planung behoben werden:"
+        override val toReadiness = "Zur Bereitschaftsübersicht"
+        override val runningTitle = "Lauf läuft bereits"
+        override val runningExists = "Für die Schule läuft bereits ein Lauf. Warten Sie, bis er endet, oder stoppen Sie ihn."
+        override val toRunning = "Zum laufenden Lauf"
+        override val startedColumn = "Gestartet"
+        override val startedByColumn = "Von"
+        override val statusColumn = "Status"
+        override val alternativesColumn = "Alternativen"
+        override val noGenerations = "Noch keine Läufe."
+        override val stopButton = "Stoppen"
+        override val alternativesHeading = "Gleichwertige Alternativen"
+        override val noAlternatives = "Keine Alternativen gefunden."
+        override val unplacedColumn = "Nicht verplant"
+        override val softViolationsColumn = "Soll-Verstöße"
+        override val openAlternative = "Ansehen"
+        override val toGenerations = "Zu den Läufen"
+        override val infeasibleHint = "Mit den Muss-Bedingungen ließ sich kein gültiger Stundenplan bilden."
+        override val classFill = "Klassen gefüllt"
+        override val teacherLoad = "Deputate genutzt"
+        override val otherSoft = "Soll-Bedingungen erfüllt"
+        override fun statusName(status: GenerationStatus) = when (status) {
+            GenerationStatus.RUNNING -> "läuft"
+            GenerationStatus.FINISHED -> "abgeschlossen"
+            GenerationStatus.STOPPED -> "vorzeitig gestoppt"
+            GenerationStatus.FAILED -> "fehlgeschlagen"
+            GenerationStatus.FAILED_INFEASIBLE -> "fehlgeschlagen – Muss-Bedingungen nicht erfüllbar"
+        }
+        override fun generationTitle(startedAt: String) = "Lauf vom $startedAt"
+        override fun progress(elapsed: String, alternativesFound: Int) =
+            "Läuft seit $elapsed – bisher ${if (alternativesFound == 1) "1 Alternative" else "$alternativesFound Alternativen"} gefunden."
+        override fun alternativeTitle(number: Int) = "Alternative $number"
+        override fun percent(value: Double) = String.format(Locale.GERMANY, "%.1f %%", value * 100)
+        override fun dateTime(at: Instant): String = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.systemDefault()).format(at)
+        override fun duration(seconds: Long) = if (seconds < 60) "$seconds s" else "${seconds / 60} min ${seconds % 60} s"
+    }
+
+    override val timetables = object : TimetableTexts {
+        override val viewClass = "Klasse"
+        override val viewTeacher = "Lehrkraft"
+        override val viewRoom = "Raum"
+        override val show = "Anzeigen"
+        override val objectivesHeading = "Zielwerte"
+        override val unplacedHeading = "Nicht verplante Stunden"
+        override val deletedEntry = "gelöschter Eintrag"
+        override val slotColumn = "Zeit"
+        override fun unplacedEntry(className: String, subjectName: String, periods: Int) =
+            "$className: $subjectName – ${if (periods == 1) "1 Stunde" else "$periods Stunden"}"
     }
 }
