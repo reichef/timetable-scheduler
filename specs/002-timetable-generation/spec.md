@@ -28,6 +28,10 @@ There is rarely one single "best" timetable. Filling every class completely, giv
 - Q: Should every week look the same, or does the school need A/B weeks (timetables alternating every second week)? → A: Every week is the same; A/B weeks are out of scope for this version and come as a separate later feature.
 - Q: How should the chosen timetable react when teaching demand changes after choosing (e.g., a new class, more or fewer periods in a curriculum)? → A: Missing lessons appear as "not placed", lessons no longer required are marked "no longer required", and the page shows the "no longer fits the current data" hint with a link to a new generation from the chosen timetable; the chosen timetable itself stays unchanged.
 
+### Session 2026-10-22
+
+- Q: Must a generation always return at least 3 alternatives (SC-001), even when one timetable is best in every objective? → A: No. One alternative is sufficient if it places every lesson of every class and violates no constraint (hard or soft); otherwise at least 3 alternatives are expected.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Generate equally optimal timetables (Priority: P1)
@@ -207,7 +211,7 @@ Planners keep earlier generation results to come back to them. When the master d
 
 ### Measurable Outcomes
 
-- **SC-001**: For a typical school (40 rooms, 15 subjects, 6 class levels, 25 classes, 60 teachers, 5-day grid with 10 slots, about 20 planner-defined constraints), a generation with the default time limit returns at least 3 alternatives, and the first alternative is shown within 2 minutes after the start.
+- **SC-001**: For a typical school (40 rooms, 15 subjects, 6 class levels, 25 classes, 60 teachers, 5-day grid with 10 slots, about 20 planner-defined constraints), a generation with the default time limit returns at least 3 alternatives — or a single alternative if that one places every lesson of every class and violates no constraint (hard or soft), since no other alternative can then be equally good — and the first alternative is shown within 2 minutes after the start.
 - **SC-002**: In automated checks over seeded test data sets, 0 alternatives violate a hard constraint.
 - **SC-003**: In automated checks, 0 alternatives in a result are dominated by another alternative of the same result.
 - **SC-004**: For a seeded data set that has a known complete solution, at least one alternative places 100% of all lessons.

@@ -135,7 +135,8 @@ Teacher fixations (class teachers): Deutsch 5a → T01, Mathematik 5b → T07, E
 Asserted by the scenario test:
 
 - The readiness check reports no blocking issue; the start is not refused.
-- The first alternative is available within 2 minutes; at least 3 alternatives at the end (SC-001).
+- The first alternative is available within 2 minutes; at the end at least 3 alternatives, or one alternative that
+  places every lesson of every class and violates no constraint (SC-001, refined 2026-10-22).
 - No alternative violates a hard constraint, a fixation or an unavailability (re-checked independently); 5th and 6th
   graders have no lessons in the 9. and 10. Stunde; lab, sports, music, art and computer subjects take place only in
   rooms with the feature, all other subjects in the home room.

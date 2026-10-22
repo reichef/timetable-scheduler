@@ -103,7 +103,10 @@ class TestSchoolScenarioTest {
     ) {
         assertEquals(GenerationStatus.FINISHED, run.generation.status)
         assertTrue(run.firstAlternativeAfter != null && run.firstAlternativeAfter < Duration.ofMinutes(2), "first alternative after ${run.firstAlternativeAfter}")
-        assertTrue(alternatives.size >= 3, "alternatives: ${alternatives.size} (SC-001)")
+        assertTrue(
+            alternatives.size >= 3 || alternatives.any(::isPerfect),
+            "alternatives: ${alternatives.size}, none fills every class without any violation (SC-001)",
+        )
 
         alternatives.forEach { alternative ->
             val details = useCases.scheduling.getAlternative.execute(actor, seeded.schoolId, run.generation.id, alternative.id).required("load alternative")
@@ -158,6 +161,10 @@ class TestSchoolScenarioTest {
             assertTrue(lessons.none { it.teacherId == teacherId && it.daySlot in unavailable }, "lesson while the teacher is unavailable")
         }
     }
+
+    /** SC-001: a single alternative suffices when it places every lesson and violates no constraint, hard or soft. */
+    private fun isPerfect(alternative: Alternative): Boolean =
+        alternative.unplacedPeriods() == 0 && alternative.softViolations.values.sum() == 0
 
     private fun assertNoAlternativeDominated(alternatives: List<Alternative>) {
         val vectors = alternatives.map { it.objectiveValues.asVector() }

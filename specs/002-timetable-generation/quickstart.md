@@ -78,4 +78,4 @@ TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :boot
 ## Automated checks
 
 - `./gradlew build` includes: domain tests for `HardConstraintChecker`, `ObjectiveEvaluator`, `ParetoArchive`, `InfeasibilityPreCheck`, every constraint type; solver adapter tests asserting 0 hard violations and non-dominance on seeded data sets (SC-002, SC-003) and full placement for a data set with a known complete solution (SC-004); route tests for every contract row; log confidentiality test (FR-026).
-- `./gradlew :adapters:solver:performanceTest` (tagged, not part of `build`): generated SC-001-sized school, first alternative < 2 min, ≥ 3 alternatives within 10 min.
+- `./gradlew :adapters:solver:performanceTest` (tagged, not part of `build`): generated SC-001-sized school, first alternative < 2 min, ≥ 3 alternatives within 10 min (or one alternative that fills every class and violates no constraint).
