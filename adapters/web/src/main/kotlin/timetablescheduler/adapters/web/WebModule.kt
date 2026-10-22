@@ -61,13 +61,16 @@ fun Application.webModule(
         staticResources("/static", "static")
         authRoutes(dependencies)
         languageRoutes(dependencies, settings)
+
         schoolRoutes(dependencies)
         roomRoutes(dependencies)
         timeGridRoutes(dependencies)
         accountRoutes(dependencies)
+
         subjectRoutes(dependencies)
         classLevelRoutes(dependencies)
         teacherRoutes(dependencies)
+
         readinessRoutes(dependencies)
         generationRoutes(dependencies)
         constraintRoutes(dependencies)
@@ -83,6 +86,7 @@ private fun Application.installSessions(settings: WebSettings) {
             cookie.httpOnly = true
             cookie.secure = !settings.devMode
             cookie.extensions["SameSite"] = "Strict"
+
             transform(SessionTransportTransformerMessageAuthentication(settings.sessionSignKey))
         }
     }

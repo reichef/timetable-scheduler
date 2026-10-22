@@ -61,6 +61,7 @@ class CurriculumRoutesTest {
             val mathe = system.world.subject(schoolId, "Mathematik")
             val deutsch = system.world.subject(schoolId, "Deutsch")
             system.world.subject(schoolId, "Chemie")
+
             val client = startWith(system)
             client.login()
 
@@ -95,10 +96,13 @@ class CurriculumRoutesTest {
         testApplication {
             val system = TestSystem().installed()
             val schoolId = system.firstSchoolId()
+
             system.world.teachingDays(schoolId, DayOfWeek.MONDAY)
             system.world.slot(schoolId, "1. Stunde", "08:00", "08:45")
+
             val mathe = system.world.subject(schoolId, "Mathematik")
             val level = system.world.classLevel(schoolId, "6", mathe to 3)
+
             val client = startWith(system)
             client.login()
 
@@ -112,10 +116,12 @@ class CurriculumRoutesTest {
         testApplication {
             val system = TestSystem().installed()
             val schoolId = system.firstSchoolId()
+
             val mathe = system.world.subject(schoolId, "Mathematik")
             val level = system.world.classLevel(schoolId, "6", mathe to 4)
             system.world.schoolClass(level, "a")
             val levelPath = "${system.schoolPath()}/class-levels/${level.id.value}"
+
             val client = startWith(system)
             client.login()
 
@@ -157,6 +163,7 @@ class CurriculumRoutesTest {
             val schoolId = system.firstSchoolId()
             val mathe = system.world.subject(schoolId, "Mathematik")
             system.world.classLevel(schoolId, "6", mathe to 4)
+
             val client = startWith(system)
             client.login()
 
@@ -187,6 +194,7 @@ class CurriculumRoutesTest {
             val room = system.world.room(schoolId, "A-101")
             val level = system.world.classLevel(schoolId, "5")
             val classesPath = "${system.schoolPath()}/class-levels/${level.id.value}/classes"
+
             val client = startWith(system)
             client.login()
 

@@ -101,6 +101,7 @@ suspend fun ApplicationCall.respondAccountDetails(
     respondPage(texts.accounts.accountTitle(account.username), status) { session ->
         p { +texts.accounts.status(account.active) }
         validationErrors(errors, texts)
+
         h2 { +texts.accounts.role }
         form(action = accountPath(account), method = FormMethod.post) {
             csrfField(session)
@@ -108,6 +109,7 @@ suspend fun ApplicationCall.respondAccountDetails(
             roleSelect(account.role.name, texts)
             button { +texts.common.save }
         }
+
         h2 { +if (account.active) texts.accounts.deactivateHeading else texts.accounts.activateHeading }
         form(action = "${accountPath(account)}/${if (account.active) "deactivate" else "activate"}", method = FormMethod.post) {
             csrfField(session)
@@ -116,12 +118,14 @@ suspend fun ApplicationCall.respondAccountDetails(
                 +if (account.active) texts.accounts.deactivateButton else texts.accounts.activateButton
             }
         }
+
         h2 { +texts.accounts.resetPassword }
         form(action = "${accountPath(account)}/password", method = FormMethod.post) {
             csrfField(session)
             textField("newPassword", texts.accounts.newPassword, null, InputType.password)
             button { +texts.accounts.resetButton }
         }
+
         p { a(href = ACCOUNTS_PATH) { +texts.accounts.toAccounts } }
     }
 }

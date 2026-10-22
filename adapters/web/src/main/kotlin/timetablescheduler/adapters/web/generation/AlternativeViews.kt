@@ -63,6 +63,7 @@ suspend fun ApplicationCall.respondAlternative(
         } else {
             chooseForm(session, generation, alternative, details.chosen, texts)
         }
+
         if (details.others.isNotEmpty()) {
             p {
                 +"${texts.generations.compareWith}: "
@@ -76,6 +77,7 @@ suspend fun ApplicationCall.respondAlternative(
                 }
             }
         }
+
         viewSelection(alternativePath(generation, alternative), details.names, view, entityId, texts)
         if (entityId != null) {
             h2 { +entityName(view, entityId, details.names, texts) }
@@ -84,8 +86,10 @@ suspend fun ApplicationCall.respondAlternative(
                 lessons.firstOrNull { it.daySlot == daySlot }?.let { conflictCell(it, view, details.names, details.conflicts, texts) }
             }
         }
+
         conflictList(details.conflicts, details.constraints, details.names, texts, texts.timetables.conflictsHeading)
         unplacedLessons(alternative.unplaced, details.names, texts)
+
         p { a(href = generationPath(generation)) { +texts.generations.toGenerations } }
     }
 }

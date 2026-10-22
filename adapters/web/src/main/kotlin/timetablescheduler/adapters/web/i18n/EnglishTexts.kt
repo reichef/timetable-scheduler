@@ -475,13 +475,16 @@ object EnglishTexts : UiTexts {
             override val chooseButton = "Choose as timetable"
             override val chosenMarker = "This is the chosen timetable."
             override val confirmChooseTitle = "Confirm unplaced lessons"
-            override val confirmChooseIntro = "This alternative does not place all lessons. They stay visible as \"not placed\" in the chosen timetable:"
+            override val confirmChooseIntro =
+                "This alternative does not place all lessons. They stay visible as \"not placed\" in the chosen timetable:"
             override val confirmChooseButton = "Choose anyway"
             override val cancel = "Cancel"
             override val conflictsTitle = "Alternative no longer fits"
-            override val conflictsIntro = "With the current data these lessons violate a hard constraint, so the alternative cannot be chosen:"
+            override val conflictsIntro =
+                "With the current data these lessons violate a hard constraint, so the alternative cannot be chosen:"
             override val outdatedMark = "outdated"
-            override val outdatedHint = "Master data or constraints changed since the start. Highlighted lessons now violate a hard constraint."
+            override val outdatedHint =
+                "Master data or constraints changed since the start. Highlighted lessons now violate a hard constraint."
             override val deleteLink = "Delete generation"
             override val deleteTitle = "Delete generation?"
             override val deleteIntro = "The generation and all its alternatives are deleted permanently."

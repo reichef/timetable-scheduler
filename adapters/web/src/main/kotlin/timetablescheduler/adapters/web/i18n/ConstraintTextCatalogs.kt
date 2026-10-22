@@ -101,16 +101,15 @@ internal object GermanConstraintTexts : ConstraintTexts {
         }
 
         is ConstraintRule.TeacherMaxGapsPerDay -> {
-            "Lehrkraft ${names.teacherShortCode(
-                rule.teacherId,
-            )}: höchstens ${rule.limit} ${if (rule.limit == 1) "Freistunde" else "Freistunden"} pro Tag"
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Lehrkraft $teacher: höchstens ${rule.limit} ${if (rule.limit == 1) "Freistunde" else "Freistunden"} pro Tag"
         }
 
         is ConstraintRule.SubjectMaxPerDayInClass -> {
-            "${scope(
-                rule.scope,
-                names,
-            )}: ${rule.subjectId?.let(names.subjectName) ?: everySubject} höchstens ${periods(rule.limit)} pro Tag"
+            val subject = rule.subjectId?.let(names.subjectName) ?: everySubject
+
+            "${scope(rule.scope, names)}: $subject höchstens ${periods(rule.limit)} pro Tag"
         }
 
         is ConstraintRule.SubjectDoublePeriodsInClass -> {
@@ -123,15 +122,15 @@ internal object GermanConstraintTexts : ConstraintTexts {
         }
 
         is ConstraintRule.TeacherExcludedSlots -> {
-            "Lehrkraft ${names.teacherShortCode(
-                rule.teacherId,
-            )}: ${if (kind == ConstraintKind.SOFT) "frei" else "nicht in"} ${slotList(rule.slots, names)}"
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Lehrkraft $teacher: ${if (kind == ConstraintKind.SOFT) "frei" else "nicht in"} ${slotList(rule.slots, names)}"
         }
 
         is ConstraintRule.SubjectExcludedSlots -> {
-            "${names.subjectName(
-                rule.subjectId,
-            )} (${rule.classId?.let { "Klasse ${names.className(it)}" } ?: allClasses}): nicht in ${slotList(rule.slots, names)}"
+            val classes = rule.classId?.let { "Klasse ${names.className(it)}" } ?: allClasses
+
+            "${names.subjectName(rule.subjectId)} ($classes): nicht in ${slotList(rule.slots, names)}"
         }
     }
 
@@ -243,13 +242,15 @@ internal object EnglishConstraintTexts : ConstraintTexts {
         }
 
         is ConstraintRule.TeacherMaxGapsPerDay -> {
-            "Teacher ${names.teacherShortCode(
-                rule.teacherId,
-            )}: at most ${rule.limit} ${if (rule.limit == 1) "free period" else "free periods"} per day"
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Teacher $teacher: at most ${rule.limit} ${if (rule.limit == 1) "free period" else "free periods"} per day"
         }
 
         is ConstraintRule.SubjectMaxPerDayInClass -> {
-            "${scope(rule.scope, names)}: ${rule.subjectId?.let(names.subjectName) ?: everySubject} at most ${periods(rule.limit)} per day"
+            val subject = rule.subjectId?.let(names.subjectName) ?: everySubject
+
+            "${scope(rule.scope, names)}: $subject at most ${periods(rule.limit)} per day"
         }
 
         is ConstraintRule.SubjectDoublePeriodsInClass -> {
@@ -262,15 +263,15 @@ internal object EnglishConstraintTexts : ConstraintTexts {
         }
 
         is ConstraintRule.TeacherExcludedSlots -> {
-            "Teacher ${names.teacherShortCode(
-                rule.teacherId,
-            )}: ${if (kind == ConstraintKind.SOFT) "free" else "not in"} ${slotList(rule.slots, names)}"
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Teacher $teacher: ${if (kind == ConstraintKind.SOFT) "free" else "not in"} ${slotList(rule.slots, names)}"
         }
 
         is ConstraintRule.SubjectExcludedSlots -> {
-            "${names.subjectName(
-                rule.subjectId,
-            )} (${rule.classId?.let { "class ${names.className(it)}" } ?: allClasses}): not in ${slotList(rule.slots, names)}"
+            val classes = rule.classId?.let { "class ${names.className(it)}" } ?: allClasses
+
+            "${names.subjectName(rule.subjectId)} ($classes): not in ${slotList(rule.slots, names)}"
         }
     }
 

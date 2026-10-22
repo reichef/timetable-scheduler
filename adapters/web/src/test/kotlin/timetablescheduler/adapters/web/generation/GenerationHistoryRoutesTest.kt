@@ -25,16 +25,20 @@ class GenerationHistoryRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (generation, paths) = data.generationWith()
+
             val client = startWith(system)
             client.login()
+
             assertTrue("veraltet" !in client.get(data.generationsPath).bodyAsText())
 
             system.world.markUnavailable(system.world.teachers.findById(data.schmidt.id)!!, Unavailability(MONDAY, data.first.id))
 
             val list = client.get(data.generationsPath).bodyAsText()
+
             assertTrue("veraltet" in list && "admin" in list)
             assertTrue("seit dem Start geändert" in client.get("${data.generationsPath}/${generation.id.value}").bodyAsText())
             val alternative = client.get(paths[0]).bodyAsText()
+
             assertTrue("seit dem Start geändert" in alternative)
             assertEquals(1, Regex("""class="highlight"""").findAll(alternative).count())
             assertTrue("Lehrkraft nicht verfügbar: 5a, Mathematik – Montag, 1. Stunde" in alternative)
@@ -46,15 +50,20 @@ class GenerationHistoryRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (generation, _) = data.generationWith()
+
             val client = startWith(system)
             client.login()
+
             val path = "${data.generationsPath}/${generation.id.value}"
+
             assertTrue("""href="$path/delete"""" in client.get(path).bodyAsText())
 
             val confirmation = client.get("$path/delete").bodyAsText()
+
             assertTrue("Lauf löschen?" in confirmation && """action="$path/delete"""" in confirmation)
 
             val response = client.submitChecked("$path/delete")
+
             assertEquals(HttpStatusCode.SeeOther, response.status)
             assertEquals(data.generationsPath, response.headers[HttpHeaders.Location])
             assertEquals(null, system.world.generations.findById(generation.id))
@@ -66,8 +75,10 @@ class GenerationHistoryRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (generation, paths) = data.generationWith()
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked("${paths[0]}/choose", FIELD_CHOSEN_VERSION to "")
 
             val response = client.submitChecked("${data.generationsPath}/${generation.id.value}/delete")
@@ -83,6 +94,7 @@ class GenerationHistoryRoutesTest {
             val data = GenerationTestData(system)
             val (generation, _) = data.generationWith()
             system.addAccount("lehrer1", Role.TEACHER, setOf(data.schoolId))
+
             startWith(system)
             val teacher = newClient()
             teacher.login("lehrer1")

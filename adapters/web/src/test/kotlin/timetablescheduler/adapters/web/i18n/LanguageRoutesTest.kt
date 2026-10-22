@@ -79,6 +79,7 @@ class LanguageRoutesTest {
     fun `switch on the login page only sets the cookie and offers the choice to the login form`() =
         testApplication {
             val system = TestSystem().installed()
+
             val client = startWith(system)
 
             val response = client.switchLanguageLoggedOut("en")
@@ -88,6 +89,7 @@ class LanguageRoutesTest {
             assertEquals("/login?chosen=1", response.headers[HttpHeaders.Location])
             assertEquals("en", loginWithChoice.htmlLanguage())
             assertTrue("""name="chosenLanguage" value="en"""" in loginWithChoice)
+
             assertEquals("en", laterVisit.htmlLanguage())
             assertFalse("chosenLanguage" in laterVisit)
             assertNull(system.language("admin"))
@@ -175,10 +177,12 @@ class LanguageRoutesTest {
         testApplication {
             val system = TestSystem().installed()
             val schoolId = system.firstSchoolId()
+
             val room = system.world.room(schoolId, "B-104")
             val subject = system.world.subject(schoolId, "Mathematik")
             val teacher = system.world.teacher(schoolId, "Anna Schmidt", "SCHA")
             val versionBefore = system.admin().version
+
             val client = startWith(system)
             client.login()
 

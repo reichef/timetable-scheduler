@@ -70,6 +70,7 @@ suspend fun ApplicationCall.respondTimeGrid(
         teachingDaysForm(session, schoolId, view.timeGrid.teachingDays, version, texts)
         weeklyGridTable(schoolId, view.timeGrid, texts)
         p { +texts.timeGrid.teachingSlotsPerWeek(view.timeGrid.teachingSlotsPerWeek()) }
+
         h2 { +texts.timeGrid.addSlot }
         form(action = "${timeGridPath(schoolId)}/slots", method = FormMethod.post) {
             csrfField(session)
@@ -77,6 +78,7 @@ suspend fun ApplicationCall.respondTimeGrid(
             slotFields(enteredSlot, texts)
             button { +texts.common.add }
         }
+
         p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
@@ -206,6 +208,7 @@ suspend fun ApplicationCall.respondSlotEditor(
             button { +texts.common.save }
         }
         p { a(href = "${slotPath(schoolId, slot.id)}/delete") { +texts.timeGrid.deleteSlot } }
+
         p { a(href = timeGridPath(schoolId)) { +texts.timeGrid.toTimeGrid } }
     }
 }

@@ -74,6 +74,7 @@ suspend fun ApplicationCall.respondRoomList(
             button { +texts.common.create }
         }
         p { a(href = featuresPath(schoolId)) { +texts.rooms.manageFeatures } }
+
         p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }

@@ -48,15 +48,18 @@ class GenerationRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             system.world.solver.candidates = { listOf(data.withoutGerman()) }
+
             val client = startWith(system)
             client.login()
 
             val started = client.submitChecked(data.generationsPath, "timeLimitMinutes" to "2")
 
             val generation = system.latestGeneration()
+
             assertEquals(HttpStatusCode.SeeOther, started.status)
             assertEquals("${data.generationsPath}/${generation.id.value}", started.headers[HttpHeaders.Location])
             val page = client.get("${data.generationsPath}/${generation.id.value}").bodyAsText()
+
             assertTrue("abgeschlossen" in page)
             assertTrue("Klassen gefüllt" in page && "66,7 %" in page)
             assertTrue("Alternative 1" in page)
@@ -104,14 +107,17 @@ class GenerationRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             system.world.teacher(data.schoolId, "Ohne Fach", "OHNE", weeklyLoad = 2)
+
             val client = startWith(system)
             client.login()
 
             assertTrue("Ohne Fach (OHNE)" in client.get(data.generationsPath).bodyAsText())
             val unconfirmed = client.submitChecked(data.generationsPath, "timeLimitMinutes" to "10")
+
             assertEquals(HttpStatusCode.UnprocessableEntity, unconfirmed.status)
             assertTrue("Bitte bestätigen Sie die Hinweise." in unconfirmed.bodyAsText())
             val confirmed = client.submitChecked(data.generationsPath, "timeLimitMinutes" to "10", "warningsConfirmed" to "true")
+
             assertEquals(HttpStatusCode.SeeOther, confirmed.status)
         }
 
@@ -122,22 +128,28 @@ class GenerationRoutesTest {
             val data = GenerationTestData(system)
             system.world.executor.deferred = true
             system.world.solver.candidates = { listOf(data.complete()) }
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked(data.generationsPath, "timeLimitMinutes" to "10")
             val generationPath = "${data.generationsPath}/${system.latestGeneration().id.value}"
 
             val running = client.get(generationPath).bodyAsText()
+
             assertTrue("""<meta http-equiv="refresh" content="3">""" in running)
             assertTrue("läuft" in running && "$generationPath/stop" in running)
 
             val second = client.submitChecked(data.generationsPath, "timeLimitMinutes" to "10")
+
             assertEquals(HttpStatusCode.Conflict, second.status)
             assertTrue(generationPath in second.bodyAsText())
 
             val stop = client.submitChecked("$generationPath/stop")
+
             assertEquals(HttpStatusCode.SeeOther, stop.status)
             system.world.executor.runPending()
+
             assertTrue("vorzeitig gestoppt" in client.get(generationPath).bodyAsText())
         }
 
@@ -170,8 +182,10 @@ class GenerationRoutesTest {
                     ),
                 )
             }
+
             val client = startWith(system)
             client.login()
+
             val path = "${data.generationsPath}/${generation.id.value}"
 
             val byLoad = client.get("$path?sort=teacherLoad&dir=desc").bodyAsText()
@@ -187,8 +201,10 @@ class GenerationRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             system.addAccount("lehrer1", Role.TEACHER, setOf(data.schoolId))
+
             val planner = startWith(system)
             planner.login()
+
             val teacher = newClient()
             teacher.login("lehrer1")
 

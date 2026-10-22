@@ -45,6 +45,7 @@ private fun Parameters.parseSlot(
     if (startTime == null || endTime == null || kind == null) {
         return UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
     }
+
     return save(text("label"), startTime, endTime, kind)
 }
 

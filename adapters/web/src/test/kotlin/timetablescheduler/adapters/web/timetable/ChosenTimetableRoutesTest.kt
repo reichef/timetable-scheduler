@@ -45,8 +45,10 @@ class ChosenTimetableRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith(data.withoutGerman())
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked("${paths[1]}/choose", FIELD_CHOSEN_VERSION to "", FIELD_UNPLACED_CONFIRMED to "true")
 
             val page = client.get(data.timetablePath).bodyAsText()
@@ -63,13 +65,17 @@ class ChosenTimetableRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith()
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked("${paths[0]}/choose", FIELD_CHOSEN_VERSION to "")
             val world = system.world
+
             assertTrue("passt nicht mehr" !in client.get(data.timetablePath).bodyAsText())
 
             world.markUnavailable(world.teachers.findById(data.schmidt.id)!!, Unavailability(TUESDAY, data.first.id))
+
             val level = world.classLevels.findById(data.level5.id)!!
             val fewerMath =
                 level.update(
@@ -84,9 +90,11 @@ class ChosenTimetableRoutesTest {
             assertTrue("passt nicht mehr zu den aktuellen Daten" in page)
             assertTrue("""href="/schools/${data.schoolId.value}/generations?startFromChosen=true"""" in page)
             assertTrue("""class="highlight"""" in page)
+
             assertTrue("Lehrkraft nicht verfügbar" in page && "5a, Mathematik – Dienstag, 1. Stunde" in page)
             assertTrue("entfällt" in page)
             assertTrue("5b: Mathematik – 1 Stunde" in page && "5b: Deutsch – 1 Stunde" in page)
+
             assertEquals(
                 3,
                 world.chosenTimetables
@@ -95,6 +103,7 @@ class ChosenTimetableRoutesTest {
             )
 
             val startForm = client.get("/schools/${data.schoolId.value}/generations?startFromChosen=true").bodyAsText()
+
             assertTrue(Regex("""name="startFromChosen"[^>]*checked""").containsMatchIn(startForm))
         }
 
@@ -104,8 +113,10 @@ class ChosenTimetableRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith()
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked("${paths[0]}/choose", FIELD_CHOSEN_VERSION to "")
 
             val response =
@@ -116,6 +127,7 @@ class ChosenTimetableRoutesTest {
 
             assertEquals(HttpStatusCode.Conflict, response.status)
             val body = response.bodyAsText()
+
             assertTrue("Gewählter Stundenplan" in body)
         }
 
@@ -126,9 +138,11 @@ class ChosenTimetableRoutesTest {
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith()
             system.addAccount("lehrer1", Role.TEACHER, setOf(data.schoolId))
+
             val planner = startWith(system)
             planner.login()
             planner.submitChecked("${paths[0]}/choose", FIELD_CHOSEN_VERSION to "")
+
             val teacher = newClient()
             teacher.login("lehrer1")
 

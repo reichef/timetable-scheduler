@@ -77,6 +77,7 @@ class TeacherRoutesTest {
         testApplication {
             val system = TestSystem().installed().withGrid()
             val schoolId = system.firstSchoolId()
+
             val mathe = system.world.subject(schoolId, "Mathematik")
             val anna = system.world.teacher(schoolId, "Anna Schmidt", "SCHA")
             val sixth =
@@ -85,6 +86,7 @@ class TeacherRoutesTest {
                     .slots
                     .last()
             val path = "${system.teachersPath()}/${anna.id.value}"
+
             val client = startWith(system)
             client.login()
 
@@ -95,6 +97,7 @@ class TeacherRoutesTest {
             assertEquals(HttpStatusCode.SeeOther, qualified.status)
             assertEquals(HttpStatusCode.SeeOther, blocked.status)
             val stored = system.world.teachers.findById(anna.id)!!
+
             assertEquals(setOf(mathe.id), stored.qualifiedSubjectIds)
             assertEquals(setOf(Unavailability(DayOfWeek.FRIDAY, sixth.id)), stored.unavailability)
             assertTrue("value=\"FRIDAY:${sixth.id.value}\" checked" in page)
@@ -127,6 +130,7 @@ class TeacherRoutesTest {
                     .last()
             val anna = system.world.teacher(schoolId, "Anna Schmidt", "SCHA")
             system.world.markUnavailable(anna, Unavailability(DayOfWeek.FRIDAY, sixth.id))
+
             val client = startWith(system)
             client.login()
 

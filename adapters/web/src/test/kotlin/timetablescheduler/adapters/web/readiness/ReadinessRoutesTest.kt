@@ -20,12 +20,15 @@ class ReadinessRoutesTest {
         testApplication {
             val system = TestSystem().installed()
             val schoolId = system.firstSchoolId()
+
             val lab = system.world.feature(schoolId, "Chemieraum")
             val chemie = system.world.subject(schoolId, "Chemie", setOf(lab.id))
             val physik = system.world.subject(schoolId, "Physik")
             val level = system.world.classLevel(schoolId, "6", chemie to 2, physik to 2)
             system.world.schoolClass(level, "a")
+
             system.world.teacher(schoolId, "Anna Schmidt", "SCHA", weeklyLoad = 2, qualifiedSubjects = setOf(chemie.id))
+
             val client = startWith(system)
             client.login()
 

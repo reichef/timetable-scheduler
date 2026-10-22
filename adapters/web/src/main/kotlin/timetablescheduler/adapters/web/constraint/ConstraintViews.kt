@@ -107,12 +107,14 @@ suspend fun ApplicationCall.respondConstraintList(overview: ConstraintOverview) 
                 }
             }
         }
+
         h2 { +texts.constraints.catalogueHeading }
         ul {
             ConstraintType.entries.forEach { type ->
                 li { a(href = "${constraintsPath(overview.schoolId)}/new?type=${type.name}") { +texts.constraints.typeName(type) } }
             }
         }
+
         h2 { +texts.constraints.fixationsHeading }
         if (overview.fixations.isEmpty()) {
             p { +texts.constraints.noFixations }
@@ -128,6 +130,7 @@ suspend fun ApplicationCall.respondConstraintList(overview: ConstraintOverview) 
             }
         }
         p { a(href = "${fixationsPath(overview.schoolId)}/new") { +texts.constraints.newFixation } }
+
         p { a(href = "/schools/${overview.schoolId.value}") { +texts.common.toSchool } }
     }
 }
@@ -176,6 +179,7 @@ private fun FORM.constraintFields(
     texts: UiTexts,
 ) {
     val names = overview.names
+
     when (type.classChoice) {
         ClassChoice.NONE -> {
             Unit
@@ -208,6 +212,7 @@ private fun FORM.constraintFields(
             everySubject,
         )
     }
+
     if (type.needsLimit) {
         label {
             +texts.constraints.limitLabel
@@ -226,6 +231,7 @@ private fun FORM.constraintFields(
     if (type.needsSlots) {
         slotGrid(overview, values.getAll("slot").orEmpty().toSet(), texts)
     }
+
     kindAndWeight(values, texts)
 }
 

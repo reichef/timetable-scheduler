@@ -139,6 +139,7 @@ suspend fun ApplicationCall.respondGenerationList(
                 enteredShare ?: "${Generation.DEFAULT_MINIMUM_PLACED_SHARE}",
                 InputType.number,
             )
+
             if (overview.gate.warnings.isNotEmpty()) {
                 p { +texts.generations.warningsIntro }
                 ul { overview.gate.warnings.forEach { issue -> li { issueEntry(overview.readiness, issue, texts) } } }
@@ -147,6 +148,7 @@ suspend fun ApplicationCall.respondGenerationList(
                     +texts.generations.warningsConfirm
                 }
             }
+
             val names = overview.names
             if (overview.softConstraints.isNotEmpty() && names != null) {
                 fieldSet {
@@ -154,14 +156,14 @@ suspend fun ApplicationCall.respondGenerationList(
                     overview.softConstraints.forEach { constraint ->
                         label {
                             input(type = InputType.checkBox, name = StartRequest.FIELD_SEPARATE_OBJECTIVES) {
-                                value =
-                                    "${constraint.id.value}"
+                                value = "${constraint.id.value}"
                             }
                             +describe(constraint, names, texts)
                         }
                     }
                 }
             }
+
             if (overview.hasChosenTimetable) {
                 label {
                     input(type = InputType.checkBox, name = StartRequest.FIELD_START_FROM_CHOSEN) {
@@ -171,6 +173,7 @@ suspend fun ApplicationCall.respondGenerationList(
                     +texts.generations.startFromChosen
                 }
             }
+
             button { +texts.generations.startButton }
         }
         generationTable(overview, texts)
@@ -230,6 +233,7 @@ suspend fun ApplicationCall.respondGenerationDetails(
         if (details.summary.outdated) {
             p(classes = "warning") { +texts.generations.outdatedHint }
         }
+
         if (generation.isRunning) {
             val elapsed = texts.generations.duration(Duration.between(generation.startedAt, now).seconds.coerceAtLeast(0))
             p { +texts.generations.progress(elapsed, generation.alternativesFound) }
@@ -244,6 +248,7 @@ suspend fun ApplicationCall.respondGenerationDetails(
                 constraintList(generation.constraintSnapshot.filter { it.id in generation.infeasibleConstraintIds }, names, texts)
             }
         }
+
         val columns = objectiveColumns(generation, details.names, texts, details.alternatives)
         if (details.alternatives.size > 1) {
             p { a(href = comparePath(generation)) { +texts.generations.compareLink } }
@@ -252,6 +257,7 @@ suspend fun ApplicationCall.respondGenerationDetails(
             "${generationPath(generation)}?sort=$key&dir=$dir"
         }
         constraintsInEffect(details, texts)
+
         p {
             a(href = generationsPath(generation.schoolId)) { +texts.generations.toGenerations }
             if (!generation.isRunning) {
@@ -308,6 +314,7 @@ fun FlowContent.alternativeTable(
         p { +texts.generations.noAlternatives }
         return
     }
+
     val numbered = details.alternatives.mapIndexed { index, alternative -> index + 1 to alternative }
     val sorted =
         if (sortColumn == null) {
@@ -320,6 +327,7 @@ fun FlowContent.alternativeTable(
                 ascending
             }
         }
+
     val generation = details.generation
     table {
         tr {

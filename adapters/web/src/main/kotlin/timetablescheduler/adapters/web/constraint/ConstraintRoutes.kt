@@ -79,11 +79,13 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
             if (grid !is UseCaseResult.Success) {
                 return@post call.respondResult(grid) {}
             }
+
             val result =
                 when (val parsed = ConstraintForm.parse(form, type, grid.value.timeGrid)) {
                     is ParsedConstraint.Invalid -> UseCaseResult.Failure(ApplicationError.Invalid(parsed.errors))
                     is ParsedConstraint.Valid -> constraints.create.execute(call.actor, schoolId, parsed.input)
                 }
+
             call.respondFormResult(
                 result,
                 constraintsPath(schoolId),
@@ -105,15 +107,18 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@post
             val constraintId = call.constraintIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
+
             val existing = constraints.get.execute(call.actor, schoolId, constraintId)
             if (existing !is UseCaseResult.Success) {
                 return@post call.respondResult(existing) {}
             }
+
             val type = existing.value.rule.type
             val grid = useCases.timeGrid.getTimeGrid.execute(call.actor, schoolId)
             if (grid !is UseCaseResult.Success) {
                 return@post call.respondResult(grid) {}
             }
+
             val result =
                 when (val parsed = ConstraintForm.parse(form, type, grid.value.timeGrid)) {
                     is ParsedConstraint.Invalid -> {
@@ -130,6 +135,7 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
                         )
                     }
                 }
+
             call.respondFormResult(
                 result,
                 constraintPath(existing.value),
@@ -176,12 +182,14 @@ private fun Route.fixationRoutes(useCases: MasterDataUseCases) {
         val classId = form.uuid("classId")
         val subjectId = form.uuid("subjectId")
         val teacherId = form.uuid("teacherId")
+
         val result =
             if (classId == null || subjectId == null || teacherId == null) {
                 UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference("course"))))
             } else {
                 fixations.create.execute(call.actor, schoolId, SchoolClassId(classId), SubjectId(subjectId), TeacherId(teacherId))
             }
+
         call.respondFormResult(
             result,
             constraintsPath(schoolId),
@@ -215,6 +223,7 @@ private fun Route.fixationRoutes(useCases: MasterDataUseCases) {
             } else {
                 fixations.update.execute(call.actor, schoolId, fixationId, TeacherId(teacherId), form.version())
             }
+
         call.respondFormResult(
             result,
             constraintsPath(schoolId),

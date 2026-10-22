@@ -140,6 +140,7 @@ suspend fun ApplicationCall.respondClassLevelList(
             textField("identifier", texts.classLevels.levelIdentifierLabel, enteredIdentifier)
             button { +texts.common.create }
         }
+
         p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
@@ -157,6 +158,7 @@ suspend fun ApplicationCall.respondClassLevelDetails(
         gridWarning(details.warning, level.weeklyPeriods(), details.teachingSlotsPerWeek, texts)
         p { +texts.classLevels.levelSum(level.weeklyPeriods(), details.teachingSlotsPerWeek) }
         validationErrors(errors, texts)
+
         h2 { +texts.classLevels.curriculum }
         form(action = levelPath(level), method = FormMethod.post) {
             csrfField(session)
@@ -184,6 +186,7 @@ suspend fun ApplicationCall.respondClassLevelDetails(
             }
             button { +texts.common.save }
         }
+
         h2 { +texts.classLevels.classesColumn }
         p {
             details.classes.forEachIndexed { index, schoolClass ->
@@ -199,6 +202,7 @@ suspend fun ApplicationCall.respondClassLevelDetails(
             hiddenField("version", "${level.version}")
             button(classes = "danger") { +texts.classLevels.deleteLevel }
         }
+
         p { a(href = levelsPath(level.schoolId)) { +texts.classLevels.toLevels } }
     }
 }
@@ -254,6 +258,7 @@ suspend fun ApplicationCall.respondSchoolClassDetails(
             }
         }
         p { +texts.classLevels.classSum(details.curriculum.sumOf { it.periodsPerWeek }) }
+
         h2 { +texts.classLevels.editClass }
         validationErrors(errors, texts)
         form(action = path, method = FormMethod.post) {
@@ -274,6 +279,7 @@ suspend fun ApplicationCall.respondSchoolClassDetails(
                     .orEmpty(),
                 texts,
             )
+
             button { +texts.common.save }
         }
         form(action = "$path/delete", method = FormMethod.post) {
@@ -281,6 +287,7 @@ suspend fun ApplicationCall.respondSchoolClassDetails(
             hiddenField("version", "${schoolClass.version}")
             button(classes = "danger") { +texts.classLevels.deleteClass }
         }
+
         p { a(href = levelPath(details.level)) { +texts.classLevels.toLevel } }
     }
 }

@@ -87,6 +87,7 @@ fun Route.roomRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val entered = RoomFormInput(form.text("identifier"), form.uuids("featureId").map(::RoomFeatureId).toSet())
             val roomPath = "${roomsPath(schoolId)}/${roomId.value}"
+
             call.respondFormResult(
                 rooms.updateRoom.execute(call.actor, schoolId, roomId, entered.identifier, entered.featureIds, form.version()),
                 backLink = roomPath,

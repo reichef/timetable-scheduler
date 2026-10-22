@@ -149,6 +149,7 @@ fun Route.teacherRoutes(dependencies: WebDependencies) {
                 } else {
                     teachers.updateUnavailability.execute(call.actor, schoolId, teacherId, entries, form.version())
                 }
+
             call.respondFormResult(
                 result,
                 backLink = "${teachersPath(schoolId)}/${teacherId.value}",

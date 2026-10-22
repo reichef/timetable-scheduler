@@ -122,12 +122,14 @@ fun Route.classLevelRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val entered = form.curriculumInput()
             val entries = entered.toEntries()
+
             val result =
                 if (entries == null) {
                     invalid(ValidationError.InvalidFormat(PERIODS_FIELD))
                 } else {
                     curriculum.updateClassLevel.execute(call.actor, schoolId, levelId, entered.identifier, entries, form.version())
                 }
+
             call.respondFormResult(
                 result,
                 backLink = "${levelsPath(schoolId)}/${levelId.value}",

@@ -43,6 +43,7 @@ suspend fun ApplicationCall.respondChosenTimetable(
             p { a(href = generationsPath(details.schoolId)) { +texts.generations.toGenerations } }
             return@respondPage
         }
+
         p { +texts.timetables.chosenInfo(texts.generations.dateTime(chosen.chosenAt), details.chosenByUsername) }
         details.sourceGeneration?.let { generation -> p { a(href = generationPath(generation)) { +texts.timetables.toSourceGeneration } } }
         if (!details.fitsCurrentData) {
@@ -53,10 +54,12 @@ suspend fun ApplicationCall.respondChosenTimetable(
                 ) { +texts.timetables.startFromChosenLink }
             }
         }
+
         viewSelection(chosenTimetablePath(details.schoolId), details.names, view, entityId, texts)
         if (entityId != null) {
             chosenWeek(details, chosen, view, entityId, texts)
         }
+
         conflictList(details.conflicts, details.constraints, details.names, texts, texts.timetables.conflictsHeading)
         droppedLessons(details, texts)
         unplacedLessons(details.drift?.notPlaced.orEmpty(), details.names, texts, texts.timetables.notPlacedHeading)

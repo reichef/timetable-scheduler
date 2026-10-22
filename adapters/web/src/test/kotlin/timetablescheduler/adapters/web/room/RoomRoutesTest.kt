@@ -55,8 +55,10 @@ class RoomRoutesTest {
             val system = TestSystem().installed()
             val schoolId = system.firstSchoolId()
             val room = system.world.room(schoolId, "B-104")
+
             val client = startWith(system)
             client.login()
+
             val roomPath = "/schools/${schoolId.value}/rooms/${room.id.value}"
 
             val edit = client.submitChecked(roomPath, "identifier" to "B-105", "version" to "0")
@@ -74,6 +76,7 @@ class RoomRoutesTest {
             val schoolId = system.firstSchoolId()
             val lab = system.world.feature(schoolId, "Chemieraum")
             system.world.room(schoolId, "B-104", lab.id)
+
             val client = startWith(system)
             client.login()
 

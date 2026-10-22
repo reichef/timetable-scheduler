@@ -166,6 +166,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
     val path = teacherPath(teacher)
     respondPage(texts.teachers.teacherTitle(teacher.displayName), status) { session ->
         validationErrors(errors, texts)
+
         h2 { +texts.teachers.general }
         form(action = path, method = FormMethod.post) {
             csrfField(session)
@@ -174,6 +175,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
             generalFields(current, details.timeGrid.teachingSlotsPerWeek(), texts)
             button { +texts.common.save }
         }
+
         h2 { +texts.teachers.qualifications }
         form(action = "$path/qualifications", method = FormMethod.post) {
             csrfField(session)
@@ -181,6 +183,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
             qualificationCheckboxes(details.subjects, teacher, texts)
             button { +texts.teachers.saveQualifications }
         }
+
         h2 { +texts.teachers.unavailabilityTitle }
         form(action = "$path/unavailability", method = FormMethod.post) {
             csrfField(session)
@@ -193,6 +196,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
             hiddenField("version", "${teacher.version}")
             button(classes = "danger") { +texts.teachers.deleteTeacher }
         }
+
         p { a(href = teachersPath(teacher.schoolId)) { +texts.teachers.toTeachers } }
     }
 }

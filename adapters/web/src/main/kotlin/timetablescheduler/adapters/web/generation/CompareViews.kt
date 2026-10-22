@@ -40,6 +40,7 @@ suspend fun ApplicationCall.respondComparison(
     val columns = objectiveColumns(generation, details.names, texts, details.alternatives)
     val x = columns.firstOrNull { it.key == xKey } ?: columns[0]
     val y = columns.firstOrNull { it.key == yKey } ?: columns[1]
+
     respondPage(texts.generations.compareTitle) {
         form(action = comparePath(generation), method = FormMethod.get) {
             listOf("x" to (texts.generations.xAxis to x), "y" to (texts.generations.yAxis to y)).forEach { (field, labelled) ->

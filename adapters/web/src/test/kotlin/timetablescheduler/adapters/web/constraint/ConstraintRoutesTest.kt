@@ -120,8 +120,10 @@ class ConstraintRoutesTest {
         testApplication {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked(
                 data.constraintsPath(),
                 "type" to "CLASS_NO_GAPS",
@@ -136,6 +138,7 @@ class ConstraintRoutesTest {
             val path = "${data.constraintsPath()}/${stored.id.value}"
 
             assertTrue("""name="version" value="0"""" in client.get(path).bodyAsText())
+
             assertEquals(
                 HttpStatusCode.SeeOther,
                 client
@@ -158,8 +161,10 @@ class ConstraintRoutesTest {
                         "version" to "0",
                     ).status,
             )
+
             assertEquals(HttpStatusCode.SeeOther, client.submitChecked("$path/active", "active" to "false", "version" to "1").status)
             assertTrue("ausgeschaltet" in client.get(data.constraintsPath()).bodyAsText())
+
             assertEquals(HttpStatusCode.SeeOther, client.submitChecked("$path/delete", "version" to "2").status)
             assertEquals(null, system.world.constraints.findById(stored.id))
         }
@@ -228,8 +233,10 @@ class ConstraintRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             system.world.solver.candidates = { listOf(data.complete()) }
+
             val client = startWith(system)
             client.login()
+
             val noGaps =
                 system.world.constraints
                     .findBySchool(data.schoolId)
@@ -254,6 +261,7 @@ class ConstraintRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             system.addAccount("lehrer1", Role.TEACHER, setOf(data.schoolId))
+
             startWith(system)
             val teacher = newClient()
             teacher.login("lehrer1")

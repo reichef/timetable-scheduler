@@ -43,8 +43,10 @@ class CompareRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith(data.germanOnTuesday())
+
             val client = startWith(system)
             client.login()
+
             val otherId = paths[1].substringAfterLast("/")
 
             val page = client.get("${paths[0]}/diff/$otherId").bodyAsText()
@@ -60,12 +62,15 @@ class CompareRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith(data.withoutGerman())
+
             val client = startWith(system)
             client.login()
 
             val confirmation = client.submitChecked("${paths[1]}/choose", FIELD_CHOSEN_VERSION to "")
+
             assertEquals(HttpStatusCode.OK, confirmation.status)
             val page = confirmation.bodyAsText()
+
             assertTrue("Nicht verplante Stunden bestätigen" in page && "5a: Deutsch – 1 Stunde" in page)
             assertTrue("""href="${paths[1]}">Abbrechen""" in page)
             assertEquals(null, system.world.chosenTimetables.find(data.schoolId))
@@ -89,17 +94,22 @@ class CompareRoutesTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith(data.germanOnTuesday())
+
             val client = startWith(system)
             client.login()
+
             assertEquals(HttpStatusCode.SeeOther, client.submitChecked("${paths[0]}/choose", FIELD_CHOSEN_VERSION to "").status)
 
             val stale = client.submitChecked("${paths[1]}/choose", FIELD_CHOSEN_VERSION to "")
+
             assertEquals(HttpStatusCode.Conflict, stale.status)
 
             system.world.markUnavailable(system.world.teachers.findById(data.schmidt.id)!!, Unavailability(MONDAY, data.first.id))
             val conflicting = client.submitChecked("${paths[1]}/choose", FIELD_CHOSEN_VERSION to "0")
+
             assertEquals(HttpStatusCode.Conflict, conflicting.status)
             val page = conflicting.bodyAsText()
+
             assertTrue(
                 "Alternative passt nicht mehr" in page && "Lehrkraft nicht verfügbar" in page &&
                     "5a, Mathematik – Montag, 1. Stunde" in page,
@@ -114,6 +124,7 @@ class CompareRoutesTest {
             val data = GenerationTestData(system)
             val (generation, paths) = data.generationWith(data.germanOnTuesday())
             system.addAccount("lehrer1", Role.TEACHER, setOf(data.schoolId))
+
             startWith(system)
             val teacher = newClient()
             teacher.login("lehrer1")
@@ -126,6 +137,7 @@ class CompareRoutesTest {
                 assertEquals(HttpStatusCode.Forbidden, response.status)
                 assertTrue("Mathematik" !in response.bodyAsText())
             }
+
             assertEquals(null, system.world.chosenTimetables.find(data.schoolId))
         }
 }

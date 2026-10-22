@@ -56,9 +56,11 @@ private fun FlowContent.sectionLinks(
         li { a(href = "${schoolPath(school)}/room-features") { +texts.school.featuresLink(dashboard.roomFeatureCount) } }
         li { a(href = "${schoolPath(school)}/rooms") { +texts.school.roomsLink(dashboard.roomCount) } }
         li { a(href = "${schoolPath(school)}/time-grid") { +texts.school.timeGridLink(dashboard.teachingSlotsPerWeek) } }
+
         li { a(href = "${schoolPath(school)}/subjects") { +texts.school.subjectsLink } }
         li { a(href = "${schoolPath(school)}/class-levels") { +texts.school.classLevelsLink } }
         li { a(href = "${schoolPath(school)}/teachers") { +texts.school.teachersLink } }
+
         li { a(href = "${schoolPath(school)}/constraints") { +texts.school.constraintsLink } }
         li { a(href = "${schoolPath(school)}/generations") { +texts.school.generationsLink } }
         li { a(href = "${schoolPath(school)}/timetable") { +texts.school.chosenTimetableLink } }

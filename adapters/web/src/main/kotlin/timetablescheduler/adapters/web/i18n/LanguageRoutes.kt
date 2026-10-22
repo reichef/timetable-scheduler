@@ -54,10 +54,12 @@ fun Route.languageRoutes(
         val form = if (session != null) call.receiveCheckedForm() else call.receiveParameters()
         val returnTo = safeReturnTo(form["returnTo"])
         val language = InterfaceLanguage.fromCode(form["language"]) ?: return@post call.seeOther(returnTo)
+
         call.rememberInBrowser(language, settings)
         if (session == null) {
             return@post call.seeOther(LOGIN_AFTER_LANGUAGE_CHOICE)
         }
+
         call.respondResult(changeOwnLanguage.execute(session.accountId, language)) {
             call.sessions.set(session.copy(language = language))
             call.seeOther(returnTo)

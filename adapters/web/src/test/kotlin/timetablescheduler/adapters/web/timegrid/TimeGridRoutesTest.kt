@@ -93,8 +93,10 @@ class TimeGridRoutesTest {
             system.world.teachingDays(schoolId, DayOfWeek.MONDAY, DayOfWeek.FRIDAY)
             val slot = system.world.slot(schoolId, "8. Stunde", "14:00", "14:45", SlotKind.TEACHING)
             val slotPath = "/schools/${schoolId.value}/time-grid/slots/${slot.id.value}"
+
             val client = startWith(system)
             client.login()
+
             client.submitChecked("$slotPath/exclusions", "dayOfWeek" to "FRIDAY", "version" to "${system.version()}")
 
             val confirmation = client.get("$slotPath/delete").bodyAsText()

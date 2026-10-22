@@ -72,6 +72,7 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
         post("/schools/{schoolId}/generations") {
             val schoolId = call.schoolIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
+
             val input = FormInput(form)
             val timeLimit = input.int("timeLimitMinutes")
             // Older forms without the field start with the default share (FR-007a).
@@ -82,6 +83,7 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
                     input.int(StartRequest.FIELD_MINIMUM_PLACED_SHARE)
                 }
             val startFromChosen = form[StartRequest.FIELD_START_FROM_CHOSEN] == "true"
+
             val result =
                 if (timeLimit == null || share == null) {
                     UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
@@ -98,6 +100,7 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
                         ),
                     )
                 }
+
             call.respondFormResult(
                 result,
                 generationsPath(schoolId),
@@ -173,6 +176,7 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val alternativeId = call.alternativeIdParameter() ?: return@get
             val otherId = call.idParameter("otherId")?.let(::AlternativeId) ?: return@get
             val view = TimetableView.fromParameter(call.parameters["view"])
+
             call.respondResult(scheduling.compare.execute(call.actor, schoolId, generationId, alternativeId, otherId)) { comparison ->
                 call.respondDiff(comparison, view, selectedEntity(view, call.parameters["id"], comparison.names))
             }
@@ -182,10 +186,12 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@post
             val generationId = call.generationIdParameter() ?: return@post
             val alternativeId = call.alternativeIdParameter() ?: return@post
+
             val form = call.receiveCheckedForm()
             val enteredVersion = form.text(FIELD_CHOSEN_VERSION).trim()
             // An unreadable version can never match the current choice and is answered as a concurrent change.
             val expectedVersion = if (enteredVersion.isEmpty()) null else enteredVersion.toIntOrNull() ?: -1
+
             val result =
                 scheduling.choose.execute(
                     call.actor,
@@ -193,10 +199,10 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
                     generationId,
                     alternativeId,
                     expectedVersion,
-                    unplacedConfirmed =
-                        form[FIELD_UNPLACED_CONFIRMED] == "true",
+                    unplacedConfirmed = form[FIELD_UNPLACED_CONFIRMED] == "true",
                 )
             val backLink = "${generationsPath(schoolId)}/${generationId.value}/alternatives/${alternativeId.value}"
+
             call.respondResult(result, backLink) { outcome ->
                 when (outcome) {
                     is ChooseOutcome.Chosen -> {

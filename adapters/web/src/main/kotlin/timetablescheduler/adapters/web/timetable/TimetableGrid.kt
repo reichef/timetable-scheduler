@@ -76,6 +76,7 @@ fun lessonLines(
     val subject = names.subjectNames[lesson.subjectId] ?: deleted
     val teacher = names.teacherShortCodes[lesson.teacherId] ?: deleted
     val room = names.roomNames[lesson.roomId] ?: deleted
+
     return when (view) {
         TimetableView.CLASS -> listOf(subject, teacher, room)
         TimetableView.TEACHER -> listOf(className, subject, room)

@@ -43,51 +43,43 @@ object TradeOffChart {
         fun xPosition(value: Double) = LEFT + xAxis.fraction(value) * PLOT_WIDTH
 
         fun yPosition(value: Double) = TOP + (1 - yAxis.fraction(value)) * PLOT_HEIGHT
+
+        val viewBox = "0 0 ${coordinate(WIDTH)} ${coordinate(HEIGHT)}"
+        val left = coordinate(LEFT)
+        val right = coordinate(LEFT + PLOT_WIDTH)
+        val top = coordinate(TOP)
+        val bottom = coordinate(TOP + PLOT_HEIGHT)
+
         return buildString {
-            append(
-                """<svg class="trade-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${coordinate(
-                    WIDTH,
-                )} ${coordinate(HEIGHT)}" role="img">""",
-            )
+            append("""<svg class="trade-off" xmlns="http://www.w3.org/2000/svg" viewBox="$viewBox" role="img">""")
             append("<title>").append(escape(caption)).append("</title>")
-            append(
-                """<line class="axis" x1="${coordinate(
-                    LEFT,
-                )}" y1="${coordinate(TOP + PLOT_HEIGHT)}" x2="${coordinate(LEFT + PLOT_WIDTH)}" y2="${coordinate(TOP + PLOT_HEIGHT)}"/>""",
-            )
-            append(
-                """<line class="axis" x1="${coordinate(
-                    LEFT,
-                )}" y1="${coordinate(TOP)}" x2="${coordinate(LEFT)}" y2="${coordinate(TOP + PLOT_HEIGHT)}"/>""",
-            )
-            append("""<text x="${coordinate(LEFT)}" y="${coordinate(TOP + PLOT_HEIGHT + 16)}">${percent(xAxis.min)}</text>""")
-            append(
-                """<text x="${coordinate(
-                    LEFT + PLOT_WIDTH,
-                )}" y="${coordinate(TOP + PLOT_HEIGHT + 16)}" text-anchor="end">${percent(xAxis.max)}</text>""",
-            )
+
+            append("""<line class="axis" x1="$left" y1="$bottom" x2="$right" y2="$bottom"/>""")
+            append("""<line class="axis" x1="$left" y1="$top" x2="$left" y2="$bottom"/>""")
+
+            append("""<text x="$left" y="${coordinate(TOP + PLOT_HEIGHT + 16)}">${percent(xAxis.min)}</text>""")
+            append("""<text x="$right" y="${coordinate(TOP + PLOT_HEIGHT + 16)}" text-anchor="end">${percent(xAxis.max)}</text>""")
             append(
                 """<text x="${coordinate(
                     LEFT + PLOT_WIDTH / 2,
                 )}" y="${coordinate(HEIGHT - 8)}" text-anchor="middle">${escape(xTitle)}</text>""",
             )
-            append(
-                """<text x="${coordinate(LEFT - 6)}" y="${coordinate(TOP + PLOT_HEIGHT)}" text-anchor="end">${percent(yAxis.min)}</text>""",
-            )
+
+            append("""<text x="${coordinate(LEFT - 6)}" y="$bottom" text-anchor="end">${percent(yAxis.min)}</text>""")
             append("""<text x="${coordinate(LEFT - 6)}" y="${coordinate(TOP + 10)}" text-anchor="end">${percent(yAxis.max)}</text>""")
             append(
                 """<text transform="translate(14 ${coordinate(
                     TOP + PLOT_HEIGHT / 2,
                 )}) rotate(-90)" text-anchor="middle">${escape(yTitle)}</text>""",
             )
+
             val front = front(points)
             if (front.size > 1) {
-                append(
-                    """<polyline class="front" points="${front.joinToString(
-                        " ",
-                    ) { "${coordinate(xPosition(it.x))},${coordinate(yPosition(it.y))}" }}"/>""",
-                )
+                val polylinePoints = front.joinToString(" ") { "${coordinate(xPosition(it.x))},${coordinate(yPosition(it.y))}" }
+
+                append("""<polyline class="front" points="$polylinePoints"/>""")
             }
+
             points.forEach { point ->
                 append("""<a href="${escape(point.href)}">""")
                 append("""<circle cx="${coordinate(xPosition(point.x))}" cy="${coordinate(yPosition(point.y))}" r="6">""")
@@ -97,6 +89,7 @@ object TradeOffChart {
                 )
                 append("</a>")
             }
+
             append("</svg>")
         }
     }
@@ -123,6 +116,7 @@ object TradeOffChart {
                 val low = values.minOrNull() ?: 0.0
                 val high = values.maxOrNull() ?: 1.0
                 val padding = maxOf(high - low, MINIMUM_SPAN) * 0.05
+
                 var min = (low - padding).coerceAtLeast(0.0)
                 var max = (high + padding).coerceAtMost(1.0)
                 if (max - min < MINIMUM_SPAN) {
@@ -132,6 +126,7 @@ object TradeOffChart {
                         min = max - MINIMUM_SPAN
                     }
                 }
+
                 return Axis(min, max)
             }
         }

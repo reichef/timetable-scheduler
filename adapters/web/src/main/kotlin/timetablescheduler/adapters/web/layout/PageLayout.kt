@@ -54,6 +54,7 @@ suspend fun ApplicationCall.respondPage(
                     this.content = "$refreshSeconds"
                 }
             }
+
             title("$pageTitle – ${texts.common.appTitle}")
             link(rel = "stylesheet", href = "/static/app.css")
             script(src = "/static/language-switch.js") { defer = true }

@@ -17,6 +17,7 @@ class ConcurrentEditTest {
             val system = TestSystem().installed()
             val room = system.world.room(system.firstSchoolId(), "A-101")
             val roomPath = "/schools/${system.firstSchoolId().value}/rooms/${room.id.value}"
+
             val firstTab = startWith(system)
             val secondTab = newClient()
             firstTab.login()
@@ -48,6 +49,7 @@ class ConcurrentEditTest {
                     .findBySchool(system.firstSchoolId())
                     .first()
             val path = "$school/constraints/${constraint.id.value}"
+
             val firstTab = startWith(system)
             val secondTab = newClient()
             firstTab.login()
@@ -72,6 +74,7 @@ class ConcurrentEditTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val (_, paths) = data.generationWith(data.germanOnTuesday())
+
             val firstTab = startWith(system)
             val secondTab = newClient()
             firstTab.login()

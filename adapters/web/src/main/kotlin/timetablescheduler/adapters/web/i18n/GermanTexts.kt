@@ -471,13 +471,16 @@ object GermanTexts : UiTexts {
             override val chooseButton = "Als Stundenplan wählen"
             override val chosenMarker = "Dies ist der gewählte Stundenplan."
             override val confirmChooseTitle = "Nicht verplante Stunden bestätigen"
-            override val confirmChooseIntro = "Diese Alternative verplant nicht alle Stunden. Sie bleiben im gewählten Stundenplan als „nicht verplant“ sichtbar:"
+            override val confirmChooseIntro =
+                "Diese Alternative verplant nicht alle Stunden. Sie bleiben im gewählten Stundenplan als „nicht verplant“ sichtbar:"
             override val confirmChooseButton = "Trotzdem wählen"
             override val cancel = "Abbrechen"
             override val conflictsTitle = "Alternative passt nicht mehr"
-            override val conflictsIntro = "Mit den aktuellen Daten verletzen diese Stunden eine Muss-Bedingung, daher kann die Alternative nicht gewählt werden:"
+            override val conflictsIntro =
+                "Mit den aktuellen Daten verletzen diese Stunden eine Muss-Bedingung, daher kann die Alternative nicht gewählt werden:"
             override val outdatedMark = "veraltet"
-            override val outdatedHint = "Stammdaten oder Bedingungen wurden seit dem Start geändert. Markierte Stunden verletzen inzwischen eine Muss-Bedingung."
+            override val outdatedHint =
+                "Stammdaten oder Bedingungen wurden seit dem Start geändert. Markierte Stunden verletzen inzwischen eine Muss-Bedingung."
             override val deleteLink = "Lauf löschen"
             override val deleteTitle = "Lauf löschen?"
             override val deleteIntro = "Der Lauf und alle seine Alternativen werden endgültig gelöscht."

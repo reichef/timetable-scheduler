@@ -87,6 +87,7 @@ class LogConfidentialityTest {
             val system = TestSystem().installed()
             val data = GenerationTestData(system)
             val school = "/schools/${data.schoolId.value}"
+
             val client = startWith(system)
             client.login()
             client.switchLanguage(texts.language.code)
@@ -104,9 +105,11 @@ class LogConfidentialityTest {
                 "subjectId" to "${data.math.id.value}",
                 "teacherId" to "${data.schmidt.id.value}",
             )
+
             system.world.solver.candidates = { listOf(data.complete()) }
             val started = client.submitChecked("$school/generations", "timeLimitMinutes" to "1")
             val generationPath = started.headers[HttpHeaders.Location]!!
+
             val generation =
                 system.world.generations
                     .findBySchool(data.schoolId)
@@ -116,10 +119,12 @@ class LogConfidentialityTest {
                     .findAlternatives(generation.id)
                     .single()
             val alternativePath = "$generationPath/alternatives/${alternative.id.value}"
+
             client.get(alternativePath)
             client.get("$generationPath/compare")
             client.submitChecked("$alternativePath/choose", FIELD_CHOSEN_VERSION to "")
             client.get("$school/timetable")
+
             val blocked =
                 client.submitChecked(
                     "$school/teachers/${data.schmidt.id.value}/delete",
@@ -145,6 +150,7 @@ class LogConfidentialityTest {
             application {
                 routing { get("/explode") { error("Anna Schmidt kann nicht") } }
             }
+
             val client = startWith(system)
             client.login()
             client.switchLanguage(texts.language.code)
@@ -158,6 +164,7 @@ class LogConfidentialityTest {
                 "subjectId" to "${mathe.id.value}",
                 "version" to "0",
             )
+
             val invalid = client.submitChecked("$schoolPath/teachers", "name" to "Anna Schmidt", "shortCode" to "SCHA", "weeklyLoad" to "0")
             val blocked = client.submitChecked("$schoolPath/subjects/${mathe.id.value}/delete", "version" to "0")
             client.submitChecked("/account/password", "currentPassword" to TestSystem.PASSWORD, "newPassword" to "geheimes-passwort")
@@ -167,6 +174,7 @@ class LogConfidentialityTest {
             assertEquals(HttpStatusCode.UnprocessableEntity, invalid.status)
             assertEquals(HttpStatusCode.Conflict, blocked.status)
             val teacherType = texts.errors.describe(DependantType.TEACHER)
+
             assertTrue("$teacherType: Anna Schmidt (SCHA)" in blocked.bodyAsText(), "business message names the dependant for the planner")
             assertEquals(HttpStatusCode.InternalServerError, technical.status)
             assertFalse("Anna Schmidt" in technicalPage)
@@ -174,6 +182,7 @@ class LogConfidentialityTest {
             assertTrue(texts.errors.correlationId in technicalPage)
 
             val logLines = capturedLog.list.map { it.fullText() }
+
             assertTrue(logLines.any { "IllegalStateException" in it }, "technical error is logged by class")
             confidentialValues.forEach { value ->
                 assertEquals(emptyList(), logLines.filter { value in it }, "log must not contain \"$value\"")

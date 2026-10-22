@@ -65,12 +65,14 @@ class GenerationTestData(
                     StartRequest(timeLimitMinutes = 1),
                 ) as UseCaseResult.Success
             ).value
+
         others.forEach { world.storeAlternative(generation, it) }
         val paths =
             world.generations
                 .findAlternatives(
                     generation.id,
                 ).map { "$generationsPath/${generation.id.value}/alternatives/${it.id.value}" }
+
         return generation to paths
     }
 
