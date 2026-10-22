@@ -13,10 +13,12 @@ object Dominance {
         second: List<Double>,
     ): Boolean {
         require(first.size == second.size) { "Objective vectors differ in length" }
+
         val roundedFirst = first.map(ObjectiveValues::round4)
         val roundedSecond = second.map(ObjectiveValues::round4)
         val neverWorse = roundedFirst.indices.all { roundedFirst[it] >= roundedSecond[it] }
         val betterOnce = roundedFirst.indices.any { roundedFirst[it] > roundedSecond[it] }
+
         return neverWorse && betterOnce
     }
 }

@@ -77,9 +77,7 @@ object ReadinessCheck {
         return subjects.mapNotNull { subject ->
             val qualifiedTeachers = input.teachers.filter { subject.id in it.qualifiedSubjectIds }
             val shortfall = (requiredPeriods[subject.id] ?: 0) - qualifiedTeachers.sumOf { it.weeklyLoad }
-            if (qualifiedTeachers.isNotEmpty() &&
-                shortfall > 0
-            ) {
+            if (qualifiedTeachers.isNotEmpty() && shortfall > 0) {
                 ReadinessIssue.SubjectTeacherCapacityShortfall(subject.id, shortfall)
             } else {
                 null

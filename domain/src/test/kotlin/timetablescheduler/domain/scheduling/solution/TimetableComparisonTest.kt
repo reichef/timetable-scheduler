@@ -54,8 +54,7 @@ class TimetableComparisonTest {
         assertEquals(
             setOf(school.slot(TUESDAY, 1), school.slot(TUESDAY, 2)),
             TimetableDiff.differingSlots(reference, other) {
-                it.teacherId ==
-                    schmidt
+                it.teacherId == schmidt
             },
         )
     }
@@ -85,7 +84,7 @@ class TimetableComparisonTest {
     }
 
     @Test
-    fun `against the current curricula, missing lessons are not placed and surplus ones no longer required, the latest of the week (FR-023)`() {
+    fun `against the curricula, missing lessons are not placed and the latest surplus ones are no longer required (FR-023)`() {
         val chosen = reference + lesson(math, MONDAY, 2, schoolClass = class5b, teacher = mueller)
         val problem =
             school.problem().copy(
@@ -96,9 +95,7 @@ class TimetableComparisonTest {
                                 schoolClass.copy(
                                     curriculum =
                                         schoolClass.curriculum.map {
-                                            if (it.subjectId ==
-                                                math
-                                            ) {
+                                            if (it.subjectId == math) {
                                                 it.copy(periodsPerWeek = 2)
                                             } else {
                                                 it
@@ -127,9 +124,7 @@ class TimetableComparisonTest {
             school.problem().copy(
                 classes =
                     school.problem().classes.map {
-                        if (it.id ==
-                            class5a
-                        ) {
+                        if (it.id == class5a) {
                             it.copy(curriculum = it.curriculum.filter { e -> e.subjectId == math })
                         } else {
                             it

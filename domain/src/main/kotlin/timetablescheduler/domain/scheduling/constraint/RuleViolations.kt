@@ -78,8 +78,7 @@ object RuleViolations {
                     problem
                         .courses()
                         .filterKeys {
-                            it.subjectId == rule.subjectId &&
-                                (rule.classId == null || it.classId == rule.classId)
+                            it.subjectId == rule.subjectId && (rule.classId == null || it.classId == rule.classId)
                         }.values
                         .sum()
                 inExcludedSlots(inScope, rule.slots, periods)

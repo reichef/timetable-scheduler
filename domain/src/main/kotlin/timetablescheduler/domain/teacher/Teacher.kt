@@ -39,10 +39,12 @@ data class Teacher(
         val validation = ValidationCollector()
         val validName = validation.requiredText(FIELD_NAME, newName, NAME_MAX_LENGTH)
         val normalizedShortCode = newShortCode.trim().uppercase()
+
         if (!SHORT_CODE_PATTERN.matches(normalizedShortCode)) {
             validation.add(ValidationError.InvalidFormat(FIELD_SHORT_CODE))
         }
         validation.intInRange(FIELD_WEEKLY_LOAD, newWeeklyLoad, 0, teachingSlotsPerWeek)
+
         return validation.result { copy(name = validName, shortCode = normalizedShortCode, weeklyLoad = newWeeklyLoad) }
     }
 

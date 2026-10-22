@@ -13,6 +13,7 @@ import java.security.MessageDigest
 object SchedulingInputFingerprint {
     fun of(problem: SchedulingProblem): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(canonicalText(problem).toByteArray(Charsets.UTF_8))
+
         return digest.joinToString("") { "%02x".format(it) }
     }
 
@@ -22,19 +23,20 @@ object SchedulingInputFingerprint {
                 add("day ${day.day} " + day.slots.joinToString(",") { "${it.slotId.value}:${it.kind}" })
             }
             problem.rooms.forEach { add("room ${it.id.value} ${it.featureIds.map { feature -> feature.value }.sorted()}") }
+
             problem.subjects.forEach { add("subject ${it.id.value} ${it.requiredFeatureIds.map { feature -> feature.value }.sorted()}") }
             problem.classes.forEach { schoolClass ->
                 val curriculum = schoolClass.curriculum.map { "${it.subjectId.value}=${it.periodsPerWeek}" }.sorted()
+
                 add("class ${schoolClass.id.value} ${schoolClass.priorityWeight} ${schoolClass.homeRoomId?.value} $curriculum")
             }
             problem.teachers.forEach { teacher ->
+                val qualifications = teacher.qualifiedSubjectIds.map { it.value }.sorted()
                 val unavailable = teacher.unavailable.map(::daySlotText).sorted()
-                add(
-                    "teacher ${teacher.id.value} ${teacher.weeklyLoad} ${teacher.qualifiedSubjectIds.map {
-                        it.value
-                    }.sorted()} $unavailable",
-                )
+
+                add("teacher ${teacher.id.value} ${teacher.weeklyLoad} $qualifications $unavailable")
             }
+
             problem.constraints.forEach { add("constraint " + constraintText(it)) }
             problem.fixations.forEach { add("fixation ${it.classId.value} ${it.subjectId.value} ${it.teacherId.value}") }
         }.sorted().joinToString("\n")

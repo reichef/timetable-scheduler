@@ -80,9 +80,7 @@ object ConstraintValidation {
         fun classScope(scope: ClassScope) = if (scope is ClassScope.SpecificClass) schoolClass(scope.classId) else emptyList()
 
         fun teacher(teacherId: TeacherId) =
-            if (problem.teacher(teacherId) ==
-                null
-            ) {
+            if (problem.teacher(teacherId) == null) {
                 listOf(ValidationError.InvalidReference(FIELD_TEACHER))
             } else {
                 emptyList()
@@ -92,9 +90,7 @@ object ConstraintValidation {
             limit: Int,
             min: Int,
             max: Int,
-        ) = if (limit < min ||
-            limit > max
-        ) {
+        ) = if (limit < min || limit > max) {
             listOf(ValidationError.OutOfRange(FIELD_LIMIT, min, max))
         } else {
             emptyList()
@@ -153,8 +149,7 @@ object ConstraintValidation {
                     .map { it.rule }
                     .filterIsInstance<ConstraintRule.ClassMaxPeriodsPerDay>()
                     .filter { maximum ->
-                        rule.scope == ClassScope.AllClasses || maximum.scope == ClassScope.AllClasses ||
-                            maximum.scope == rule.scope
+                        rule.scope == ClassScope.AllClasses || maximum.scope == ClassScope.AllClasses || maximum.scope == rule.scope
                     }
             val lowestMaximum = hardMaximums.minOfOrNull { it.limit } ?: return emptyList()
             return range(rule.limit, 1, lowestMaximum)

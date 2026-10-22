@@ -25,30 +25,18 @@ class ObjectiveEvaluatorTest {
         unplaced: Map<CourseKey, Int> = emptyMap(),
     ) = ObjectiveEvaluator.evaluate(school.problem(), TimetableCandidate(lessons, unplaced)).values
 
+    /** Lessons 0–4 on Monday, the following ones on Tuesday. */
+    private fun dayOf(lessonIndex: Int) = if (lessonIndex < 5) MONDAY else TUESDAY
+
     @Test
     fun `class fill weights each class by its priority weight`() {
         val important = school.schoolClass(math to 10, weight = 20)
         val normal = school.schoolClass(math to 10, weight = 10)
         val teacher = school.teacher(40, setOf(math))
         val otherTeacher = school.teacher(40, setOf(math))
-        val nineForImportant = (0 until 9).map { school.lesson(important, math, teacher, room, if (it < 5) MONDAY else TUESDAY, it % 5) }
-        val tenForNormal =
-            (0 until 10).map {
-                school.lesson(
-                    normal,
-                    math,
-                    otherTeacher,
-                    school.room(),
-                    if (it <
-                        5
-                    ) {
-                        MONDAY
-                    } else {
-                        TUESDAY
-                    },
-                    it % 5,
-                )
-            }
+
+        val nineForImportant = (0 until 9).map { school.lesson(important, math, teacher, room, dayOf(it), it % 5) }
+        val tenForNormal = (0 until 10).map { school.lesson(normal, math, otherTeacher, school.room(), dayOf(it), it % 5) }
 
         val values = evaluate(nineForImportant + tenForNormal)
 
@@ -118,6 +106,7 @@ class ObjectiveEvaluatorTest {
     fun `all other soft constraints are combined by their weights 1, 3 and 9 (G3)`() {
         val class5a = school.schoolClass(math to 4)
         val teacher = school.teacher(10, setOf(math))
+
         val low = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 0))), SoftWeight.LOW)
         val high = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 1))), SoftWeight.HIGH)
         val problem = school.problem().copy(constraints = listOf(low, high))

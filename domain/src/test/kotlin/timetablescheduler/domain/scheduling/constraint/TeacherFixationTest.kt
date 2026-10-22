@@ -64,8 +64,7 @@ class TeacherFixationTest {
                         it.copy(
                             curriculum =
                                 it.curriculum.filter { entry ->
-                                    entry.subjectId ==
-                                        math
+                                    entry.subjectId == math
                                 },
                         )
                     },
