@@ -161,6 +161,7 @@ class GenerationRepositoryIT : PostgresTestBase() {
                 constraintSnapshot = listOf(noGaps, excluded),
                 fixationSnapshot = listOf(fixation),
             )
+
         inTransaction { generations.insert(generation) }
         val ended =
             generation

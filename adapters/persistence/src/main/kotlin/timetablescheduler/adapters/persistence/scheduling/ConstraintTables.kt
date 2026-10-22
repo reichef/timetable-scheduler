@@ -148,6 +148,7 @@ data class RuleColumns(
                     is ConstraintRule.SubjectMaxPerDayInClass -> rule.limit
                     else -> null
                 }
+
             return RuleColumns(
                 type = rule.type,
                 allClasses = scope == ClassScope.AllClasses,

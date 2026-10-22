@@ -68,8 +68,10 @@ class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
         if (updatedRows != 1) {
             return false
         }
+
         SchedulingConstraintSlotTable.deleteWhere { SchedulingConstraintSlotTable.constraintId eq constraint.id.value }
         insertSlots(constraint.id, columns)
+
         return true
     }
 

@@ -121,6 +121,7 @@ class ExposedChosenTimetableRepository : ChosenTimetableRepository {
         if (!saved) {
             return false
         }
+
         ChosenLessonTable.deleteWhere { ChosenLessonTable.schoolId eq schoolId }
         ChosenUnplacedTable.deleteWhere { ChosenUnplacedTable.schoolId eq schoolId }
         ChosenLessonTable.batchInsert(chosen.lessons.withIndex()) { (position, lesson) ->
@@ -139,6 +140,7 @@ class ExposedChosenTimetableRepository : ChosenTimetableRepository {
             this[ChosenUnplacedTable.subjectId] = course.subjectId.value
             this[ChosenUnplacedTable.periods] = periods
         }
+
         return true
     }
 

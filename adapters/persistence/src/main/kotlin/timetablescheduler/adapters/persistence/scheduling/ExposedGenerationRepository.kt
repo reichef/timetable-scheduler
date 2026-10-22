@@ -205,6 +205,7 @@ class ExposedGenerationRepository : GenerationRepository {
         if (rows.isEmpty()) {
             return emptyList()
         }
+
         val ids = rows.map { it[AlternativeTable.id] }
         val lessons =
             AlternativeLessonTable
@@ -227,6 +228,7 @@ class ExposedGenerationRepository : GenerationRepository {
                 .groupBy({ it[AlternativeSoftViolationTable.alternativeId] }, {
                     SchedulingConstraintId(it[AlternativeSoftViolationTable.constraintId]) to it[AlternativeSoftViolationTable.violations]
                 })
+
         return rows.map { row ->
             val id = row[AlternativeTable.id]
             Alternative(

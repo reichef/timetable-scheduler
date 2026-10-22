@@ -97,11 +97,13 @@ class PerformanceSmokeIT : PostgresTestBase() {
                 val start = LocalTime.of(8, 0).plusMinutes(50L * index)
                 current.withSlotAdded("${index + 1}. Stunde", start, start.plusMinutes(45), SlotKind.TEACHING).valid()
             }
+
         val roomFeatures = (1..5).map { RoomFeature.create(school.id, "Ausstattung $it").valid() }
         val featureIds = roomFeatures.map { it.id }.toSet()
         val schoolRooms = (1..40).map { Room.create(school.id, "R-$it", setOf(roomFeatures[it % 5].id), featureIds).valid() }
         val schoolSubjects = (1..15).map { Subject.create(school.id, "Fach $it", setOf(roomFeatures[it % 5].id), featureIds).valid() }
         val subjectIds = schoolSubjects.map { it.id }.toSet()
+
         val schoolLevels =
             (5..10).map { grade ->
                 val curriculum = schoolSubjects.take(12).map { CurriculumEntry(it.id, 3) }
@@ -122,17 +124,21 @@ class PerformanceSmokeIT : PostgresTestBase() {
                     .withUnavailability(setOf(Unavailability(DayOfWeek.FRIDAY, grid.slots[number % 10].id)), grid)
                     .valid()
             }
+
         inTransaction {
             schools.insert(school)
             schools.saveTimeGrid(school.id, grid)
             accounts.insert(planner)
+
             roomFeatures.forEach(features::insert)
             schoolRooms.forEach(rooms::insert)
             schoolSubjects.forEach(subjects::insert)
+
             schoolLevels.forEach(levels::insert)
             schoolClasses.forEach(classes::insert)
             schoolTeachers.forEach(teachers::insert)
         }
+
         return school.id to planner.id
     }
 
