@@ -9,7 +9,6 @@ import kotlin.test.Test
 
 /** `layout:control-flow-body`: bodies of conditionals and loops are blocks starting on their own line (FR-001, FR-003). */
 class ControlFlowBodyRuleTest {
-
     private val assertThatCode = assertThatRule { ControlFlowBodyRule() }
 
     private fun message(keyword: String) = ControlFlowBodyRule.messageFor(keyword)

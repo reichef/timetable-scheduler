@@ -17,7 +17,6 @@ val LAYOUT_RULES_ABOUT =
 
 /** Makes the project rules available to ktlint (registered in META-INF/services). */
 class LayoutRuleSetProvider : RuleSetProviderV3(RuleSetId(RULE_SET_ID)) {
-
     override fun getRuleProviders(): Set<RuleProvider> =
         setOf(
             RuleProvider { ControlFlowBodyRule() },

@@ -79,8 +79,14 @@ class ControlFlowBodyRule :
     /** The keyword whose body [node] is, or null when [node] is no control-flow body. */
     private fun keywordOfBody(node: ASTNode): String? =
         when (node.elementType) {
-            THEN -> "if"
-            ELSE -> "else"
+            THEN -> {
+                "if"
+            }
+
+            ELSE -> {
+                "else"
+            }
+
             BODY -> {
                 when (node.treeParent?.elementType) {
                     FOR -> "for"
@@ -89,7 +95,10 @@ class ControlFlowBodyRule :
                     else -> null
                 }
             }
-            else -> null
+
+            else -> {
+                null
+            }
         }
 
     /** `else if (…)` continues a chain; the nested `if` is checked on its own. */
@@ -185,9 +194,11 @@ class ControlFlowBodyRule :
             container.replaceChild(body, this)
             addChild(LeafPsiElement(LBRACE, "{"))
             addChild(PsiWhiteSpaceImpl(indentConfig.childIndentOf(container)))
+
             leavesBefore.dropWhile { it.isWhiteSpace20 }.forEach(::addChild)
             addChild(body)
             trailingComments.forEach(::addChild)
+
             addChild(PsiWhiteSpaceImpl(container.indent20))
             addChild(LeafPsiElement(RBRACE, "}"))
         }

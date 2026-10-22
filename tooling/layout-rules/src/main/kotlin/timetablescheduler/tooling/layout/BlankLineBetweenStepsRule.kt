@@ -32,7 +32,6 @@ class BlankLineBetweenStepsRule :
         about = LAYOUT_RULES_ABOUT,
     ),
     RuleAutocorrectApproveHandler {
-
     override fun beforeVisitChildNodes(
         node: ASTNode,
         emit: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
@@ -61,6 +60,7 @@ class BlankLineBetweenStepsRule :
                 child.isWhiteSpace20 && child.text.count { it == '\n' } >= 2 -> {
                     runLength = 0
                 }
+
                 isStatement(child) -> {
                     runLength++
 

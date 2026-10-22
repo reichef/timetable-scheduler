@@ -6,13 +6,15 @@ import kotlin.test.Test
 
 /** `layout:blank-line-between-steps`: no run of more than 5 statements without a blank line (FR-002). */
 class BlankLineBetweenStepsRuleTest {
-
     private val assertThatCode = assertThatRule { BlankLineBetweenStepsRule() }
 
     private val message = BlankLineBetweenStepsRule.MESSAGE
 
     /** [count] statements `step(n)`, each on its own line, indented for a function body. */
-    private fun statements(count: Int, first: Int = 1) = (first until first + count).joinToString("\n") { "    step($it)" }
+    private fun statements(
+        count: Int,
+        first: Int = 1,
+    ) = (first until first + count).joinToString("\n") { "    step($it)" }
 
     @Test
     fun `a function body with 6 statements and no blank line is reported at the sixth statement`() {
