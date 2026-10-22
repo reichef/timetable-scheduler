@@ -36,6 +36,7 @@ class TestSchoolSeederTest {
         assertEquals(BwGymnasiumTestSet.SCHOOL_NAME, world.schools.findById(schoolId)!!.name)
         assertEquals(31, world.rooms.findBySchool(schoolId).size)
         assertEquals(18, world.subjects.findBySchool(schoolId).size)
+
         assertEquals(18, seeded.classIds.size)
         assertEquals(32, world.teachers.findBySchool(schoolId).size)
         assertEquals(20, world.constraints.findBySchool(schoolId).size)

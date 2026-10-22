@@ -301,44 +301,42 @@ class TestSchoolScenarioTest {
             alternatives: List<Alternative>,
             seeded: SeededTestSchool,
         ) {
-            val classNames = seeded.classIds.entries.associate { (name, id) -> id to name }
-            val best = alternatives.maxByOrNull { it.objectiveValues.classFill }
+            val generation = run.generation
             val share = finalShare(run, alternatives)
+            val firstMeetingShare = run.firstMeetingShareAfter(share)?.toSeconds()
 
-            println(
-                "TESTSCHOOL [${testSet.schoolName}] status=${run.generation.status} alternatives=${alternatives.size} minimumShare=${run.generation.minimumPlacedShare}% bestPlaced=${share.bestPlaced}",
+            fun report(text: String) = println("TESTSCHOOL [${testSet.schoolName}] $text")
+
+            report(
+                "status=${generation.status} alternatives=${alternatives.size} " +
+                    "minimumShare=${generation.minimumPlacedShare}% bestPlaced=${share.bestPlaced}",
             )
-            println(
-                "TESTSCHOOL [${testSet.schoolName}] firstAlternativeAfter=${run.firstAlternativeAfter?.toSeconds()}s firstMeetingShareAfter=${run.firstMeetingShareAfter(
-                    share,
-                )?.toSeconds()}s",
-            )
+            report("firstAlternativeAfter=${run.firstAlternativeAfter?.toSeconds()}s firstMeetingShareAfter=${firstMeetingShare}s")
             alternatives.forEachIndexed { index, alternative ->
-                println(
-                    "TESTSCHOOL [${testSet.schoolName}] alternative ${index + 1}: objectives=${alternative.objectiveValues.asVector()} unplaced=${alternative.unplacedPeriods()} softViolations=${alternative.softViolations.values.sum()}",
+                val objectives = alternative.objectiveValues.asVector()
+                val softViolations = alternative.softViolations.values.sum()
+
+                report(
+                    "alternative ${index + 1}: objectives=$objectives unplaced=${alternative.unplacedPeriods()} softViolations=$softViolations",
                 )
             }
-            if (best != null) {
-                val unplacedPerClass =
-                    best.unplaced.entries
-                        .groupBy(
-                            { classNames[it.key.classId] },
-                            { it.value },
-                        ).mapValues { it.value.sum() }
 
-                val subjectNames = seeded.subjectIds.entries.associate { (name, id) -> id to name }
-                val unplacedPerSubject =
-                    best.unplaced.entries
-                        .groupBy(
-                            { subjectNames[it.key.subjectId] },
-                            { it.value },
-                        ).mapValues { it.value.sum() }
+            val best = alternatives.maxByOrNull { it.objectiveValues.classFill } ?: return
+            val classNames = seeded.classIds.entries.associate { (name, id) -> id to name }
+            val subjectNames = seeded.subjectIds.entries.associate { (name, id) -> id to name }
+            val unplacedPerClass =
+                best.unplaced.entries
+                    .groupBy({ classNames[it.key.classId] }, { it.value })
+                    .mapValues { it.value.sum() }
+            val unplacedPerSubject =
+                best.unplaced.entries
+                    .groupBy(
+                        { subjectNames[it.key.subjectId] },
+                        { it.value },
+                    ).mapValues { it.value.sum() }
 
-                println(
-                    "TESTSCHOOL [${testSet.schoolName}] best class fill=${best.objectiveValues.classFill} unplaced per class=$unplacedPerClass",
-                )
-                println("TESTSCHOOL [${testSet.schoolName}] best unplaced per subject=$unplacedPerSubject")
-            }
+            report("best class fill=${best.objectiveValues.classFill} unplaced per class=$unplacedPerClass")
+            report("best unplaced per subject=$unplacedPerSubject")
         }
     }
 

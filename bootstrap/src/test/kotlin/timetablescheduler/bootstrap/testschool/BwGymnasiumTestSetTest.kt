@@ -11,10 +11,11 @@ class BwGymnasiumTestSetTest {
     @Test
     fun `the test set has the size described in the specification`() {
         assertEquals(31, testSet.rooms.size)
+        assertEquals(10, testSet.slots.count { it.isTeaching })
         assertEquals(18, testSet.subjects.size)
+
         assertEquals(18, testSet.classes.size)
         assertEquals(32, testSet.teachers.size)
-        assertEquals(10, testSet.slots.count { it.isTeaching })
         assertEquals(18, testSet.constraints.size, "20 constraints minus the 2 defaults the installation creates")
         assertEquals(3, testSet.fixations.size)
     }
