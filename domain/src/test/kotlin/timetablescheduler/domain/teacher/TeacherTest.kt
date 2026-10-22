@@ -15,7 +15,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class TeacherTest {
-
     private val schoolId = SchoolId.new()
     private val mathe = SubjectId.new()
     private val chemie = SubjectId.new()
@@ -24,10 +23,16 @@ class TeacherTest {
 
     private fun errorsOf(result: ValidationResult<*>): List<ValidationError> = assertIs<ValidationResult.Invalid>(result).errors
 
-    private val grid: TimeGrid = TimeGrid.empty().withTeachingDays(setOf(MONDAY, FRIDAY))
-        .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING).valid()
-        .withSlotAdded("Pause", LocalTime.of(8, 45), LocalTime.of(9, 0), SlotKind.BREAK).valid()
-        .withSlotAdded("6. Stunde", LocalTime.of(12, 30), LocalTime.of(13, 15), SlotKind.TEACHING).valid()
+    private val grid: TimeGrid =
+        TimeGrid
+            .empty()
+            .withTeachingDays(setOf(MONDAY, FRIDAY))
+            .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING)
+            .valid()
+            .withSlotAdded("Pause", LocalTime.of(8, 45), LocalTime.of(9, 0), SlotKind.BREAK)
+            .valid()
+            .withSlotAdded("6. Stunde", LocalTime.of(12, 30), LocalTime.of(13, 15), SlotKind.TEACHING)
+            .valid()
     private val firstPeriod = grid.slots.first()
     private val breakSlot = grid.slots[1]
     private val sixthPeriod = grid.slots.last()
@@ -46,7 +51,10 @@ class TeacherTest {
     @Test
     fun `name must have 1 to 120 characters`() {
         assertEquals(listOf(ValidationError.BlankValue(Teacher.FIELD_NAME)), errorsOf(Teacher.create(schoolId, "", "SCHA", 0, 10)))
-        assertEquals(listOf(ValidationError.TooLong(Teacher.FIELD_NAME, 120)), errorsOf(Teacher.create(schoolId, "x".repeat(121), "SCHA", 0, 10)))
+        assertEquals(
+            listOf(ValidationError.TooLong(Teacher.FIELD_NAME, 120)),
+            errorsOf(Teacher.create(schoolId, "x".repeat(121), "SCHA", 0, 10)),
+        )
     }
 
     @Test
@@ -71,8 +79,12 @@ class TeacherTest {
 
     @Test
     fun `general data update keeps qualifications and unavailability`() {
-        val prepared = anna.withQualifications(setOf(mathe), setOf(mathe)).valid()
-            .withUnavailability(setOf(Unavailability(FRIDAY, sixthPeriod.id)), grid).valid()
+        val prepared =
+            anna
+                .withQualifications(setOf(mathe), setOf(mathe))
+                .valid()
+                .withUnavailability(setOf(Unavailability(FRIDAY, sixthPeriod.id)), grid)
+                .valid()
 
         val updated = prepared.withGeneralData("Anna Schmidt-Berg", "SCHB", 3, teachingSlotsPerWeek = 4).valid()
 

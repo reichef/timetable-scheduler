@@ -5,9 +5,9 @@ import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.constraint.SoftWeight
 import timetablescheduler.domain.scheduling.constraint.soft
-import timetablescheduler.domain.scheduling.solution.ObjectiveValues
 import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
+import timetablescheduler.domain.scheduling.solution.ObjectiveValues
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.TUESDAY
@@ -16,13 +16,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class ObjectiveEvaluatorTest {
-
     private val school = TestSchool(teachingSlotsPerDay = 6)
     private val room = school.room()
     private val math = school.subject()
 
-    private fun evaluate(lessons: List<LessonAssignment>, unplaced: Map<CourseKey, Int> = emptyMap()) =
-        ObjectiveEvaluator.evaluate(school.problem(), TimetableCandidate(lessons, unplaced)).values
+    private fun evaluate(
+        lessons: List<LessonAssignment>,
+        unplaced: Map<CourseKey, Int> = emptyMap(),
+    ) = ObjectiveEvaluator.evaluate(school.problem(), TimetableCandidate(lessons, unplaced)).values
 
     @Test
     fun `class fill weights each class by its priority weight`() {
@@ -31,7 +32,23 @@ class ObjectiveEvaluatorTest {
         val teacher = school.teacher(40, setOf(math))
         val otherTeacher = school.teacher(40, setOf(math))
         val nineForImportant = (0 until 9).map { school.lesson(important, math, teacher, room, if (it < 5) MONDAY else TUESDAY, it % 5) }
-        val tenForNormal = (0 until 10).map { school.lesson(normal, math, otherTeacher, school.room(), if (it < 5) MONDAY else TUESDAY, it % 5) }
+        val tenForNormal =
+            (0 until 10).map {
+                school.lesson(
+                    normal,
+                    math,
+                    otherTeacher,
+                    school.room(),
+                    if (it <
+                        5
+                    ) {
+                        MONDAY
+                    } else {
+                        TUESDAY
+                    },
+                    it % 5,
+                )
+            }
 
         val values = evaluate(nineForImportant + tenForNormal)
 
@@ -50,12 +67,13 @@ class ObjectiveEvaluatorTest {
         val full = school.teacher(2, setOf(math))
         val half = school.teacher(4, setOf(math))
         school.teacher(0, setOf(math))
-        val lessons = listOf(
-            school.lesson(class5a, math, full, room, MONDAY, 0),
-            school.lesson(class5a, math, full, room, MONDAY, 1),
-            school.lesson(class5a, math, half, room, MONDAY, 2),
-            school.lesson(class5a, math, half, room, MONDAY, 3),
-        )
+        val lessons =
+            listOf(
+                school.lesson(class5a, math, full, room, MONDAY, 0),
+                school.lesson(class5a, math, full, room, MONDAY, 1),
+                school.lesson(class5a, math, half, room, MONDAY, 2),
+                school.lesson(class5a, math, half, room, MONDAY, 3),
+            )
 
         // (min(2,2) + min(2,4)) / (2 + 4)
         assertEquals(0.6667, evaluate(lessons).teacherLoadUsage)
@@ -84,7 +102,9 @@ class ObjectiveEvaluatorTest {
         val teacher = school.teacher(10, setOf(math))
         val mathAtMostOne = soft(ConstraintRule.SubjectMaxPerDayInClass(ClassScope.SpecificClass(class5a), math, 1))
         val problem = school.problem().copy(constraints = listOf(mathAtMostOne), separateObjectiveIds = listOf(mathAtMostOne.id))
-        val lessons = (0 until 3).map { school.lesson(class5a, math, teacher, room, MONDAY, it) } + school.lesson(class5a, math, teacher, room, TUESDAY, 0)
+        val lessons =
+            (0 until 3).map { school.lesson(class5a, math, teacher, room, MONDAY, it) } +
+                school.lesson(class5a, math, teacher, room, TUESDAY, 0)
 
         val evaluation = ObjectiveEvaluator.evaluate(problem, TimetableCandidate(lessons, emptyMap()))
 
@@ -101,7 +121,8 @@ class ObjectiveEvaluatorTest {
         val low = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 0))), SoftWeight.LOW)
         val high = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 1))), SoftWeight.HIGH)
         val problem = school.problem().copy(constraints = listOf(low, high))
-        val lessons = listOf(school.lesson(class5a, math, teacher, room, MONDAY, 0), school.lesson(class5a, math, teacher, room, TUESDAY, 0))
+        val lessons =
+            listOf(school.lesson(class5a, math, teacher, room, MONDAY, 0), school.lesson(class5a, math, teacher, room, TUESDAY, 0))
 
         val evaluation = ObjectiveEvaluator.evaluate(problem, TimetableCandidate(lessons, emptyMap()))
 

@@ -17,14 +17,18 @@ import java.time.Instant
 import java.util.UUID
 
 @JvmInline
-value class GenerationId(val value: UUID) {
+value class GenerationId(
+    val value: UUID,
+) {
     companion object {
         fun new() = GenerationId(UUID.randomUUID())
     }
 }
 
 @JvmInline
-value class AlternativeId(val value: UUID) {
+value class AlternativeId(
+    val value: UUID,
+) {
     companion object {
         fun new() = AlternativeId(UUID.randomUUID())
     }
@@ -64,7 +68,10 @@ data class Generation(
 ) {
     val isRunning: Boolean get() = status == GenerationStatus.RUNNING
 
-    fun endAs(finalStatus: GenerationStatus, at: Instant): Generation {
+    fun endAs(
+        finalStatus: GenerationStatus,
+        at: Instant,
+    ): Generation {
         require(finalStatus != GenerationStatus.RUNNING) { "A generation cannot end as running" }
         check(isRunning) { "Generation has already ended" }
         return copy(status = finalStatus, finishedAt = at)

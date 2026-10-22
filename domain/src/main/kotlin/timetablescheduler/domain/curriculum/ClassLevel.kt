@@ -10,7 +10,10 @@ import timetablescheduler.domain.validation.intInRange
 import timetablescheduler.domain.validation.requiredText
 
 /** One subject of a level's curriculum with its weekly periods (FR-011). */
-data class CurriculumEntry(val subjectId: SubjectId, val periodsPerWeek: Int) {
+data class CurriculumEntry(
+    val subjectId: SubjectId,
+    val periodsPerWeek: Int,
+) {
     companion object {
         const val FIELD_PERIODS = "periodsPerWeek"
         const val MIN_PERIODS = 1
@@ -31,7 +34,11 @@ data class ClassLevel(
     fun weeklyPeriods(): Int = curriculum.sumOf { it.periodsPerWeek }
 
     /** [schoolSubjects] are the subjects of this level's school; others are rejected. */
-    fun update(newIdentifier: String, newCurriculum: List<CurriculumEntry>, schoolSubjects: Set<SubjectId>): ValidationResult<ClassLevel> {
+    fun update(
+        newIdentifier: String,
+        newCurriculum: List<CurriculumEntry>,
+        schoolSubjects: Set<SubjectId>,
+    ): ValidationResult<ClassLevel> {
         val validation = ValidationCollector()
         val validIdentifier = validation.requiredText(FIELD_IDENTIFIER, newIdentifier, IDENTIFIER_MAX_LENGTH)
         validateCurriculum(validation, newCurriculum, schoolSubjects)
@@ -39,11 +46,20 @@ data class ClassLevel(
     }
 
     /** Each entry needs ≥ 1 period, each subject may appear once and must belong to the school; each rule is reported once. */
-    private fun validateCurriculum(validation: ValidationCollector, entries: List<CurriculumEntry>, schoolSubjects: Set<SubjectId>) {
-        entries.firstOrNull { it.periodsPerWeek < CurriculumEntry.MIN_PERIODS }
+    private fun validateCurriculum(
+        validation: ValidationCollector,
+        entries: List<CurriculumEntry>,
+        schoolSubjects: Set<SubjectId>,
+    ) {
+        entries
+            .firstOrNull { it.periodsPerWeek < CurriculumEntry.MIN_PERIODS }
             ?.let { validation.intInRange(CurriculumEntry.FIELD_PERIODS, it.periodsPerWeek, CurriculumEntry.MIN_PERIODS, null) }
-        if (entries.map { it.subjectId }.toSet().size != entries.size) validation.add(ValidationError.DuplicateValue(FIELD_SUBJECTS))
-        if (entries.any { it.subjectId !in schoolSubjects }) validation.add(ValidationError.InvalidReference(FIELD_SUBJECTS))
+        if (entries.map { it.subjectId }.toSet().size != entries.size) {
+            validation.add(ValidationError.DuplicateValue(FIELD_SUBJECTS))
+        }
+        if (entries.any { it.subjectId !in schoolSubjects }) {
+            validation.add(ValidationError.InvalidReference(FIELD_SUBJECTS))
+        }
     }
 
     companion object {
@@ -51,7 +67,10 @@ data class ClassLevel(
         const val FIELD_SUBJECTS = "subjects"
         const val IDENTIFIER_MAX_LENGTH = 10
 
-        fun create(schoolId: SchoolId, identifier: String): ValidationResult<ClassLevel> =
+        fun create(
+            schoolId: SchoolId,
+            identifier: String,
+        ): ValidationResult<ClassLevel> =
             ClassLevel(ClassLevelId.new(), schoolId, identifier = "", curriculum = emptyList(), version = 0)
                 .update(identifier, emptyList(), emptySet())
     }

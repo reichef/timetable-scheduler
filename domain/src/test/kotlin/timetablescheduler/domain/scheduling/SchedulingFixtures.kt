@@ -30,12 +30,15 @@ class TestSchool(
     /** Teaching slots in order, shared by all days. */
     val teachingSlots: List<TimeSlotId> = List(teachingSlotsPerDay) { TimeSlotId.new() }
     val breakSlot: TimeSlotId? = breakAfterSlot?.let { TimeSlotId.new() }
-    private val slotSequence: List<SlotRef> = buildList {
-        teachingSlots.forEachIndexed { index, slotId ->
-            add(SlotRef(slotId, SlotKind.TEACHING))
-            if (breakSlot != null && index + 1 == breakAfterSlot) add(SlotRef(breakSlot, SlotKind.BREAK))
+    private val slotSequence: List<SlotRef> =
+        buildList {
+            teachingSlots.forEachIndexed { index, slotId ->
+                add(SlotRef(slotId, SlotKind.TEACHING))
+                if (breakSlot != null && index + 1 == breakAfterSlot) {
+                    add(SlotRef(breakSlot, SlotKind.BREAK))
+                }
+            }
         }
-    }
 
     val rooms = mutableListOf<ProblemRoom>()
     val subjects = mutableListOf<ProblemSubject>()
@@ -44,26 +47,47 @@ class TestSchool(
 
     fun room(features: Set<RoomFeatureId> = emptySet()): RoomId = RoomId.new().also { rooms += ProblemRoom(it, features) }
 
-    fun subject(requiredFeatures: Set<RoomFeatureId> = emptySet()): SubjectId = SubjectId.new().also { subjects += ProblemSubject(it, requiredFeatures) }
+    fun subject(requiredFeatures: Set<RoomFeatureId> = emptySet()): SubjectId =
+        SubjectId.new().also {
+            subjects +=
+                ProblemSubject(it, requiredFeatures)
+        }
 
-    fun schoolClass(vararg curriculum: Pair<SubjectId, Int>, weight: Int = 10, homeRoom: RoomId? = null): SchoolClassId =
+    fun schoolClass(
+        vararg curriculum: Pair<SubjectId, Int>,
+        weight: Int = 10,
+        homeRoom: RoomId? = null,
+    ): SchoolClassId =
         SchoolClassId.new().also { id ->
             classes += ProblemClass(id, weight, homeRoom, curriculum.map { (subject, periods) -> CurriculumEntry(subject, periods) })
         }
 
-    fun teacher(load: Int, qualified: Set<SubjectId>, unavailable: Set<DaySlot> = emptySet()): TeacherId =
-        TeacherId.new().also { teachers += ProblemTeacher(it, load, qualified, unavailable) }
+    fun teacher(
+        load: Int,
+        qualified: Set<SubjectId>,
+        unavailable: Set<DaySlot> = emptySet(),
+    ): TeacherId = TeacherId.new().also { teachers += ProblemTeacher(it, load, qualified, unavailable) }
 
-    fun slot(day: DayOfWeek, teachingIndex: Int): DaySlot = DaySlot(day, teachingSlots[teachingIndex])
+    fun slot(
+        day: DayOfWeek,
+        teachingIndex: Int,
+    ): DaySlot = DaySlot(day, teachingSlots[teachingIndex])
 
-    fun lesson(schoolClass: SchoolClassId, subject: SubjectId, teacher: TeacherId, room: RoomId, day: DayOfWeek, teachingIndex: Int) =
-        LessonAssignment(schoolClass, subject, teacher, room, slot(day, teachingIndex))
+    fun lesson(
+        schoolClass: SchoolClassId,
+        subject: SubjectId,
+        teacher: TeacherId,
+        room: RoomId,
+        day: DayOfWeek,
+        teachingIndex: Int,
+    ) = LessonAssignment(schoolClass, subject, teacher, room, slot(day, teachingIndex))
 
-    fun problem(): SchedulingProblem = SchedulingProblem(
-        days = days.map { DayStructure(it, slotSequence) },
-        rooms = rooms.toList(),
-        subjects = subjects.toList(),
-        classes = classes.toList(),
-        teachers = teachers.toList(),
-    )
+    fun problem(): SchedulingProblem =
+        SchedulingProblem(
+            days = days.map { DayStructure(it, slotSequence) },
+            rooms = rooms.toList(),
+            subjects = subjects.toList(),
+            classes = classes.toList(),
+            teachers = teachers.toList(),
+        )
 }

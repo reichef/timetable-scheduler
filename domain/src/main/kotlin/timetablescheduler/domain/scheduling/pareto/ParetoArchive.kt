@@ -3,13 +3,15 @@ package timetablescheduler.domain.scheduling.pareto
 import timetablescheduler.domain.scheduling.solution.ObjectiveValues
 
 object Dominance {
-
     /**
      * Pareto dominance for "higher is better" objectives: [first] dominates [second] when it is at least as good in
      * every objective and strictly better in at least one. Values are compared after rounding to 4 decimals (G3), so
      * floating-point noise never makes one alternative look better.
      */
-    fun dominates(first: List<Double>, second: List<Double>): Boolean {
+    fun dominates(
+        first: List<Double>,
+        second: List<Double>,
+    ): Boolean {
         require(first.size == second.size) { "Objective vectors differ in length" }
         val roundedFirst = first.map(ObjectiveValues::round4)
         val roundedSecond = second.map(ObjectiveValues::round4)
@@ -20,10 +22,16 @@ object Dominance {
 }
 
 /** An archived alternative with its objective vector. */
-data class ParetoEntry<T>(val item: T, val objectives: List<Double>)
+data class ParetoEntry<T>(
+    val item: T,
+    val objectives: List<Double>,
+)
 
 /** What an offer changed: whether the offered item was kept and which items it pushed out. */
-data class ArchiveChange<T>(val admitted: Boolean, val evicted: List<T>)
+data class ArchiveChange<T>(
+    val admitted: Boolean,
+    val evicted: List<T>,
+)
 
 /**
  * Keeps the equally optimal alternatives found so far (FR-007, FR-008, G2): only items no other item dominates,
@@ -38,10 +46,15 @@ class ParetoArchive<T>(
 
     val entries: List<ParetoEntry<T>> get() = kept.toList()
 
-    fun offer(item: T, objectives: List<Double>): ArchiveChange<T> {
+    fun offer(
+        item: T,
+        objectives: List<Double>,
+    ): ArchiveChange<T> {
         val offered = ParetoEntry(item, objectives.map(ObjectiveValues::round4))
         val rejected = kept.any { Dominance.dominates(it.objectives, offered.objectives) || isDuplicate(it, offered) }
-        if (rejected) return ArchiveChange(admitted = false, evicted = emptyList())
+        if (rejected) {
+            return ArchiveChange(admitted = false, evicted = emptyList())
+        }
 
         val dominated = kept.filter { Dominance.dominates(offered.objectives, it.objectives) }
         kept.removeAll(dominated)
@@ -58,8 +71,10 @@ class ParetoArchive<T>(
         return removed.map { it.item }
     }
 
-    private fun isDuplicate(existing: ParetoEntry<T>, offered: ParetoEntry<T>): Boolean =
-        existing.objectives == offered.objectives && sameTimetable(existing.item, offered.item)
+    private fun isDuplicate(
+        existing: ParetoEntry<T>,
+        offered: ParetoEntry<T>,
+    ): Boolean = existing.objectives == offered.objectives && sameTimetable(existing.item, offered.item)
 
     /**
      * Crowding distance (NSGA-II): for every objective, sort the items and add the normalized gap between each item's
@@ -75,7 +90,9 @@ class ParetoArchive<T>(
             val range = kept[order.last()].objectives[objective] - kept[order.first()].objectives[objective]
             distances[order.first()] = Double.POSITIVE_INFINITY
             distances[order.last()] = Double.POSITIVE_INFINITY
-            if (range == 0.0) continue
+            if (range == 0.0) {
+                continue
+            }
             for (position in 1 until order.size - 1) {
                 val gap = kept[order[position + 1]].objectives[objective] - kept[order[position - 1]].objectives[objective]
                 distances[order[position]] += gap / range

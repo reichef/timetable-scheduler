@@ -8,7 +8,6 @@ import kotlin.test.assertTrue
 
 /** FR-007a: only alternatives placing at least the minimum share of the best alternative's lessons are kept. */
 class PlacementShareTest {
-
     @Test
     fun `an alternative is kept when it places at least the share of the best one's lessons, without rounding`() {
         val share = PlacementShare(90).apply { record(569) }

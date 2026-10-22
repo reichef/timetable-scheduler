@@ -26,7 +26,10 @@ data class UserAccount(
 
     fun isActivePlannerOf(schoolId: SchoolId): Boolean = isActivePlanner() && schoolId in schoolIds
 
-    fun withRoleAndSchools(newRole: Role, newSchoolIds: Set<SchoolId>): ValidationResult<UserAccount> {
+    fun withRoleAndSchools(
+        newRole: Role,
+        newSchoolIds: Set<SchoolId>,
+    ): ValidationResult<UserAccount> {
         val validation = ValidationCollector()
         validation.add(lastSchoolError(newSchoolIds))
         return validation.result { copy(role = newRole, schoolIds = newSchoolIds) }
@@ -43,7 +46,11 @@ data class UserAccount(
         const val USERNAME_MIN_LENGTH = 3
         const val USERNAME_MAX_LENGTH = 60
 
-        fun create(username: String, role: Role, schoolIds: Set<SchoolId>): ValidationResult<UserAccount> {
+        fun create(
+            username: String,
+            role: Role,
+            schoolIds: Set<SchoolId>,
+        ): ValidationResult<UserAccount> {
             val validation = ValidationCollector()
             val trimmedUsername = username.trim()
             if (trimmedUsername.length !in USERNAME_MIN_LENGTH..USERNAME_MAX_LENGTH) {

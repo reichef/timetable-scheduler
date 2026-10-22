@@ -21,7 +21,6 @@ data class School(
         const val FIELD_NAME = "name"
         const val NAME_MAX_LENGTH = 120
 
-        fun create(name: String): ValidationResult<School> =
-            School(SchoolId.new(), name = "", version = 0).rename(name)
+        fun create(name: String): ValidationResult<School> = School(SchoolId.new(), name = "", version = 0).rename(name)
     }
 }

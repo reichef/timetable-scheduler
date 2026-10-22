@@ -2,14 +2,14 @@ package timetablescheduler.domain.scheduling.evaluation
 
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.TestSchool
 import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.constraint.TeacherFixation
 import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import timetablescheduler.domain.scheduling.constraint.hard
 import timetablescheduler.domain.scheduling.constraint.soft
-import timetablescheduler.domain.scheduling.DaySlot
-import timetablescheduler.domain.scheduling.TestSchool
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
 import java.time.DayOfWeek.MONDAY
@@ -20,7 +20,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class HardConstraintCheckerTest {
-
     private val school = TestSchool(breakAfterSlot = 2)
     private val lab = RoomFeatureId.new()
     private val roomA = school.room()
@@ -148,10 +147,11 @@ class HardConstraintCheckerTest {
 
     @Test
     fun `every violation names its lessons`() {
-        val result = violations(
-            school.lesson(class5a, german, schmidt, roomA, MONDAY, 0),
-            school.lesson(class5a, chemistry, schmidt, roomA, MONDAY, 0),
-        )
+        val result =
+            violations(
+                school.lesson(class5a, german, schmidt, roomA, MONDAY, 0),
+                school.lesson(class5a, chemistry, schmidt, roomA, MONDAY, 0),
+            )
 
         assertTrue(result.isNotEmpty())
         assertTrue(result.all { it.lessons.isNotEmpty() })
@@ -160,15 +160,33 @@ class HardConstraintCheckerTest {
     @Test
     fun `an active hard planner constraint is checked and named, a soft or switched-off one is not`() {
         val atMostOne = hard(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(class5a), 1))
-        val lessons = listOf(school.lesson(class5a, math, schmidt, roomA, MONDAY, 0), school.lesson(class5a, german, mueller, roomA, MONDAY, 1))
+        val lessons =
+            listOf(school.lesson(class5a, math, schmidt, roomA, MONDAY, 0), school.lesson(class5a, german, mueller, roomA, MONDAY, 1))
 
-        val violation = HardConstraintChecker.violationsOf(school.problem().copy(constraints = listOf(atMostOne)), TimetableCandidate(lessons, emptyMap())).single()
+        val violation =
+            HardConstraintChecker
+                .violationsOf(
+                    school.problem().copy(constraints = listOf(atMostOne)),
+                    TimetableCandidate(lessons, emptyMap()),
+                ).single()
 
         assertEquals(HardRule.PLANNER_CONSTRAINT, violation.rule)
         assertEquals(atMostOne.id, violation.constraintId)
         assertEquals(listOf(lessons[1]), violation.lessons)
-        assertEquals(emptyList(), HardConstraintChecker.violationsOf(school.problem().copy(constraints = listOf(soft(atMostOne.rule))), TimetableCandidate(lessons, emptyMap())))
-        assertEquals(emptyList(), HardConstraintChecker.violationsOf(school.problem().copy(constraints = listOf(hard(atMostOne.rule, active = false))), TimetableCandidate(lessons, emptyMap())))
+        assertEquals(
+            emptyList(),
+            HardConstraintChecker.violationsOf(
+                school.problem().copy(constraints = listOf(soft(atMostOne.rule))),
+                TimetableCandidate(lessons, emptyMap()),
+            ),
+        )
+        assertEquals(
+            emptyList(),
+            HardConstraintChecker.violationsOf(
+                school.problem().copy(constraints = listOf(hard(atMostOne.rule, active = false))),
+                TimetableCandidate(lessons, emptyMap()),
+            ),
+        )
     }
 
     @Test
@@ -176,7 +194,12 @@ class HardConstraintCheckerTest {
         val fixation = TeacherFixation(TeacherFixationId.new(), SchoolId.new(), class5a, math, schmidt, 0)
         val byMueller = school.lesson(class5a, math, mueller, roomA, MONDAY, 0)
 
-        val violation = HardConstraintChecker.violationsOf(school.problem().copy(fixations = listOf(fixation)), TimetableCandidate(listOf(byMueller), emptyMap())).single()
+        val violation =
+            HardConstraintChecker
+                .violationsOf(
+                    school.problem().copy(fixations = listOf(fixation)),
+                    TimetableCandidate(listOf(byMueller), emptyMap()),
+                ).single()
 
         assertEquals(HardRule.TEACHER_FIXATION, violation.rule)
         assertEquals(listOf(byMueller), violation.lessons)

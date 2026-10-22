@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ParetoArchiveTest {
-
     /** Items are names; two items describe the same timetable when their names are equal. */
     private fun archive(capacity: Int = 10) = ParetoArchive<String>(capacity) { first, second -> first == second }
 
@@ -110,10 +109,17 @@ class ParetoArchiveTest {
     @Test
     fun `kept candidates never dominate each other`() {
         val archive = archive(capacity = 5)
-        val offers = listOf(
-            listOf(0.3, 0.9), listOf(0.6, 0.6), listOf(0.2, 0.2), listOf(0.9, 0.1), listOf(0.6, 0.7),
-            listOf(0.95, 0.15), listOf(0.4, 0.85), listOf(0.7, 0.5),
-        )
+        val offers =
+            listOf(
+                listOf(0.3, 0.9),
+                listOf(0.6, 0.6),
+                listOf(0.2, 0.2),
+                listOf(0.9, 0.1),
+                listOf(0.6, 0.7),
+                listOf(0.95, 0.15),
+                listOf(0.4, 0.85),
+                listOf(0.7, 0.5),
+            )
         offers.forEachIndexed { index, objectives -> archive.offer("c$index", objectives) }
 
         val kept = archive.entries.map { it.objectives }

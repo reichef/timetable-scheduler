@@ -9,7 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class SchedulingInputFingerprintTest {
-
     private val school = TestSchool()
     private val lab = RoomFeatureId.new()
     private val room = school.room(setOf(lab))
@@ -34,11 +33,12 @@ class SchedulingInputFingerprintTest {
 
     @Test
     fun `the order of entries does not matter`() {
-        val reordered = problem.copy(
-            rooms = problem.rooms.reversed(),
-            subjects = problem.subjects.reversed(),
-            classes = problem.classes.map { it.copy(curriculum = it.curriculum.reversed()) },
-        )
+        val reordered =
+            problem.copy(
+                rooms = problem.rooms.reversed(),
+                subjects = problem.subjects.reversed(),
+                classes = problem.classes.map { it.copy(curriculum = it.curriculum.reversed()) },
+            )
 
         assertEquals(original, SchedulingInputFingerprint.of(reordered))
     }

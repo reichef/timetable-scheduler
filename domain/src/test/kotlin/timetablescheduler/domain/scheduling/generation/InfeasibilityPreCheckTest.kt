@@ -14,7 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class InfeasibilityPreCheckTest {
-
     /** Two days with 4 teaching slots each: 8 slots per week. */
     private val school = TestSchool(teachingSlotsPerDay = 4)
     private val math = school.subject()
@@ -26,7 +25,13 @@ class InfeasibilityPreCheckTest {
 
     @Test
     fun `consistent hard constraints and soft constraints are no contradiction`() {
-        assertEquals(emptyList(), contradictionsOf(hard(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(class5a), 3)), soft(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.AllClasses, 4))))
+        assertEquals(
+            emptyList(),
+            contradictionsOf(
+                hard(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(class5a), 3)),
+                soft(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.AllClasses, 4)),
+            ),
+        )
     }
 
     @Test
@@ -46,7 +51,8 @@ class InfeasibilityPreCheckTest {
 
     @Test
     fun `hard exclusions leaving fewer slots than a class needs are named`() {
-        val excluded = hard(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 0), school.slot(MONDAY, 1), school.slot(TUESDAY, 0))))
+        val excluded =
+            hard(ConstraintRule.ClassExcludedSlots(class5a, setOf(school.slot(MONDAY, 0), school.slot(MONDAY, 1), school.slot(TUESDAY, 0))))
 
         // 8 slots − 3 excluded = 5 < 6 periods
         assertEquals(listOf(excluded.id), contradictionsOf(excluded))
@@ -56,8 +62,14 @@ class InfeasibilityPreCheckTest {
     fun `hard teacher exclusions leaving fewer slots than the teacher's fixed periods are named`() {
         val problem = school.problem()
         val fixation = TeacherFixation(TeacherFixationId.new(), SchoolId.new(), class5a, math, teacher, 0)
-        val excluded = hard(ConstraintRule.TeacherExcludedSlots(teacher, setOf(school.slot(MONDAY, 0), school.slot(MONDAY, 1), school.slot(MONDAY, 2))))
+        val excluded =
+            hard(
+                ConstraintRule.TeacherExcludedSlots(teacher, setOf(school.slot(MONDAY, 0), school.slot(MONDAY, 1), school.slot(MONDAY, 2))),
+            )
 
-        assertEquals(listOf(excluded.id), InfeasibilityPreCheck.contradictionsOf(problem.copy(constraints = listOf(excluded), fixations = listOf(fixation))))
+        assertEquals(
+            listOf(excluded.id),
+            InfeasibilityPreCheck.contradictionsOf(problem.copy(constraints = listOf(excluded), fixations = listOf(fixation))),
+        )
     }
 }

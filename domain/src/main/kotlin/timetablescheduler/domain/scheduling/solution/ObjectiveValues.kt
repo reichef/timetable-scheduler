@@ -29,7 +29,13 @@ data class ObjectiveValues(
             separate: List<Double> = emptyList(),
             otherSoft: Double = 1.0,
             stability: Double? = null,
-        ) = ObjectiveValues(round4(classFill), round4(teacherLoadUsage), separate.map(::round4), round4(otherSoft), stability?.let(::round4))
+        ) = ObjectiveValues(
+            round4(classFill),
+            round4(teacherLoadUsage),
+            separate.map(::round4),
+            round4(otherSoft),
+            stability?.let(::round4),
+        )
 
         /** Rounds to 4 decimals so tiny floating-point differences never decide dominance (G3). */
         fun round4(value: Double): Double = (value * 10_000).roundToLong() / 10_000.0

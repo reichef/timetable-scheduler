@@ -12,13 +12,19 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class GenerationTest {
-
     private val startedAt = Instant.parse("2026-10-09T08:00:00Z")
 
     private fun start(
         timeLimitMinutes: Int = Generation.DEFAULT_TIME_LIMIT_MINUTES,
         minimumPlacedShare: Int = Generation.DEFAULT_MINIMUM_PLACED_SHARE,
-    ) = Generation.start(SchoolId.new(), AccountId.new(), startedAt, timeLimitMinutes, inputFingerprint = "f".repeat(64), minimumPlacedShare)
+    ) = Generation.start(
+        SchoolId.new(),
+        AccountId.new(),
+        startedAt,
+        timeLimitMinutes,
+        inputFingerprint = "f".repeat(64),
+        minimumPlacedShare,
+    )
 
     private fun started() = assertIs<ValidationResult.Valid<Generation>>(start()).value
 

@@ -8,8 +8,10 @@ package timetablescheduler.domain.curriculum
  * and every reader — readiness check, scheduler — already asks this resolver instead of reading the level directly.
  */
 object ClassCurriculumResolver {
-
-    fun curriculumOf(schoolClass: SchoolClass, level: ClassLevel): List<CurriculumEntry> {
+    fun curriculumOf(
+        schoolClass: SchoolClass,
+        level: ClassLevel,
+    ): List<CurriculumEntry> {
         require(schoolClass.classLevelId == level.id) { "Level does not belong to the class" }
         return level.curriculum
     }

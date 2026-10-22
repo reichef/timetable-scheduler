@@ -7,7 +7,10 @@ import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.scheduling.DaySlot
 
 /** A subject taught to one class; all its periods share one teacher (FR-004). */
-data class CourseKey(val classId: SchoolClassId, val subjectId: SubjectId)
+data class CourseKey(
+    val classId: SchoolClassId,
+    val subjectId: SubjectId,
+)
 
 /** One lesson of a timetable: which class learns which subject when, with whom and where. */
 data class LessonAssignment(

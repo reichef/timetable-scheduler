@@ -16,27 +16,48 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ReadinessCheckTest {
-
     private val schoolId = SchoolId.new()
     private val chemieraum = RoomFeatureId.new()
     private val abzug = RoomFeatureId.new()
 
     private fun <T> ValidationResult<T>.valid(): T = (this as ValidationResult.Valid).value
 
-    private fun subject(name: String, features: Set<RoomFeatureId> = emptySet()) = Subject.create(schoolId, name, features, features).valid()
+    private fun subject(
+        name: String,
+        features: Set<RoomFeatureId> = emptySet(),
+    ) = Subject.create(schoolId, name, features, features).valid()
 
-    private fun room(identifier: String, features: Set<RoomFeatureId> = emptySet()) = Room.create(schoolId, identifier, features, features).valid()
+    private fun room(
+        identifier: String,
+        features: Set<RoomFeatureId> = emptySet(),
+    ) = Room.create(schoolId, identifier, features, features).valid()
 
-    private fun level(identifier: String, vararg curriculum: Pair<Subject, Int>): ClassLevel {
+    private fun level(
+        identifier: String,
+        vararg curriculum: Pair<Subject, Int>,
+    ): ClassLevel {
         val entries = curriculum.map { (subject, periods) -> CurriculumEntry(subject.id, periods) }
-        return ClassLevel.create(schoolId, identifier).valid().update(identifier, entries, entries.map { it.subjectId }.toSet()).valid()
+        return ClassLevel
+            .create(schoolId, identifier)
+            .valid()
+            .update(identifier, entries, entries.map { it.subjectId }.toSet())
+            .valid()
     }
 
-    private fun classes(level: ClassLevel, vararg suffixes: String) = suffixes.map { SchoolClass.create(level.id, it).valid() }
+    private fun classes(
+        level: ClassLevel,
+        vararg suffixes: String,
+    ) = suffixes.map { SchoolClass.create(level.id, it).valid() }
 
-    private fun teacher(shortCode: String, load: Int, vararg qualifications: Subject) =
-        Teacher.create(schoolId, "Lehrkraft $shortCode", shortCode, load, teachingSlotsPerWeek = 40).valid()
-            .withQualifications(qualifications.map { it.id }.toSet(), qualifications.map { it.id }.toSet()).valid()
+    private fun teacher(
+        shortCode: String,
+        load: Int,
+        vararg qualifications: Subject,
+    ) = Teacher
+        .create(schoolId, "Lehrkraft $shortCode", shortCode, load, teachingSlotsPerWeek = 40)
+        .valid()
+        .withQualifications(qualifications.map { it.id }.toSet(), qualifications.map { it.id }.toSet())
+        .valid()
 
     private val mathe = subject("Mathematik")
     private val chemie = subject("Chemie", setOf(chemieraum))
@@ -67,12 +88,13 @@ class ReadinessCheckTest {
         val experimente = subject("Experimente", setOf(chemieraum, abzug))
         val level6 = level("6", experimente to 2)
 
-        val issues = check(
-            rooms = listOf(labor, room("C-001", setOf(abzug))),
-            subjects = listOf(experimente),
-            levels = listOf(level6),
-            teachers = listOf(teacher("SCHA", 2, experimente)),
-        )
+        val issues =
+            check(
+                rooms = listOf(labor, room("C-001", setOf(abzug))),
+                subjects = listOf(experimente),
+                levels = listOf(level6),
+                teachers = listOf(teacher("SCHA", 2, experimente)),
+            )
 
         assertEquals(listOf(ReadinessIssue.SubjectNoSuitableRoom(experimente.id, emptySet())), issues)
     }
@@ -86,7 +108,10 @@ class ReadinessCheckTest {
     fun `subject in a curriculum without a qualified teacher`() {
         val level6 = level("6", mathe to 4)
 
-        assertEquals(listOf(ReadinessIssue.SubjectNoQualifiedTeacher(mathe.id)), check(levels = listOf(level6), classes = classes(level6, "a")))
+        assertEquals(
+            listOf(ReadinessIssue.SubjectNoQualifiedTeacher(mathe.id)),
+            check(levels = listOf(level6), classes = classes(level6, "a")),
+        )
     }
 
     @Test
@@ -95,7 +120,12 @@ class ReadinessCheckTest {
         val level6 = level("6", mathe to 4)
         val allClasses = classes(level5, "a", "b", "c", "d", "e") + classes(level6, "a", "b", "c", "d", "e")
 
-        val issues = check(levels = listOf(level5, level6), classes = allClasses, teachers = listOf(teacher("SCHA", 20, mathe), teacher("MEY", 10, mathe)))
+        val issues =
+            check(
+                levels = listOf(level5, level6),
+                classes = allClasses,
+                teachers = listOf(teacher("SCHA", 20, mathe), teacher("MEY", 10, mathe)),
+            )
 
         assertEquals(listOf(ReadinessIssue.SubjectTeacherCapacityShortfall(mathe.id, shortfallPeriods = 10)), issues)
     }
@@ -131,18 +161,22 @@ class ReadinessCheckTest {
     fun `teacher load above a reduced grid`() {
         val anna = teacher("SCHA", 30, mathe)
 
-        assertEquals(listOf(ReadinessIssue.TeacherLoadExceedsGrid(anna.id, excessPeriods = 2)), check(teachers = listOf(anna), teachingSlotsPerWeek = 28))
+        assertEquals(
+            listOf(ReadinessIssue.TeacherLoadExceedsGrid(anna.id, excessPeriods = 2)),
+            check(teachers = listOf(anna), teachingSlotsPerWeek = 28),
+        )
     }
 
     @Test
     fun `consistent data has no issues (acceptance 4_3)`() {
         val level6 = level("6", mathe to 4, chemie to 2)
 
-        val issues = check(
-            levels = listOf(level6),
-            classes = classes(level6, "a", "b"),
-            teachers = listOf(teacher("SCHA", 8, mathe), teacher("MEY", 4, chemie)),
-        )
+        val issues =
+            check(
+                levels = listOf(level6),
+                classes = classes(level6, "a", "b"),
+                teachers = listOf(teacher("SCHA", 8, mathe), teacher("MEY", 4, chemie)),
+            )
 
         assertEquals(emptyList(), issues)
     }
@@ -154,10 +188,22 @@ class ReadinessCheckTest {
         val unqualified = teacher("OHNE", 10)
         val fixation = TeacherFixation(TeacherFixationId.new(), schoolId, class6a.id, mathe.id, unqualified.id, 0)
 
-        val issues = ReadinessCheck.issuesOf(
-            ReadinessInput(30, listOf(raumA), listOf(mathe), listOf(level6), listOf(class6a), listOf(unqualified, teacher("MATH", 10, mathe)), listOf(fixation)),
-        )
+        val issues =
+            ReadinessCheck.issuesOf(
+                ReadinessInput(
+                    30,
+                    listOf(raumA),
+                    listOf(mathe),
+                    listOf(level6),
+                    listOf(class6a),
+                    listOf(unqualified, teacher("MATH", 10, mathe)),
+                    listOf(fixation),
+                ),
+            )
 
-        assertEquals(listOf(ReadinessIssue.InvalidTeacherFixation(fixation.id, FixationInvalidity.NOT_QUALIFIED)), issues.filterIsInstance<ReadinessIssue.InvalidTeacherFixation>())
+        assertEquals(
+            listOf(ReadinessIssue.InvalidTeacherFixation(fixation.id, FixationInvalidity.NOT_QUALIFIED)),
+            issues.filterIsInstance<ReadinessIssue.InvalidTeacherFixation>(),
+        )
     }
 }

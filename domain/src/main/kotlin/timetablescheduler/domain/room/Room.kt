@@ -17,10 +17,16 @@ data class Room(
     val version: Int,
 ) {
     /** [schoolFeatures] are the features of this room's school; others are rejected (FR-003). */
-    fun update(newIdentifier: String, newFeatureIds: Set<RoomFeatureId>, schoolFeatures: Set<RoomFeatureId>): ValidationResult<Room> {
+    fun update(
+        newIdentifier: String,
+        newFeatureIds: Set<RoomFeatureId>,
+        schoolFeatures: Set<RoomFeatureId>,
+    ): ValidationResult<Room> {
         val validation = ValidationCollector()
         val validIdentifier = validation.requiredText(FIELD_IDENTIFIER, newIdentifier, IDENTIFIER_MAX_LENGTH)
-        if (!schoolFeatures.containsAll(newFeatureIds)) validation.add(ValidationError.InvalidReference(FIELD_FEATURES))
+        if (!schoolFeatures.containsAll(newFeatureIds)) {
+            validation.add(ValidationError.InvalidReference(FIELD_FEATURES))
+        }
         return validation.result { copy(identifier = validIdentifier, featureIds = newFeatureIds) }
     }
 

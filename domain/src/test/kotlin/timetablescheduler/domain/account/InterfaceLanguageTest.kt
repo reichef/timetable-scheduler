@@ -7,7 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class InterfaceLanguageTest {
-
     @Test
     fun `languages have their two-letter codes`() {
         assertEquals("de", InterfaceLanguage.GERMAN.code)

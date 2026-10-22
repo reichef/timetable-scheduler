@@ -30,19 +30,31 @@ data class Teacher(
      * FR-018: the load may not exceed the school's [teachingSlotsPerWeek] at the time it is saved; a later
      * grid reduction is reported by the readiness check instead (see [loadExceedingGrid]).
      */
-    fun withGeneralData(newName: String, newShortCode: String, newWeeklyLoad: Int, teachingSlotsPerWeek: Int): ValidationResult<Teacher> {
+    fun withGeneralData(
+        newName: String,
+        newShortCode: String,
+        newWeeklyLoad: Int,
+        teachingSlotsPerWeek: Int,
+    ): ValidationResult<Teacher> {
         val validation = ValidationCollector()
         val validName = validation.requiredText(FIELD_NAME, newName, NAME_MAX_LENGTH)
         val normalizedShortCode = newShortCode.trim().uppercase()
-        if (!SHORT_CODE_PATTERN.matches(normalizedShortCode)) validation.add(ValidationError.InvalidFormat(FIELD_SHORT_CODE))
+        if (!SHORT_CODE_PATTERN.matches(normalizedShortCode)) {
+            validation.add(ValidationError.InvalidFormat(FIELD_SHORT_CODE))
+        }
         validation.intInRange(FIELD_WEEKLY_LOAD, newWeeklyLoad, 0, teachingSlotsPerWeek)
         return validation.result { copy(name = validName, shortCode = normalizedShortCode, weeklyLoad = newWeeklyLoad) }
     }
 
     /** FR-017: only subjects of the teacher's school ([schoolSubjects]) are accepted. */
-    fun withQualifications(subjectIds: Set<SubjectId>, schoolSubjects: Set<SubjectId>): ValidationResult<Teacher> {
+    fun withQualifications(
+        subjectIds: Set<SubjectId>,
+        schoolSubjects: Set<SubjectId>,
+    ): ValidationResult<Teacher> {
         val validation = ValidationCollector()
-        if (!schoolSubjects.containsAll(subjectIds)) validation.add(ValidationError.InvalidReference(FIELD_SUBJECTS))
+        if (!schoolSubjects.containsAll(subjectIds)) {
+            validation.add(ValidationError.InvalidReference(FIELD_SUBJECTS))
+        }
         return validation.result { copy(qualifiedSubjectIds = subjectIds) }
     }
 
@@ -51,10 +63,15 @@ data class Teacher(
      * days that are no longer teaching days cannot be shown or entered any more; they are kept unchanged, as the
      * spec requires for grid reductions.
      */
-    fun withUnavailability(entered: Set<Unavailability>, grid: TimeGrid): ValidationResult<Teacher> {
+    fun withUnavailability(
+        entered: Set<Unavailability>,
+        grid: TimeGrid,
+    ): ValidationResult<Teacher> {
         val validation = ValidationCollector()
         val allExist = entered.all { entry -> grid.teachingSlotsOn(entry.dayOfWeek).any { it.id == entry.slotId } }
-        if (!allExist) validation.add(ValidationError.InvalidReference(FIELD_SLOT))
+        if (!allExist) {
+            validation.add(ValidationError.InvalidReference(FIELD_SLOT))
+        }
         val keptForFormerDays = unavailability.filter { it.dayOfWeek !in grid.teachingDays }
         return validation.result { copy(unavailability = entered + keptForFormerDays) }
     }
@@ -74,7 +91,13 @@ data class Teacher(
         /** 2–8 upper case letters or digits, e.g. "SCHA". */
         private val SHORT_CODE_PATTERN = Regex("[A-Z0-9]{2,$SHORT_CODE_MAX_LENGTH}")
 
-        fun create(schoolId: SchoolId, name: String, shortCode: String, weeklyLoad: Int, teachingSlotsPerWeek: Int): ValidationResult<Teacher> =
+        fun create(
+            schoolId: SchoolId,
+            name: String,
+            shortCode: String,
+            weeklyLoad: Int,
+            teachingSlotsPerWeek: Int,
+        ): ValidationResult<Teacher> =
             Teacher(TeacherId.new(), schoolId, name = "", shortCode = "", weeklyLoad = 0, emptySet(), emptySet(), version = 0)
                 .withGeneralData(name, shortCode, weeklyLoad, teachingSlotsPerWeek)
     }

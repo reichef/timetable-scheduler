@@ -27,7 +27,10 @@ data class SchoolClass(
 
     fun withHomeRoom(roomId: RoomId?): SchoolClass = copy(homeRoomId = roomId)
 
-    fun update(newSuffix: String, newPriorityWeight: Int): ValidationResult<SchoolClass> {
+    fun update(
+        newSuffix: String,
+        newPriorityWeight: Int,
+    ): ValidationResult<SchoolClass> {
         val validation = ValidationCollector()
         val validSuffix = validation.requiredText(FIELD_SUFFIX, newSuffix, SUFFIX_MAX_LENGTH)
         validation.intInRange(FIELD_PRIORITY_WEIGHT, newPriorityWeight, MIN_PRIORITY_WEIGHT, MAX_PRIORITY_WEIGHT)
@@ -45,7 +48,11 @@ data class SchoolClass(
         /** Equal weight for all classes unless the planner changes it (FR-015). */
         const val DEFAULT_PRIORITY_WEIGHT = 10
 
-        fun create(classLevelId: ClassLevelId, suffix: String, priorityWeight: Int = DEFAULT_PRIORITY_WEIGHT): ValidationResult<SchoolClass> =
+        fun create(
+            classLevelId: ClassLevelId,
+            suffix: String,
+            priorityWeight: Int = DEFAULT_PRIORITY_WEIGHT,
+        ): ValidationResult<SchoolClass> =
             SchoolClass(SchoolClassId.new(), classLevelId, suffix = "", priorityWeight = DEFAULT_PRIORITY_WEIGHT, version = 0)
                 .update(suffix, priorityWeight)
     }

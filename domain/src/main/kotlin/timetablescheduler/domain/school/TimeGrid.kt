@@ -20,8 +20,12 @@ data class TimeGrid(
 ) {
     fun withTeachingDays(days: Set<DayOfWeek>): TimeGrid = copy(teachingDays = days)
 
-    fun withSlotAdded(label: String, startTime: LocalTime, endTime: LocalTime, kind: SlotKind): ValidationResult<TimeGrid> =
-        validatedSlot(TimeSlotId.new(), label, startTime, endTime, kind, otherSlots = slots)
+    fun withSlotAdded(
+        label: String,
+        startTime: LocalTime,
+        endTime: LocalTime,
+        kind: SlotKind,
+    ): ValidationResult<TimeGrid> = validatedSlot(TimeSlotId.new(), label, startTime, endTime, kind, otherSlots = slots)
 
     fun withSlotUpdated(
         slotId: TimeSlotId,
@@ -29,16 +33,20 @@ data class TimeGrid(
         startTime: LocalTime,
         endTime: LocalTime,
         kind: SlotKind,
-    ): ValidationResult<TimeGrid> =
-        validatedSlot(slotId, label, startTime, endTime, kind, otherSlots = slots.filterNot { it.id == slotId })
+    ): ValidationResult<TimeGrid> = validatedSlot(slotId, label, startTime, endTime, kind, otherSlots = slots.filterNot { it.id == slotId })
 
     fun withSlotRemoved(slotId: TimeSlotId): TimeGrid =
         copy(slots = slots.filterNot { it.id == slotId }, exclusions = exclusions.filterNot { it.slotId == slotId }.toSet())
 
     /** Replaces the days on which [slotId] does not exist; only teaching days may be excluded. */
-    fun withExclusions(slotId: TimeSlotId, excludedDays: Set<DayOfWeek>): ValidationResult<TimeGrid> {
+    fun withExclusions(
+        slotId: TimeSlotId,
+        excludedDays: Set<DayOfWeek>,
+    ): ValidationResult<TimeGrid> {
         val validation = ValidationCollector()
-        if (!excludedDays.all { it in teachingDays }) validation.add(ValidationError.InvalidReference(FIELD_DAY_OF_WEEK))
+        if (!excludedDays.all { it in teachingDays }) {
+            validation.add(ValidationError.InvalidReference(FIELD_DAY_OF_WEEK))
+        }
         return validation.result {
             val otherExclusions = exclusions.filterNot { it.slotId == slotId }
             copy(exclusions = (otherExclusions + excludedDays.map { SlotDayExclusion(slotId, it) }).toSet())
@@ -48,8 +56,11 @@ data class TimeGrid(
     fun slotById(slotId: TimeSlotId): TimeSlot? = slots.firstOrNull { it.id == slotId }
 
     fun slotsOn(day: DayOfWeek): List<TimeSlot> =
-        if (day !in teachingDays) emptyList()
-        else slots.filterNot { SlotDayExclusion(it.id, day) in exclusions }
+        if (day !in teachingDays) {
+            emptyList()
+        } else {
+            slots.filterNot { SlotDayExclusion(it.id, day) in exclusions }
+        }
 
     fun teachingSlotsOn(day: DayOfWeek): List<TimeSlot> = slotsOn(day).filter { it.kind == SlotKind.TEACHING }
 
@@ -69,8 +80,11 @@ data class TimeGrid(
         val validation = ValidationCollector()
         val validLabel = validation.requiredText(TimeSlot.FIELD_LABEL, label, TimeSlot.LABEL_MAX_LENGTH)
         val slot = TimeSlot(slotId, validLabel, startTime, endTime, kind)
-        if (endTime <= startTime) validation.add(ValidationError.EndNotAfterStart)
-        else if (otherSlots.any { it.overlaps(slot) }) validation.add(ValidationError.Overlap)
+        if (endTime <= startTime) {
+            validation.add(ValidationError.EndNotAfterStart)
+        } else if (otherSlots.any { it.overlaps(slot) }) {
+            validation.add(ValidationError.Overlap)
+        }
         return validation.result { copy(slots = (otherSlots + slot).sortedBy { it.startTime }) }
     }
 

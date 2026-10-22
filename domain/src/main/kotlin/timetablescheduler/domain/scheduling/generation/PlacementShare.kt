@@ -5,8 +5,9 @@ package timetablescheduler.domain.scheduling.generation
  * placed so far ([bestPlaced]) and admits only alternatives that place at least [sharePercent] percent of that, so an
  * almost empty timetable is never offered just because it violates no soft constraint.
  */
-class PlacementShare(private val sharePercent: Int) {
-
+class PlacementShare(
+    private val sharePercent: Int,
+) {
     var bestPlaced: Int = 0
         private set
 
@@ -25,8 +26,7 @@ class PlacementShare(private val sharePercent: Int) {
      * (placed · 100 ≥ share · best), so no rounding decides — 90 % of 569 lessons needs 513, not 512. An alternative
      * without any placed lesson is never kept, even when no better one exists yet.
      */
-    fun admits(placed: Int): Boolean =
-        placed > 0 && placed * PERCENT >= sharePercent * bestPlaced
+    fun admits(placed: Int): Boolean = placed > 0 && placed * PERCENT >= sharePercent * bestPlaced
 
     private companion object {
         const val PERCENT = 100

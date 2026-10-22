@@ -10,7 +10,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class DayLimitRulesTest {
-
     private val school = TestSchool(teachingSlotsPerDay = 6)
     private val room = school.room()
     private val math = school.subject()
@@ -49,13 +48,20 @@ class DayLimitRulesTest {
 
         assertEquals(
             listOf(ValidationError.OutOfRange(ConstraintValidation.FIELD_LIMIT, 1, 6)),
-            ConstraintValidation.validate(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(class5a), 0), ConstraintKind.HARD, problem),
+            ConstraintValidation.validate(
+                ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(class5a), 0),
+                ConstraintKind.HARD,
+                problem,
+            ),
         )
         assertEquals(
             listOf(ValidationError.OutOfRange(ConstraintValidation.FIELD_LIMIT, 1, 6)),
             ConstraintValidation.validate(ConstraintRule.TeacherMaxPeriodsPerDay(teacher, 7), ConstraintKind.SOFT, problem),
         )
-        assertEquals(emptyList(), ConstraintValidation.validate(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.AllClasses, 6), ConstraintKind.SOFT, problem))
+        assertEquals(
+            emptyList(),
+            ConstraintValidation.validate(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.AllClasses, 6), ConstraintKind.SOFT, problem),
+        )
     }
 
     @Test
@@ -64,7 +70,11 @@ class DayLimitRulesTest {
 
         assertEquals(
             listOf(ValidationError.InvalidReference(ConstraintValidation.FIELD_CLASS)),
-            ConstraintValidation.validate(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(SchoolClassId.new()), 4), ConstraintKind.HARD, problem),
+            ConstraintValidation.validate(
+                ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(SchoolClassId.new()), 4),
+                ConstraintKind.HARD,
+                problem,
+            ),
         )
         assertEquals(
             listOf(ValidationError.InvalidReference(ConstraintValidation.FIELD_TEACHER)),
@@ -79,8 +89,19 @@ class DayLimitRulesTest {
 
         assertEquals(
             listOf(ValidationError.OutOfRange(ConstraintValidation.FIELD_LIMIT, 1, 4)),
-            ConstraintValidation.validate(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(class5a), 5), ConstraintKind.HARD, problem),
+            ConstraintValidation.validate(
+                ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(class5a), 5),
+                ConstraintKind.HARD,
+                problem,
+            ),
         )
-        assertEquals(emptyList(), ConstraintValidation.validate(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(class5a), 5), ConstraintKind.SOFT, problem))
+        assertEquals(
+            emptyList(),
+            ConstraintValidation.validate(
+                ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(class5a), 5),
+                ConstraintKind.SOFT,
+                problem,
+            ),
+        )
     }
 }
