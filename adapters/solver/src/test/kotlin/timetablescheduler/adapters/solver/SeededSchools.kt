@@ -94,10 +94,12 @@ object SeededSchools {
         SeededSchool().apply {
             val lab = RoomFeatureId.new()
             val chemistryLab = room(setOf(lab))
+
             val math = subject()
             val german = subject()
             val english = subject()
             val chemistry = subject(setOf(lab))
+
             repeat(4) {
                 val homeRoom = room()
                 schoolClass(listOf(math to 6, german to 6, english to 6, chemistry to 2), homeRoom = homeRoom)
@@ -122,8 +124,10 @@ object SeededSchools {
         SeededSchool(days = 2, teachingSlotsPerDay = 4, breakAfterSlot = 2).apply {
             val math = subject()
             val art = subject()
+
             schoolClass(listOf(math to 6, art to 2), weight = 30, homeRoom = room())
             schoolClass(listOf(math to 6, art to 2), weight = 10, homeRoom = room())
+
             teacher(6, setOf(math))
             teacher(4, setOf(math, art))
             teacher(4, setOf(art), unavailable = setOf(slot(DayOfWeek.MONDAY, 0), slot(DayOfWeek.TUESDAY, 0)))

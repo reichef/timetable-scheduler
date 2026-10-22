@@ -19,8 +19,10 @@ tasks.test {
 val performanceTest by tasks.registering(Test::class) {
     description = "Runs the tagged scheduling performance tests (SC-001)."
     group = "verification"
+
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
+
     useJUnitPlatform { includeTags("performance") }
     outputs.upToDateWhen { false }
 }

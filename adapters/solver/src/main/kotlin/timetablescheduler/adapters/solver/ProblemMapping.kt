@@ -26,6 +26,7 @@ object ProblemMapping {
     fun toPlan(problem: SchedulingProblem): TimetablePlan {
         val timeslots = timeslotsOf(problem)
         val weekIndexByDaySlot = timeslots.associate { it.daySlot to it.weekIndex }
+
         val rooms = problem.rooms.map { RoomFact(it.id, it.featureIds) }
         val teachers =
             problem.teachers.map { teacher ->
@@ -37,8 +38,10 @@ object ProblemMapping {
                 )
             }
         val classes = problem.classes.map { ClassFact(it.id, it.priorityWeight) }
+
         val courses = problem.classes.flatMap { schoolClass -> coursesOf(schoolClass, classes, teachers) }
         pinFixedTeachers(problem, courses, teachers)
+
         var nextLessonId = 0
         val lessons =
             courses.flatMap { course ->
@@ -46,6 +49,7 @@ object ProblemMapping {
                 if (suitable.isEmpty()) emptyList() else List(course.requiredPeriods) { LessonPlacement(nextLessonId++, course, suitable) }
             }
         problem.reference?.let { startFromReference(it, timeslots, teachers, courses, lessons) }
+
         return TimetablePlan().apply {
             this.timeslots = timeslots
             this.rooms = rooms
@@ -125,9 +129,11 @@ object ProblemMapping {
                 .filter { it.constraint.id in problem.separateObjectiveIds }
                 .groupBy { it.constraint.id }
                 .mapValues { (_, rules) -> rules.sumOf(::opportunities).toDouble() }
+
         val others = applied.filter { !it.constraint.isHard && it.constraint.id !in problem.separateObjectiveIds }
         val otherNormalizer = others.sumOf { (it.constraint.weight?.factor ?: 1) * opportunities(it) }.toDouble().coerceAtLeast(1.0)
         val otherIndex = ObjectiveLayout.FIRST_SEPARATE + problem.separateObjectiveIds.size
+
         return applied.mapIndexed { index, rule ->
             val separatePosition = problem.separateObjectiveIds.indexOf(rule.constraint.id)
             when {
@@ -183,9 +189,11 @@ object ProblemMapping {
         val unplaced =
             plan.courses
                 .associate {
-                    CourseKey(it.classFact.id, it.subjectId) to
-                        it.requiredPeriods - (placedByCourse[CourseKey(it.classFact.id, it.subjectId)] ?: 0)
+                    val course = CourseKey(it.classFact.id, it.subjectId)
+
+                    course to it.requiredPeriods - (placedByCourse[course] ?: 0)
                 }.filterValues { it > 0 }
+
         return TimetableCandidate(lessons, unplaced)
     }
 

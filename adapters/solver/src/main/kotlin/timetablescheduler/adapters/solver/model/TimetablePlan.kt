@@ -98,10 +98,17 @@ class AppliedRuleFact(
     /** Rules about one class are joined by class; all others are matched lesson by lesson. */
     val classKey: SchoolClassId? =
         when (val rule = applied.rule) {
-            is ConstraintRule.TeacherMaxPeriodsPerDay, is ConstraintRule.TeacherMaxGapsPerDay, is ConstraintRule.TeacherExcludedSlots -> null
+            is ConstraintRule.TeacherMaxPeriodsPerDay,
+            is ConstraintRule.TeacherMaxGapsPerDay,
+            is ConstraintRule.TeacherExcludedSlots,
+            -> null
+
             is ConstraintRule.SubjectExcludedSlots -> rule.classId
+
             is ConstraintRule.SubjectDoublePeriodsInClass -> rule.classId
+
             is ConstraintRule.ClassExcludedSlots -> rule.classId
+
             else -> applied.classId
         }
 

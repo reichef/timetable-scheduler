@@ -41,11 +41,11 @@ class GenerationPerformanceTest {
         TimefoldTimetableSolver().solve(problem, Duration.ofMinutes(10), StopSignal { false }, listener)
 
         val firstAfter = checkNotNull(listener.firstMeetingShareAfter()) { "no valid timetable meeting the minimum share" }
+        val alternatives = listener.archive.entries
+
         println(
-            "SC-001: first alternative meeting the share after ${firstAfter.toSeconds()} s, ${listener.archive.entries.size} alternatives " +
-                "${listener.archive.entries.map {
-                    it.objectives
-                }}, best placed ${listener.share.bestPlaced}, ${listener.invalid} invalid candidates",
+            "SC-001: first alternative meeting the share after ${firstAfter.toSeconds()} s, ${alternatives.size} alternatives " +
+                "${alternatives.map { it.objectives }}, best placed ${listener.share.bestPlaced}, ${listener.invalid} invalid candidates",
         )
 
         assertEquals(0, listener.invalid)
@@ -98,12 +98,15 @@ class GenerationPerformanceTest {
         val lab = RoomFeatureId.new()
         val gym = RoomFeatureId.new()
         val music = RoomFeatureId.new()
+
         repeat(5) { school.room(setOf(lab)) }
         repeat(4) { school.room(setOf(gym)) }
         repeat(3) { school.room(setOf(music)) }
         repeat(3) { school.room() }
+
         val subjects =
             List(12) { school.subject() } + school.subject(setOf(lab)) + school.subject(setOf(gym)) + school.subject(setOf(music))
+
         // 13 of the 15 subjects per level, 30 periods per week; levels differ in which two subjects they leave out.
         val periods = listOf(4, 4, 4, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1)
         val classesPerLevel = listOf(5, 4, 4, 4, 4, 4)
@@ -116,6 +119,7 @@ class GenerationPerformanceTest {
                 curriculum.forEach { (subject, count) -> demand.merge(subject, count, Int::plus) }
             }
         }
+
         addTeachers(school, subjects, demand)
         val teachers = school.teachers.map { it.id }
         val schoolId = SchoolId.new()
