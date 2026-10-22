@@ -15,7 +15,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class TestSchoolSeederTest {
-
     private val world = MasterDataWorld()
 
     private val actor: AccountId
@@ -76,8 +75,10 @@ class TestSchoolSeederTest {
 
         val report = assertIs<UseCaseResult.Success<ReadinessReport>>(world.useCases.readiness.execute(actor, schoolId)).value
         val gate = GenerationGate.classify(report.issues)
-        val shortSubjects = gate.warnings.filterIsInstance<ReadinessIssue.SubjectTeacherCapacityShortfall>()
-            .associate { it.subjectId to it.shortfallPeriods }
+        val shortSubjects =
+            gate.warnings
+                .filterIsInstance<ReadinessIssue.SubjectTeacherCapacityShortfall>()
+                .associate { it.subjectId to it.shortfallPeriods }
 
         assertEquals(UnderstaffedTestSet.schoolName, world.schools.findById(schoolId)!!.name)
         assertEquals(28, world.teachers.findBySchool(schoolId).size)

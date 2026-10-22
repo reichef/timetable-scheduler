@@ -10,13 +10,13 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AppConfigTest {
-
-    private val required = mapOf(
-        "TTS_DB_URL" to "jdbc:postgresql://localhost:5432/timetable",
-        "TTS_DB_USER" to "app",
-        "TTS_DB_PASSWORD" to "db-secret",
-        "TTS_SESSION_SIGN_KEY" to "00ff10",
-    )
+    private val required =
+        mapOf(
+            "TTS_DB_URL" to "jdbc:postgresql://localhost:5432/timetable",
+            "TTS_DB_USER" to "app",
+            "TTS_DB_PASSWORD" to "db-secret",
+            "TTS_SESSION_SIGN_KEY" to "00ff10",
+        )
 
     @Test
     fun `reads required settings and treats dev mode as off by default`() {
@@ -48,22 +48,25 @@ class AppConfigTest {
 
     @Test
     fun `initial setup is read when all three variables are present`() {
-        val config = AppConfig.fromEnvironment(
-            required + mapOf(
-                "TTS_INITIAL_SCHOOL_NAME" to "Gymnasium Nord",
-                "TTS_INITIAL_PLANNER_USER" to "admin",
-                "TTS_INITIAL_PLANNER_PASSWORD" to "sehr-geheim-1",
-            ),
-        )
+        val config =
+            AppConfig.fromEnvironment(
+                required +
+                    mapOf(
+                        "TTS_INITIAL_SCHOOL_NAME" to "Gymnasium Nord",
+                        "TTS_INITIAL_PLANNER_USER" to "admin",
+                        "TTS_INITIAL_PLANNER_PASSWORD" to "sehr-geheim-1",
+                    ),
+            )
 
         assertEquals(InitialSetup("Gymnasium Nord", "admin", "sehr-geheim-1"), config.initialSetup)
     }
 
     @Test
     fun `invalid session key is reported by name`() {
-        val failure = assertFailsWith<MissingConfiguration> {
-            AppConfig.fromEnvironment(required + ("TTS_SESSION_SIGN_KEY" to "xyz"))
-        }
+        val failure =
+            assertFailsWith<MissingConfiguration> {
+                AppConfig.fromEnvironment(required + ("TTS_SESSION_SIGN_KEY" to "xyz"))
+            }
         assertEquals("Environment variable TTS_SESSION_SIGN_KEY must be hexadecimal", failure.message)
     }
 

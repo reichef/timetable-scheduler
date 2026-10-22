@@ -36,20 +36,27 @@ fun main() {
 }
 
 /** FR-031: the first start creates the first school and planner; later starts ignore the initial variables. */
-fun ensureInstalled(installation: InstallationUseCase, config: AppConfig) {
+fun ensureInstalled(
+    installation: InstallationUseCase,
+    config: AppConfig,
+) {
     if (installation.isInstalled()) {
         return
     }
 
-    val setup = config.initialSetup ?: throw MissingConfiguration(
-        "Empty database: set TTS_INITIAL_SCHOOL_NAME, TTS_INITIAL_PLANNER_USER and TTS_INITIAL_PLANNER_PASSWORD",
-    )
+    val setup =
+        config.initialSetup ?: throw MissingConfiguration(
+            "Empty database: set TTS_INITIAL_SCHOOL_NAME, TTS_INITIAL_PLANNER_USER and TTS_INITIAL_PLANNER_PASSWORD",
+        )
     when (val result = installation.execute(setup)) {
-        is UseCaseResult.Success ->
+        is UseCaseResult.Success -> {
             if (result.value == InstallationOutcome.INSTALLED) {
                 log.info("First school and initial planner created")
             }
-        is UseCaseResult.Failure ->
+        }
+
+        is UseCaseResult.Failure -> {
             throw MissingConfiguration("Initial setup rejected (${result.error.javaClass.simpleName}); check TTS_INITIAL_* values")
+        }
     }
 }

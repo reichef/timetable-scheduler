@@ -27,7 +27,9 @@ import java.time.Clock
  * Wires the use cases with PostgreSQL, the Timefold solver and the background executor. Used by the application
  * and by tooling that needs the real wiring, such as the test-school scenario.
  */
-class ApplicationWiring(databaseFactory: DatabaseFactory) {
+class ApplicationWiring(
+    databaseFactory: DatabaseFactory,
+) {
     private val transactions = databaseFactory.transactionRunner
     private val schools = ExposedSchoolRepository()
     private val accounts = ExposedUserAccountRepository()
@@ -37,30 +39,31 @@ class ApplicationWiring(databaseFactory: DatabaseFactory) {
 
     val installation = InstallationUseCase(transactions, schools, accounts, credentials, hasher, constraints)
 
-    val useCases: MasterDataUseCases = MasterDataUseCases(
-        MasterDataPorts(
-            transactions = transactions,
-            schools = schools,
-            accounts = accounts,
-            credentials = credentials,
-            hasher = hasher,
-            rooms = ExposedRoomRepository(),
-            roomFeatures = ExposedRoomFeatureRepository(),
-            timeSlotUsage = ExposedTimeSlotUsage(),
-            subjects = ExposedSubjectRepository(),
-            classLevels = ExposedClassLevelRepository(),
-            schoolClasses = ExposedSchoolClassRepository(),
-            teachers = ExposedTeacherRepository(),
-        ),
-        SchedulingPorts(
-            constraints = constraints,
-            fixations = ExposedTeacherFixationRepository(),
-            generations = ExposedGenerationRepository(),
-            chosenTimetables = ExposedChosenTimetableRepository(),
-            solver = TimefoldTimetableSolver(),
-            executor = SingleThreadGenerationExecutor(),
-            eventLog = Slf4jGenerationEventLog(),
-            clock = Clock.systemUTC(),
-        ),
-    )
+    val useCases: MasterDataUseCases =
+        MasterDataUseCases(
+            MasterDataPorts(
+                transactions = transactions,
+                schools = schools,
+                accounts = accounts,
+                credentials = credentials,
+                hasher = hasher,
+                rooms = ExposedRoomRepository(),
+                roomFeatures = ExposedRoomFeatureRepository(),
+                timeSlotUsage = ExposedTimeSlotUsage(),
+                subjects = ExposedSubjectRepository(),
+                classLevels = ExposedClassLevelRepository(),
+                schoolClasses = ExposedSchoolClassRepository(),
+                teachers = ExposedTeacherRepository(),
+            ),
+            SchedulingPorts(
+                constraints = constraints,
+                fixations = ExposedTeacherFixationRepository(),
+                generations = ExposedGenerationRepository(),
+                chosenTimetables = ExposedChosenTimetableRepository(),
+                solver = TimefoldTimetableSolver(),
+                executor = SingleThreadGenerationExecutor(),
+                eventLog = Slf4jGenerationEventLog(),
+                clock = Clock.systemUTC(),
+            ),
+        )
 }
