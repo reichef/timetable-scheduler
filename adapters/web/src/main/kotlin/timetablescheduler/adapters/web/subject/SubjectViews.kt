@@ -29,10 +29,14 @@ import timetablescheduler.domain.validation.ValidationError
 const val REQUIRED_FEATURE_FIELD = "requiredFeatureId"
 
 fun subjectsPath(schoolId: SchoolId) = "/schools/${schoolId.value}/subjects"
+
 fun subjectPath(subject: Subject) = "${subjectsPath(subject.schoolId)}/${subject.id.value}"
 
 /** Entered values of the subject form, kept when the form is shown again after an error. */
-data class SubjectFormInput(val name: String, val requiredFeatureIds: Set<RoomFeatureId>)
+data class SubjectFormInput(
+    val name: String,
+    val requiredFeatureIds: Set<RoomFeatureId>,
+)
 
 suspend fun ApplicationCall.respondSubjectList(
     schoolId: SchoolId,
@@ -45,11 +49,19 @@ suspend fun ApplicationCall.respondSubjectList(
     val featureNames = overview.features.associate { it.id to it.name }
     respondPage(texts.subjects.title, status) { session ->
         table {
-            tr { th { +texts.subjects.subjectColumn }; th { +texts.subjects.requiredFeaturesColumn } }
+            tr {
+                th { +texts.subjects.subjectColumn }
+                th { +texts.subjects.requiredFeaturesColumn }
+            }
             overview.subjects.forEach { subject ->
                 tr {
                     td { a(href = subjectPath(subject)) { +subject.name } }
-                    td { +subject.requiredFeatureIds.mapNotNull { featureNames[it] }.sorted().joinToString(", ") }
+                    td {
+                        +subject.requiredFeatureIds
+                            .mapNotNull { featureNames[it] }
+                            .sorted()
+                            .joinToString(", ")
+                    }
                 }
             }
         }

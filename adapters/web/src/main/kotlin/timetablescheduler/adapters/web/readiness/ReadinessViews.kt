@@ -17,7 +17,11 @@ import timetablescheduler.domain.readiness.ReadinessIssue
 fun readinessPath(schoolId: SchoolId) = "/schools/${schoolId.value}/readiness"
 
 /** One list entry: a link to the affected entry and what is wrong with it. */
-internal fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIssue, texts: UiTexts) {
+internal fun FlowContent.issueEntry(
+    report: ReadinessReport,
+    issue: ReadinessIssue,
+    texts: UiTexts,
+) {
     val school = "/schools/${report.schoolId.value}"
     when (issue) {
         is ReadinessIssue.SubjectNoSuitableRoom -> {
@@ -25,26 +29,36 @@ internal fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIss
             val missing = issue.missingFeatureIds.map(report::featureName).sorted()
             +if (missing.isEmpty()) texts.readiness.noRoomOffersAll else texts.readiness.missingFeatures(missing)
         }
-        is ReadinessIssue.SubjectNoQualifiedTeacher ->
+
+        is ReadinessIssue.SubjectNoQualifiedTeacher -> {
             a(href = "$school/subjects/${issue.subjectId.value}") { +report.subjectName(issue.subjectId) }
+        }
+
         is ReadinessIssue.SubjectTeacherCapacityShortfall -> {
             a(href = "$school/subjects/${issue.subjectId.value}") { +report.subjectName(issue.subjectId) }
             +texts.readiness.missingPeriods(issue.shortfallPeriods)
         }
+
         is ReadinessIssue.LevelExceedsGrid -> {
             a(href = "$school/class-levels/${issue.classLevelId.value}") {
                 +texts.readiness.levelName(report.levelIdentifier(issue.classLevelId))
             }
             +texts.readiness.excessPeriods(issue.excessPeriods)
         }
-        is ReadinessIssue.TeacherWithoutQualification ->
+
+        is ReadinessIssue.TeacherWithoutQualification -> {
             a(href = "$school/teachers/${issue.teacherId.value}") { +report.teacherName(issue.teacherId) }
-        is ReadinessIssue.TeacherZeroLoad ->
+        }
+
+        is ReadinessIssue.TeacherZeroLoad -> {
             a(href = "$school/teachers/${issue.teacherId.value}") { +report.teacherName(issue.teacherId) }
+        }
+
         is ReadinessIssue.TeacherLoadExceedsGrid -> {
             a(href = "$school/teachers/${issue.teacherId.value}") { +report.teacherName(issue.teacherId) }
             +texts.readiness.excessPeriods(issue.excessPeriods)
         }
+
         is ReadinessIssue.InvalidTeacherFixation -> {
             val fixation = report.fixation(issue.fixationId)
             a(href = "$school/teacher-fixations/${issue.fixationId.value}") {
@@ -75,7 +89,11 @@ suspend fun ApplicationCall.respondReadiness(report: ReadinessReport) {
 }
 
 /** Dashboard line linking to the overview (US4). */
-fun FlowContent.readinessSummary(schoolId: SchoolId, issueCount: Int, texts: UiTexts) {
+fun FlowContent.readinessSummary(
+    schoolId: SchoolId,
+    issueCount: Int,
+    texts: UiTexts,
+) {
     p {
         a(href = readinessPath(schoolId)) { +texts.school.readinessLink }
         +texts.school.readinessSummary(issueCount)

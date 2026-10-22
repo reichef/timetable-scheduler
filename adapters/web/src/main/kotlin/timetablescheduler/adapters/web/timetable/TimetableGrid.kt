@@ -25,10 +25,13 @@ import timetablescheduler.domain.school.SlotKind
 import java.time.format.DateTimeFormatter
 
 /** Whose week a grid shows (002 FR-019). */
-enum class TimetableView(val parameter: String) {
+enum class TimetableView(
+    val parameter: String,
+) {
     CLASS("class"),
     TEACHER("teacher"),
-    ROOM("room");
+    ROOM("room"),
+    ;
 
     companion object {
         fun fromParameter(value: String?): TimetableView = entries.firstOrNull { it.parameter == value } ?: CLASS
@@ -36,24 +39,38 @@ enum class TimetableView(val parameter: String) {
 }
 
 /** One cell of a weekly grid: the lines to show and whether it is highlighted (e.g. conflicts, differences). */
-data class GridCell(val lines: List<String>, val highlighted: Boolean = false, val note: String? = null)
+data class GridCell(
+    val lines: List<String>,
+    val highlighted: Boolean = false,
+    val note: String? = null,
+)
 
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 
 /** The lessons of [lessons] that belong to the selected class, teacher or room. */
-fun lessonsOf(lessons: List<LessonAssignment>, view: TimetableView, entityId: String): List<LessonAssignment> = lessons.filter {
-    when (view) {
-        TimetableView.CLASS -> "${it.classId.value}" == entityId
-        TimetableView.TEACHER -> "${it.teacherId.value}" == entityId
-        TimetableView.ROOM -> "${it.roomId.value}" == entityId
+fun lessonsOf(
+    lessons: List<LessonAssignment>,
+    view: TimetableView,
+    entityId: String,
+): List<LessonAssignment> =
+    lessons.filter {
+        when (view) {
+            TimetableView.CLASS -> "${it.classId.value}" == entityId
+            TimetableView.TEACHER -> "${it.teacherId.value}" == entityId
+            TimetableView.ROOM -> "${it.roomId.value}" == entityId
+        }
     }
-}
 
 /**
  * What a lesson cell says in each view: the class view needs subject, teacher and room; the teacher view class,
  * subject and room; the room view class, subject and teacher. Names are shown as entered; deleted entries as such.
  */
-fun lessonLines(lesson: LessonAssignment, view: TimetableView, names: TimetableNames, texts: UiTexts): List<String> {
+fun lessonLines(
+    lesson: LessonAssignment,
+    view: TimetableView,
+    names: TimetableNames,
+    texts: UiTexts,
+): List<String> {
     val deleted = texts.timetables.deletedEntry
     val className = names.classNames[lesson.classId] ?: deleted
     val subject = names.subjectNames[lesson.subjectId] ?: deleted
@@ -88,29 +105,48 @@ fun conflictCell(
 }
 
 /** One lesson in a sentence, e.g. in conflict lists: class, subject, day and slot. */
-fun lessonDescription(lesson: LessonAssignment, names: TimetableNames, texts: UiTexts): String {
+fun lessonDescription(
+    lesson: LessonAssignment,
+    names: TimetableNames,
+    texts: UiTexts,
+): String {
     val deleted = texts.timetables.deletedEntry
     return texts.timetables.lessonAt(
         names.classNames[lesson.classId] ?: deleted,
         names.subjectNames[lesson.subjectId] ?: deleted,
         texts.common.dayName(lesson.daySlot.day),
-        names.timeGrid.slots.firstOrNull { it.id == lesson.daySlot.slotId }?.label ?: deleted,
+        names.timeGrid.slots
+            .firstOrNull { it.id == lesson.daySlot.slotId }
+            ?.label ?: deleted,
     )
 }
 
 /** The entities a view can show, sorted by name: classes, teachers or rooms. */
-fun selectableEntities(view: TimetableView, names: TimetableNames): List<Pair<String, String>> = when (view) {
-    TimetableView.CLASS -> names.classNames.map { (id, name) -> "${id.value}" to name }
-    TimetableView.TEACHER -> names.teacherNames.map { (id, name) -> "${id.value}" to name }
-    TimetableView.ROOM -> names.roomNames.map { (id, name) -> "${id.value}" to name }
-}.sortedBy { it.second.lowercase() }
+fun selectableEntities(
+    view: TimetableView,
+    names: TimetableNames,
+): List<Pair<String, String>> =
+    when (view) {
+        TimetableView.CLASS -> names.classNames.map { (id, name) -> "${id.value}" to name }
+        TimetableView.TEACHER -> names.teacherNames.map { (id, name) -> "${id.value}" to name }
+        TimetableView.ROOM -> names.roomNames.map { (id, name) -> "${id.value}" to name }
+    }.sortedBy { it.second.lowercase() }
 
 /** The class, teacher or room to show: the requested one, else the first of the view. */
-fun selectedEntity(view: TimetableView, requestedId: String?, names: TimetableNames): String? =
-    requestedId?.takeIf { it.isNotBlank() } ?: selectableEntities(view, names).firstOrNull()?.first
+fun selectedEntity(
+    view: TimetableView,
+    requestedId: String?,
+    names: TimetableNames,
+): String? = requestedId?.takeIf { it.isNotBlank() } ?: selectableEntities(view, names).firstOrNull()?.first
 
 /** Plain GET forms to switch between class, teacher and room views of the page at [path]; work without any script. */
-fun FlowContent.viewSelection(path: String, names: TimetableNames, view: TimetableView, entityId: String?, texts: UiTexts) {
+fun FlowContent.viewSelection(
+    path: String,
+    names: TimetableNames,
+    view: TimetableView,
+    entityId: String?,
+    texts: UiTexts,
+) {
     TimetableView.entries.forEach { candidateView ->
         form(action = path, method = FormMethod.get, classes = "inline") {
             input(type = InputType.hidden, name = "view") { value = candidateView.parameter }
@@ -129,14 +165,22 @@ fun FlowContent.viewSelection(path: String, names: TimetableNames, view: Timetab
     }
 }
 
-fun viewName(view: TimetableView, texts: UiTexts) = when (view) {
+fun viewName(
+    view: TimetableView,
+    texts: UiTexts,
+) = when (view) {
     TimetableView.CLASS -> texts.timetables.viewClass
     TimetableView.TEACHER -> texts.timetables.viewTeacher
     TimetableView.ROOM -> texts.timetables.viewRoom
 }
 
 /** The display name of a class, teacher or room id in [view]. */
-fun entityName(view: TimetableView, entityId: String, names: TimetableNames, texts: UiTexts): String {
+fun entityName(
+    view: TimetableView,
+    entityId: String,
+    names: TimetableNames,
+    texts: UiTexts,
+): String {
     val uuid = runCatching { java.util.UUID.fromString(entityId) }.getOrNull() ?: return texts.timetables.deletedEntry
     return when (view) {
         TimetableView.CLASS -> names.classNames[SchoolClassId(uuid)]
@@ -149,7 +193,11 @@ fun entityName(view: TimetableView, entityId: String, names: TimetableNames, tex
  * A week as a table of teaching days × slots of the current time grid; breaks span the whole row, slots that do not
  * exist on a day stay empty. [cellOf] decides what a day-slot shows.
  */
-fun FlowContent.weeklyGrid(names: TimetableNames, texts: UiTexts, cellOf: (DaySlot) -> GridCell?) {
+fun FlowContent.weeklyGrid(
+    names: TimetableNames,
+    texts: UiTexts,
+    cellOf: (DaySlot) -> GridCell?,
+) {
     val grid = names.timeGrid
     val days = grid.teachingDays.sorted()
     table(classes = "timetable") {
@@ -171,9 +219,13 @@ fun FlowContent.weeklyGrid(names: TimetableNames, texts: UiTexts, cellOf: (DaySl
                         val exists = grid.slotsOn(day).any { it.id == slot.id }
                         val cell = if (exists) cellOf(DaySlot(day, slot.id)) else null
                         td(classes = if (cell?.highlighted == true) "highlight" else null) {
-                            if (cell?.note != null) attributes["title"] = cell.note
+                            if (cell?.note != null) {
+                                attributes["title"] = cell.note
+                            }
                             cell?.lines?.forEachIndexed { index, line ->
-                                if (index > 0) br()
+                                if (index > 0) {
+                                    br()
+                                }
                                 +line
                             }
                         }

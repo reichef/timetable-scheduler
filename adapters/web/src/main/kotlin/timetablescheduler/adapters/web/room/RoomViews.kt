@@ -29,10 +29,14 @@ import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.validation.ValidationError
 
 fun roomsPath(schoolId: SchoolId) = "/schools/${schoolId.value}/rooms"
+
 fun featuresPath(schoolId: SchoolId) = "/schools/${schoolId.value}/room-features"
 
 /** Entered values of the room form, kept when the form is shown again after an error. */
-data class RoomFormInput(val identifier: String, val featureIds: Set<RoomFeatureId>)
+data class RoomFormInput(
+    val identifier: String,
+    val featureIds: Set<RoomFeatureId>,
+)
 
 suspend fun ApplicationCall.respondRoomList(
     schoolId: SchoolId,
@@ -45,11 +49,19 @@ suspend fun ApplicationCall.respondRoomList(
     val featureNames = overview.features.associate { it.id to it.name }
     respondPage(texts.rooms.roomsTitle, status) { session ->
         table {
-            tr { th { +texts.rooms.roomColumn }; th { +texts.common.roomFeatures } }
+            tr {
+                th { +texts.rooms.roomColumn }
+                th { +texts.common.roomFeatures }
+            }
             overview.rooms.forEach { room ->
                 tr {
                     td { a(href = "${roomsPath(schoolId)}/${room.id.value}") { +room.identifier } }
-                    td { +room.featureIds.mapNotNull { featureNames[it] }.sorted().joinToString(", ") }
+                    td {
+                        +room.featureIds
+                            .mapNotNull { featureNames[it] }
+                            .sorted()
+                            .joinToString(", ")
+                    }
                 }
             }
         }

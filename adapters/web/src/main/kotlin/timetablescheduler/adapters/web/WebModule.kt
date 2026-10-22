@@ -17,31 +17,34 @@ import io.ktor.server.sessions.Sessions
 import io.ktor.server.sessions.cookie
 import kotlinx.html.p
 import org.slf4j.LoggerFactory
+import timetablescheduler.adapters.web.account.accountRoutes
 import timetablescheduler.adapters.web.auth.SESSION_AUTH
 import timetablescheduler.adapters.web.auth.UserSession
 import timetablescheduler.adapters.web.auth.UserSessionSerializer
-import timetablescheduler.adapters.web.account.accountRoutes
 import timetablescheduler.adapters.web.auth.authRoutes
 import timetablescheduler.adapters.web.classlevel.classLevelRoutes
 import timetablescheduler.adapters.web.constraint.constraintRoutes
 import timetablescheduler.adapters.web.generation.generationRoutes
-import timetablescheduler.adapters.web.timetable.chosenTimetableRoutes
-import timetablescheduler.adapters.web.layout.CsrfViolation
 import timetablescheduler.adapters.web.i18n.languageRoutes
 import timetablescheduler.adapters.web.i18n.texts
+import timetablescheduler.adapters.web.layout.CsrfViolation
 import timetablescheduler.adapters.web.layout.respondMessage
 import timetablescheduler.adapters.web.layout.respondPage
-import timetablescheduler.adapters.web.room.roomRoutes
 import timetablescheduler.adapters.web.readiness.readinessRoutes
+import timetablescheduler.adapters.web.room.roomRoutes
 import timetablescheduler.adapters.web.school.schoolRoutes
 import timetablescheduler.adapters.web.subject.subjectRoutes
 import timetablescheduler.adapters.web.teacher.teacherRoutes
 import timetablescheduler.adapters.web.timegrid.timeGridRoutes
+import timetablescheduler.adapters.web.timetable.chosenTimetableRoutes
 import java.util.UUID
 
 private val technicalErrorLog = LoggerFactory.getLogger("timetablescheduler.web.TechnicalError")
 
-fun Application.webModule(dependencies: WebDependencies, settings: WebSettings) {
+fun Application.webModule(
+    dependencies: WebDependencies,
+    settings: WebSettings,
+) {
     install(CallId) {
         generate { UUID.randomUUID().toString() }
     }

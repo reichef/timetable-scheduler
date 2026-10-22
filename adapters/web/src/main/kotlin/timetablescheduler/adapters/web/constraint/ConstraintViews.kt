@@ -43,35 +43,58 @@ import timetablescheduler.domain.validation.ValidationError
 
 /** Which fields a catalogue type needs on its form (G9). */
 private val ConstraintType.classChoice: ClassChoice
-    get() = when (this) {
-        ConstraintType.CLASS_MAX_PERIODS_PER_DAY, ConstraintType.CLASS_MIN_PERIODS_PER_DAY, ConstraintType.CLASS_NO_GAPS,
-        ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS, ConstraintType.SUBJECT_EXCLUDED_SLOTS -> ClassChoice.ONE_OR_ALL
-        ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS, ConstraintType.CLASS_EXCLUDED_SLOTS -> ClassChoice.ONE
-        else -> ClassChoice.NONE
-    }
+    get() =
+        when (this) {
+            ConstraintType.CLASS_MAX_PERIODS_PER_DAY, ConstraintType.CLASS_MIN_PERIODS_PER_DAY, ConstraintType.CLASS_NO_GAPS,
+            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS, ConstraintType.SUBJECT_EXCLUDED_SLOTS,
+            -> ClassChoice.ONE_OR_ALL
+
+            ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS, ConstraintType.CLASS_EXCLUDED_SLOTS -> ClassChoice.ONE
+
+            else -> ClassChoice.NONE
+        }
 
 private enum class ClassChoice { NONE, ONE, ONE_OR_ALL }
 
-private val ConstraintType.needsTeacher get() = this in setOf(ConstraintType.TEACHER_MAX_PERIODS_PER_DAY, ConstraintType.TEACHER_MAX_GAPS_PER_DAY, ConstraintType.TEACHER_EXCLUDED_SLOTS)
-private val ConstraintType.needsSubject get() = this in setOf(ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS, ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS, ConstraintType.SUBJECT_EXCLUDED_SLOTS)
+private val ConstraintType.needsTeacher get() =
+    this in
+        setOf(ConstraintType.TEACHER_MAX_PERIODS_PER_DAY, ConstraintType.TEACHER_MAX_GAPS_PER_DAY, ConstraintType.TEACHER_EXCLUDED_SLOTS)
+private val ConstraintType.needsSubject get() =
+    this in
+        setOf(
+            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS,
+            ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS,
+            ConstraintType.SUBJECT_EXCLUDED_SLOTS,
+        )
 private val ConstraintType.allowsEverySubject get() = this == ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS
-private val ConstraintType.needsLimit get() = this in setOf(
-    ConstraintType.CLASS_MAX_PERIODS_PER_DAY, ConstraintType.CLASS_MIN_PERIODS_PER_DAY, ConstraintType.TEACHER_MAX_PERIODS_PER_DAY,
-    ConstraintType.TEACHER_MAX_GAPS_PER_DAY, ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS,
-)
-private val ConstraintType.needsSlots get() = this in setOf(ConstraintType.CLASS_EXCLUDED_SLOTS, ConstraintType.TEACHER_EXCLUDED_SLOTS, ConstraintType.SUBJECT_EXCLUDED_SLOTS)
+private val ConstraintType.needsLimit get() =
+    this in
+        setOf(
+            ConstraintType.CLASS_MAX_PERIODS_PER_DAY,
+            ConstraintType.CLASS_MIN_PERIODS_PER_DAY,
+            ConstraintType.TEACHER_MAX_PERIODS_PER_DAY,
+            ConstraintType.TEACHER_MAX_GAPS_PER_DAY,
+            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS,
+        )
+private val ConstraintType.needsSlots get() =
+    this in
+        setOf(ConstraintType.CLASS_EXCLUDED_SLOTS, ConstraintType.TEACHER_EXCLUDED_SLOTS, ConstraintType.SUBJECT_EXCLUDED_SLOTS)
 
 /** The constraint list with the catalogue (FR-012, FR-013) and the teacher fixations (FR-013a). */
 suspend fun ApplicationCall.respondConstraintList(overview: ConstraintOverview) {
     val texts = texts
     respondPage(texts.constraints.title) { session ->
-        if (overview.constraints.isEmpty()) p { +texts.constraints.noConstraints }
+        if (overview.constraints.isEmpty()) {
+            p { +texts.constraints.noConstraints }
+        }
         table {
             overview.constraints.forEach { constraint ->
                 tr {
                     td {
                         a(href = constraintPath(constraint)) { +describe(constraint, overview.names, texts) }
-                        if (!constraint.active) span(classes = "muted") { +" (${texts.constraints.switchedOff})" }
+                        if (!constraint.active) {
+                            span(classes = "muted") { +" (${texts.constraints.switchedOff})" }
+                        }
                     }
                     td {
                         form(action = "${constraintPath(constraint)}/active", method = FormMethod.post, classes = "inline") {
@@ -91,7 +114,9 @@ suspend fun ApplicationCall.respondConstraintList(overview: ConstraintOverview) 
             }
         }
         h2 { +texts.constraints.fixationsHeading }
-        if (overview.fixations.isEmpty()) p { +texts.constraints.noFixations }
+        if (overview.fixations.isEmpty()) {
+            p { +texts.constraints.noFixations }
+        }
         ul {
             overview.fixations.forEach { fixation ->
                 li {
@@ -127,7 +152,9 @@ suspend fun ApplicationCall.respondConstraintForm(
         form(action = existing?.let(::constraintPath) ?: constraintsPath(overview.schoolId), method = FormMethod.post) {
             csrfField(session)
             hiddenField("type", type.name)
-            if (existing != null) hiddenField("version", "${existing.version}")
+            if (existing != null) {
+                hiddenField("version", "${existing.version}")
+            }
             constraintFields(overview, type, values, texts)
             button { +texts.common.save }
         }
@@ -142,17 +169,44 @@ suspend fun ApplicationCall.respondConstraintForm(
     }
 }
 
-private fun FORM.constraintFields(overview: ConstraintOverview, type: ConstraintType, values: Parameters, texts: UiTexts) {
+private fun FORM.constraintFields(
+    overview: ConstraintOverview,
+    type: ConstraintType,
+    values: Parameters,
+    texts: UiTexts,
+) {
     val names = overview.names
     when (type.classChoice) {
-        ClassChoice.NONE -> Unit
-        ClassChoice.ONE -> choice("classId", texts.constraints.classLabel, classOptions(names), values["classId"], allLabel = null)
-        ClassChoice.ONE_OR_ALL -> choice("classId", texts.constraints.classLabel, classOptions(names), values["classId"] ?: ALL, allLabel = texts.constraints.allClasses)
+        ClassChoice.NONE -> {
+            Unit
+        }
+
+        ClassChoice.ONE -> {
+            choice("classId", texts.constraints.classLabel, classOptions(names), values["classId"], allLabel = null)
+        }
+
+        ClassChoice.ONE_OR_ALL -> {
+            choice(
+                "classId",
+                texts.constraints.classLabel,
+                classOptions(names),
+                values["classId"] ?: ALL,
+                allLabel = texts.constraints.allClasses,
+            )
+        }
     }
-    if (type.needsTeacher) choice("teacherId", texts.constraints.teacherLabel, teacherOptions(names), values["teacherId"], allLabel = null)
+    if (type.needsTeacher) {
+        choice("teacherId", texts.constraints.teacherLabel, teacherOptions(names), values["teacherId"], allLabel = null)
+    }
     if (type.needsSubject) {
         val everySubject = if (type.allowsEverySubject) texts.constraints.everySubject else null
-        choice("subjectId", texts.constraints.subjectLabel, subjectOptions(names), values["subjectId"] ?: everySubject?.let { ALL }, everySubject)
+        choice(
+            "subjectId",
+            texts.constraints.subjectLabel,
+            subjectOptions(names),
+            values["subjectId"] ?: everySubject?.let { ALL },
+            everySubject,
+        )
     }
     if (type.needsLimit) {
         label {
@@ -169,17 +223,36 @@ private fun FORM.constraintFields(overview: ConstraintOverview, type: Constraint
             +texts.constraints.acrossBreaksLabel
         }
     }
-    if (type.needsSlots) slotGrid(overview, values.getAll("slot").orEmpty().toSet(), texts)
+    if (type.needsSlots) {
+        slotGrid(overview, values.getAll("slot").orEmpty().toSet(), texts)
+    }
     kindAndWeight(values, texts)
 }
 
 private const val ALL = "ALL"
 
-private fun classOptions(names: TimetableNames) = names.classNames.map { (id, name) -> "${id.value}" to name }.sortedBy { it.second.lowercase() }
-private fun teacherOptions(names: TimetableNames) = names.teacherNames.map { (id, name) -> "${id.value}" to name }.sortedBy { it.second.lowercase() }
-private fun subjectOptions(names: TimetableNames) = names.subjectNames.map { (id, name) -> "${id.value}" to name }.sortedBy { it.second.lowercase() }
+private fun classOptions(names: TimetableNames) =
+    names.classNames.map { (id, name) -> "${id.value}" to name }.sortedBy {
+        it.second.lowercase()
+    }
 
-private fun FORM.choice(name: String, labelText: String, options: List<Pair<String, String>>, selectedValue: String?, allLabel: String?) {
+private fun teacherOptions(names: TimetableNames) =
+    names.teacherNames.map { (id, name) -> "${id.value}" to name }.sortedBy {
+        it.second.lowercase()
+    }
+
+private fun subjectOptions(names: TimetableNames) =
+    names.subjectNames.map { (id, name) -> "${id.value}" to name }.sortedBy {
+        it.second.lowercase()
+    }
+
+private fun FORM.choice(
+    name: String,
+    labelText: String,
+    options: List<Pair<String, String>>,
+    selectedValue: String?,
+    allLabel: String?,
+) {
     label {
         +labelText
         select {
@@ -203,7 +276,11 @@ private fun FORM.choice(name: String, labelText: String, options: List<Pair<Stri
 }
 
 /** Teaching days × teaching slots as checkboxes, plus one "whole day" checkbox per day. */
-private fun FORM.slotGrid(overview: ConstraintOverview, checked: Set<String>, texts: UiTexts) {
+private fun FORM.slotGrid(
+    overview: ConstraintOverview,
+    checked: Set<String>,
+    texts: UiTexts,
+) {
     val grid = overview.names.timeGrid
     val days = grid.teachingDays.sorted()
     fieldSet {
@@ -241,7 +318,10 @@ private fun FORM.slotGrid(overview: ConstraintOverview, checked: Set<String>, te
     }
 }
 
-private fun FORM.kindAndWeight(values: Parameters, texts: UiTexts) {
+private fun FORM.kindAndWeight(
+    values: Parameters,
+    texts: UiTexts,
+) {
     fieldSet {
         legend { +texts.constraints.kindLabel }
         ConstraintKind.entries.forEach { kind ->
@@ -270,12 +350,13 @@ private fun FORM.kindAndWeight(values: Parameters, texts: UiTexts) {
 }
 
 /** The form values of a stored constraint, so the edit form shows them like entered ones. */
-private fun formValuesOf(constraint: SchedulingConstraint): Parameters = Parameters.build {
-    val columns = ConstraintFormValues.of(constraint.rule)
-    columns.forEach { (name, values) -> values.forEach { append(name, it) } }
-    append("kind", constraint.kind.name)
-    constraint.weight?.let { append("weight", it.name) }
-}
+private fun formValuesOf(constraint: SchedulingConstraint): Parameters =
+    Parameters.build {
+        val columns = ConstraintFormValues.of(constraint.rule)
+        columns.forEach { (name, values) -> values.forEach { append(name, it) } }
+        append("kind", constraint.kind.name)
+        constraint.weight?.let { append("weight", it.name) }
+    }
 
 /** A teacher fixation's page: change the teacher or delete it (FR-013a). */
 suspend fun ApplicationCall.respondFixationForm(
@@ -287,16 +368,23 @@ suspend fun ApplicationCall.respondFixationForm(
 ) {
     val texts = texts
     val names = overview.names
-    val values = entered ?: existing?.let {
-        Parameters.build {
-            append("classId", "${it.classId.value}")
-            append("subjectId", "${it.subjectId.value}")
-            append("teacherId", "${it.teacherId.value}")
-        }
-    } ?: Parameters.Empty
+    val values =
+        entered ?: existing?.let {
+            Parameters.build {
+                append("classId", "${it.classId.value}")
+                append("subjectId", "${it.subjectId.value}")
+                append("teacherId", "${it.teacherId.value}")
+            }
+        } ?: Parameters.Empty
     respondPage(existing?.let { describe(it, names, texts) } ?: texts.constraints.newFixation, status) { session ->
         validationErrors(errors, texts)
-        form(action = existing?.let { "${fixationsPath(overview.schoolId)}/${it.id.value}" } ?: fixationsPath(overview.schoolId), method = FormMethod.post) {
+        form(
+            action =
+                existing?.let {
+                    "${fixationsPath(overview.schoolId)}/${it.id.value}"
+                } ?: fixationsPath(overview.schoolId),
+            method = FormMethod.post,
+        ) {
             csrfField(session)
             if (existing == null) {
                 choice("classId", texts.constraints.classLabel, classOptions(names), values["classId"], allLabel = null)
@@ -319,6 +407,10 @@ suspend fun ApplicationCall.respondFixationForm(
 }
 
 /** Constraints that can never be met (FR-017), named on the start refusal. */
-fun FlowContent.constraintList(constraints: List<SchedulingConstraint>, names: TimetableNames, texts: UiTexts) {
+fun FlowContent.constraintList(
+    constraints: List<SchedulingConstraint>,
+    names: TimetableNames,
+    texts: UiTexts,
+) {
     ul { constraints.forEach { li { +describe(it, names, texts) } } }
 }

@@ -16,8 +16,8 @@ import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
 import timetablescheduler.adapters.web.layout.hiddenField
 import timetablescheduler.adapters.web.layout.respondPage
-import timetablescheduler.adapters.web.timetable.conflictCell
 import timetablescheduler.adapters.web.timetable.TimetableView
+import timetablescheduler.adapters.web.timetable.conflictCell
 import timetablescheduler.adapters.web.timetable.conflictList
 import timetablescheduler.adapters.web.timetable.entityName
 import timetablescheduler.adapters.web.timetable.lessonsOf
@@ -36,25 +36,40 @@ const val FIELD_CHOSEN_VERSION = "chosenVersion"
 /** Form field confirming that the chosen alternative leaves lessons unplaced (FR-021). */
 const val FIELD_UNPLACED_CONFIRMED = "unplacedConfirmed"
 
-fun choosePath(generation: Generation, alternative: Alternative) = "${alternativePath(generation, alternative)}/choose"
+fun choosePath(
+    generation: Generation,
+    alternative: Alternative,
+) = "${alternativePath(generation, alternative)}/choose"
 
 /**
  * One alternative per class, teacher or room (FR-019) with its objective values and unplaced lessons (FR-018), links
  * to compare it with the other alternatives (FR-020) and the button to choose it (FR-021).
  */
-suspend fun ApplicationCall.respondAlternative(details: AlternativeDetails, view: TimetableView, entityId: String?) {
+suspend fun ApplicationCall.respondAlternative(
+    details: AlternativeDetails,
+    view: TimetableView,
+    entityId: String?,
+) {
     val texts = texts
     val generation = details.generation
     val alternative = details.alternative
     respondPage(texts.generations.alternativeTitle(details.number)) { session ->
-        if (details.conflicts.isNotEmpty()) p(classes = "warning") { +texts.generations.outdatedHint }
+        if (details.conflicts.isNotEmpty()) {
+            p(classes = "warning") { +texts.generations.outdatedHint }
+        }
         objectiveSummary(details, texts)
-        if (details.isChosen) p { +texts.generations.chosenMarker } else chooseForm(session, generation, alternative, details.chosen, texts)
+        if (details.isChosen) {
+            p { +texts.generations.chosenMarker }
+        } else {
+            chooseForm(session, generation, alternative, details.chosen, texts)
+        }
         if (details.others.isNotEmpty()) {
             p {
                 +"${texts.generations.compareWith}: "
                 details.others.forEachIndexed { index, (number, other) ->
-                    if (index > 0) +", "
+                    if (index > 0) {
+                        +", "
+                    }
                     a(href = "${diffPath(generation, alternative, other)}?view=${view.parameter}&id=${entityId.orEmpty()}") {
                         +texts.generations.alternativeTitle(number)
                     }
@@ -88,7 +103,9 @@ fun FlowContent.chooseForm(
     form(action = choosePath(generation, alternative), method = FormMethod.post, classes = "inline") {
         csrfField(session)
         hiddenField(FIELD_CHOSEN_VERSION, chosen?.version?.toString().orEmpty())
-        if (unplacedConfirmed) hiddenField(FIELD_UNPLACED_CONFIRMED, "true")
+        if (unplacedConfirmed) {
+            hiddenField(FIELD_UNPLACED_CONFIRMED, "true")
+        }
         button { +buttonText }
     }
 }
@@ -116,7 +133,10 @@ suspend fun ApplicationCall.respondChooseConfirmation(
     }
 }
 
-private fun FlowContent.objectiveSummary(details: AlternativeDetails, texts: UiTexts) {
+private fun FlowContent.objectiveSummary(
+    details: AlternativeDetails,
+    texts: UiTexts,
+) {
     h2 { +texts.timetables.objectivesHeading }
     ul {
         objectiveColumns(details.generation, details.names, texts, listOf(details.alternative)).forEach { column ->
@@ -125,23 +145,35 @@ private fun FlowContent.objectiveSummary(details: AlternativeDetails, texts: UiT
     }
 }
 
-fun FlowContent.unplacedLessons(unplaced: Map<CourseKey, Int>, names: TimetableNames, texts: UiTexts, heading: String = texts.timetables.unplacedHeading) {
-    if (unplaced.none { it.value > 0 }) return
+fun FlowContent.unplacedLessons(
+    unplaced: Map<CourseKey, Int>,
+    names: TimetableNames,
+    texts: UiTexts,
+    heading: String = texts.timetables.unplacedHeading,
+) {
+    if (unplaced.none { it.value > 0 }) {
+        return
+    }
     h2 { +heading }
     unplacedList(unplaced, names, texts)
 }
 
-private fun FlowContent.unplacedList(unplaced: Map<CourseKey, Int>, names: TimetableNames, texts: UiTexts) {
+private fun FlowContent.unplacedList(
+    unplaced: Map<CourseKey, Int>,
+    names: TimetableNames,
+    texts: UiTexts,
+) {
     ul {
-        unplaced.filterValues { it > 0 }.entries
+        unplaced
+            .filterValues { it > 0 }
+            .entries
             .map { (course, periods) ->
                 texts.timetables.unplacedEntry(
                     names.classNames[course.classId] ?: texts.timetables.deletedEntry,
                     names.subjectNames[course.subjectId] ?: texts.timetables.deletedEntry,
                     periods,
                 )
-            }
-            .sorted()
+            }.sorted()
             .forEach { li { +it } }
     }
 }

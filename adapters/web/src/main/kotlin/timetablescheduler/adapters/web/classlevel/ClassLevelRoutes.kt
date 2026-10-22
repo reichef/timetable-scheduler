@@ -47,9 +47,12 @@ private fun invalid(error: ValidationError) = UseCaseResult.Failure(ApplicationE
 private fun Parameters.curriculumInput(): CurriculumFormInput {
     val subjectIds = getAll(SUBJECT_FIELD).orEmpty()
     val periods = getAll(PERIODS_FIELD).orEmpty()
-    val periodsBySubject = subjectIds.zip(periods)
-        .mapNotNull { (subjectId, period) -> runCatching { SubjectId(UUID.fromString(subjectId)) }.getOrNull()?.let { it to period.trim() } }
-        .toMap()
+    val periodsBySubject =
+        subjectIds
+            .zip(periods)
+            .mapNotNull { (subjectId, period) ->
+                runCatching { SubjectId(UUID.fromString(subjectId)) }.getOrNull()?.let { it to period.trim() }
+            }.toMap()
     return CurriculumFormInput(text("identifier"), periodsBySubject)
 }
 
@@ -119,8 +122,12 @@ fun Route.classLevelRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val entered = form.curriculumInput()
             val entries = entered.toEntries()
-            val result = if (entries == null) invalid(ValidationError.InvalidFormat(PERIODS_FIELD))
-            else curriculum.updateClassLevel.execute(call.actor, schoolId, levelId, entered.identifier, entries, form.version())
+            val result =
+                if (entries == null) {
+                    invalid(ValidationError.InvalidFormat(PERIODS_FIELD))
+                } else {
+                    curriculum.updateClassLevel.execute(call.actor, schoolId, levelId, entered.identifier, entries, form.version())
+                }
             call.respondFormResult(
                 result,
                 backLink = "${levelsPath(schoolId)}/${levelId.value}",
@@ -155,7 +162,12 @@ private fun Route.schoolClassRoutes(curriculum: CurriculumUseCases) {
         val levelId = call.levelIdParameter() ?: return@post
         val form = call.receiveCheckedForm()
         call.respondFormResult(
-            form.parseClass { suffix, weight -> curriculum.createSchoolClass.execute(call.actor, schoolId, levelId, suffix, weight, form.homeRoomId()) },
+            form.parseClass {
+                suffix,
+                weight,
+                ->
+                curriculum.createSchoolClass.execute(call.actor, schoolId, levelId, suffix, weight, form.homeRoomId())
+            },
             backLink = "${levelsPath(schoolId)}/${levelId.value}",
             onInvalid = { errors ->
                 call.respondResult(curriculum.proposeClassSuffix.execute(call.actor, schoolId, levelId)) {
@@ -176,7 +188,12 @@ private fun Route.schoolClassRoutes(curriculum: CurriculumUseCases) {
         val classId = call.classIdParameter() ?: return@post
         val form = call.receiveCheckedForm()
         call.respondFormResult(
-            form.parseClass { suffix, weight -> curriculum.updateSchoolClass.execute(call.actor, schoolId, classId, suffix, weight, form.version(), form.homeRoomId()) },
+            form.parseClass {
+                suffix,
+                weight,
+                ->
+                curriculum.updateSchoolClass.execute(call.actor, schoolId, classId, suffix, weight, form.version(), form.homeRoomId())
+            },
             backLink = "/schools/${schoolId.value}/classes/${classId.value}",
             onInvalid = { errors ->
                 call.respondResult(curriculum.getSchoolClass.execute(call.actor, schoolId, classId)) {
@@ -194,7 +211,10 @@ private fun Route.schoolClassRoutes(curriculum: CurriculumUseCases) {
             curriculum.getSchoolClass.execute(call.actor, schoolId, classId),
             "/schools/${schoolId.value}/classes/${classId.value}",
         ) { details ->
-            call.respondResult(curriculum.deleteSchoolClass.execute(call.actor, schoolId, classId, form.version()), classPath(schoolId, details.schoolClass)) {
+            call.respondResult(
+                curriculum.deleteSchoolClass.execute(call.actor, schoolId, classId, form.version()),
+                classPath(schoolId, details.schoolClass),
+            ) {
                 call.seeOther(levelPath(details.level))
             }
         }

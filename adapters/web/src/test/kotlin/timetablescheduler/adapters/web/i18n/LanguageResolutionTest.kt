@@ -7,10 +7,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class LanguageResolutionTest {
-
     @Test
     fun `logged-in user sees the session language`() {
-        assertEquals(ENGLISH, resolveInterfaceLanguage(loggedIn = true, sessionLanguage = ENGLISH, cookieCode = "de", acceptLanguage = "de"))
+        assertEquals(
+            ENGLISH,
+            resolveInterfaceLanguage(loggedIn = true, sessionLanguage = ENGLISH, cookieCode = "de", acceptLanguage = "de"),
+        )
     }
 
     @Test

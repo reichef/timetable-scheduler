@@ -19,10 +19,10 @@ import timetablescheduler.adapters.web.layout.text
 import timetablescheduler.adapters.web.layout.uuids
 import timetablescheduler.adapters.web.school.schoolIdParameter
 import timetablescheduler.adapters.web.timetable.TimetableView
-import timetablescheduler.application.error.ApplicationError
-import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.adapters.web.timetable.chosenTimetablePath
 import timetablescheduler.adapters.web.timetable.selectedEntity
+import timetablescheduler.application.error.ApplicationError
+import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.scheduling.ChooseOutcome
 import timetablescheduler.application.scheduling.SchedulingUseCases
 import timetablescheduler.application.scheduling.StartRequest
@@ -64,7 +64,9 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
         get("/schools/{schoolId}/generations") {
             val schoolId = call.schoolIdParameter() ?: return@get
             val startFromChosen = call.parameters[StartRequest.FIELD_START_FROM_CHOSEN] == "true"
-            call.respondResult(scheduling.list.execute(call.actor, schoolId)) { call.respondGenerationList(it, startFromChosen = startFromChosen) }
+            call.respondResult(
+                scheduling.list.execute(call.actor, schoolId),
+            ) { call.respondGenerationList(it, startFromChosen = startFromChosen) }
         }
 
         post("/schools/{schoolId}/generations") {
@@ -73,28 +75,43 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val input = FormInput(form)
             val timeLimit = input.int("timeLimitMinutes")
             // Older forms without the field start with the default share (FR-007a).
-            val share = if (form.text(StartRequest.FIELD_MINIMUM_PLACED_SHARE).isBlank()) {
-                Generation.DEFAULT_MINIMUM_PLACED_SHARE
-            } else {
-                input.int(StartRequest.FIELD_MINIMUM_PLACED_SHARE)
-            }
+            val share =
+                if (form.text(StartRequest.FIELD_MINIMUM_PLACED_SHARE).isBlank()) {
+                    Generation.DEFAULT_MINIMUM_PLACED_SHARE
+                } else {
+                    input.int(StartRequest.FIELD_MINIMUM_PLACED_SHARE)
+                }
             val startFromChosen = form[StartRequest.FIELD_START_FROM_CHOSEN] == "true"
-            val result = if (timeLimit == null || share == null) UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
-            else scheduling.start.execute(
-                call.actor,
-                schoolId,
-                StartRequest(
-                    timeLimitMinutes = timeLimit,
-                    warningsConfirmed = form[StartRequest.FIELD_WARNINGS_CONFIRMED] == "true",
-                    separateObjectiveIds = form.uuids(StartRequest.FIELD_SEPARATE_OBJECTIVES).map(::SchedulingConstraintId),
-                    startFromChosen = startFromChosen,
-                    minimumPlacedShare = share,
-                ),
-            )
+            val result =
+                if (timeLimit == null || share == null) {
+                    UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
+                } else {
+                    scheduling.start.execute(
+                        call.actor,
+                        schoolId,
+                        StartRequest(
+                            timeLimitMinutes = timeLimit,
+                            warningsConfirmed = form[StartRequest.FIELD_WARNINGS_CONFIRMED] == "true",
+                            separateObjectiveIds = form.uuids(StartRequest.FIELD_SEPARATE_OBJECTIVES).map(::SchedulingConstraintId),
+                            startFromChosen = startFromChosen,
+                            minimumPlacedShare = share,
+                        ),
+                    )
+                }
             call.respondFormResult(
                 result,
                 generationsPath(schoolId),
-                onInvalid = { errors -> call.showStartFormAgain(scheduling, call.actor, schoolId, errors, form.text("timeLimitMinutes"), startFromChosen, form.text(StartRequest.FIELD_MINIMUM_PLACED_SHARE)) },
+                onInvalid = { errors ->
+                    call.showStartFormAgain(
+                        scheduling,
+                        call.actor,
+                        schoolId,
+                        errors,
+                        form.text("timeLimitMinutes"),
+                        startFromChosen,
+                        form.text(StartRequest.FIELD_MINIMUM_PLACED_SHARE),
+                    )
+                },
             ) { generation -> call.seeOther(generationPath(generation)) }
         }
 
@@ -169,15 +186,32 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val enteredVersion = form.text(FIELD_CHOSEN_VERSION).trim()
             // An unreadable version can never match the current choice and is answered as a concurrent change.
             val expectedVersion = if (enteredVersion.isEmpty()) null else enteredVersion.toIntOrNull() ?: -1
-            val result = scheduling.choose.execute(
-                call.actor, schoolId, generationId, alternativeId, expectedVersion, unplacedConfirmed = form[FIELD_UNPLACED_CONFIRMED] == "true",
-            )
+            val result =
+                scheduling.choose.execute(
+                    call.actor,
+                    schoolId,
+                    generationId,
+                    alternativeId,
+                    expectedVersion,
+                    unplacedConfirmed =
+                        form[FIELD_UNPLACED_CONFIRMED] == "true",
+                )
             val backLink = "${generationsPath(schoolId)}/${generationId.value}/alternatives/${alternativeId.value}"
             call.respondResult(result, backLink) { outcome ->
                 when (outcome) {
-                    is ChooseOutcome.Chosen -> call.seeOther(chosenTimetablePath(schoolId))
-                    is ChooseOutcome.ConfirmationRequired ->
-                        call.respondChooseConfirmation(outcome.generation, outcome.alternative, outcome.unplaced, outcome.names, enteredVersion)
+                    is ChooseOutcome.Chosen -> {
+                        call.seeOther(chosenTimetablePath(schoolId))
+                    }
+
+                    is ChooseOutcome.ConfirmationRequired -> {
+                        call.respondChooseConfirmation(
+                            outcome.generation,
+                            outcome.alternative,
+                            outcome.unplaced,
+                            outcome.names,
+                            enteredVersion,
+                        )
+                    }
                 }
             }
         }

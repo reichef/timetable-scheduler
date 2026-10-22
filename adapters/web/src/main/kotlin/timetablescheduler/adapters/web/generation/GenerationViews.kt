@@ -46,11 +46,18 @@ fun generationsPath(schoolId: SchoolId) = "/schools/${schoolId.value}/generation
 
 fun generationPath(generation: Generation) = "${generationsPath(generation.schoolId)}/${generation.id.value}"
 
-fun alternativePath(generation: Generation, alternative: Alternative) = "${generationPath(generation)}/alternatives/${alternative.id.value}"
+fun alternativePath(
+    generation: Generation,
+    alternative: Alternative,
+) = "${generationPath(generation)}/alternatives/${alternative.id.value}"
 
 fun comparePath(generation: Generation) = "${generationPath(generation)}/compare"
 
-fun diffPath(generation: Generation, first: Alternative, second: Alternative) = "${alternativePath(generation, first)}/diff/${second.id.value}"
+fun diffPath(
+    generation: Generation,
+    first: Alternative,
+    second: Alternative,
+) = "${alternativePath(generation, first)}/diff/${second.id.value}"
 
 /** Seconds between automatic reloads of a running generation's page (G6). */
 private const val REFRESH_SECONDS = 3
@@ -78,19 +85,26 @@ class ObjectiveColumn(
  * (named from the generation's snapshot, FR-006a, FR-022), the other soft constraints and — when the generation
  * started from the chosen timetable — stability with the number of changed lessons (FR-006b).
  */
-fun objectiveColumns(generation: Generation, names: TimetableNames?, texts: UiTexts, alternatives: List<Alternative>): List<ObjectiveColumn> {
-    val separate = generation.separateObjectiveIds.mapIndexed { index, constraintId ->
-        val constraint = generation.constraintSnapshot.firstOrNull { it.id == constraintId }
-        val title = if (constraint != null && names != null) describeRule(constraint, names, texts) else texts.timetables.deletedEntry
-        ObjectiveColumn("separate${index + 1}", title, texts) { it.objectiveValues.separate.getOrNull(index) ?: 1.0 }
-    }
+fun objectiveColumns(
+    generation: Generation,
+    names: TimetableNames?,
+    texts: UiTexts,
+    alternatives: List<Alternative>,
+): List<ObjectiveColumn> {
+    val separate =
+        generation.separateObjectiveIds.mapIndexed { index, constraintId ->
+            val constraint = generation.constraintSnapshot.firstOrNull { it.id == constraintId }
+            val title = if (constraint != null && names != null) describeRule(constraint, names, texts) else texts.timetables.deletedEntry
+            ObjectiveColumn("separate${index + 1}", title, texts) { it.objectiveValues.separate.getOrNull(index) ?: 1.0 }
+        }
     val withStability = generation.referenceAlternativeId != null || alternatives.any { it.objectiveValues.stability != null }
-    val stability = ObjectiveColumn(
-        "stability",
-        texts.generations.stability,
-        texts,
-        details = { alternative -> alternative.changedLessons?.let(texts.generations::changedLessons) },
-    ) { it.objectiveValues.stability ?: 1.0 }
+    val stability =
+        ObjectiveColumn(
+            "stability",
+            texts.generations.stability,
+            texts,
+            details = { alternative -> alternative.changedLessons?.let(texts.generations::changedLessons) },
+        ) { it.objectiveValues.stability ?: 1.0 }
     return listOf(
         ObjectiveColumn("classFill", texts.generations.classFill, texts) { it.objectiveValues.classFill },
         ObjectiveColumn("teacherLoad", texts.generations.teacherLoad, texts) { it.objectiveValues.teacherLoadUsage },
@@ -113,7 +127,12 @@ suspend fun ApplicationCall.respondGenerationList(
         validationErrors(errors, texts)
         form(action = generationsPath(overview.schoolId), method = FormMethod.post) {
             csrfField(session)
-            textField("timeLimitMinutes", texts.generations.timeLimitLabel, enteredTimeLimit ?: "${Generation.DEFAULT_TIME_LIMIT_MINUTES}", InputType.number)
+            textField(
+                "timeLimitMinutes",
+                texts.generations.timeLimitLabel,
+                enteredTimeLimit ?: "${Generation.DEFAULT_TIME_LIMIT_MINUTES}",
+                InputType.number,
+            )
             textField(
                 StartRequest.FIELD_MINIMUM_PLACED_SHARE,
                 texts.generations.minimumShareLabel,
@@ -134,7 +153,10 @@ suspend fun ApplicationCall.respondGenerationList(
                     legend { +texts.constraints.separateObjectivesLegend }
                     overview.softConstraints.forEach { constraint ->
                         label {
-                            input(type = InputType.checkBox, name = StartRequest.FIELD_SEPARATE_OBJECTIVES) { value = "${constraint.id.value}" }
+                            input(type = InputType.checkBox, name = StartRequest.FIELD_SEPARATE_OBJECTIVES) {
+                                value =
+                                    "${constraint.id.value}"
+                            }
                             +describe(constraint, names, texts)
                         }
                     }
@@ -156,7 +178,10 @@ suspend fun ApplicationCall.respondGenerationList(
     }
 }
 
-private fun FlowContent.generationTable(overview: GenerationOverview, texts: UiTexts) {
+private fun FlowContent.generationTable(
+    overview: GenerationOverview,
+    texts: UiTexts,
+) {
     h2 { +texts.generations.title }
     if (overview.generations.isEmpty()) {
         p { +texts.generations.noGenerations }
@@ -176,7 +201,9 @@ private fun FlowContent.generationTable(overview: GenerationOverview, texts: UiT
                 td { +summary.startedByUsername }
                 td {
                     +texts.generations.statusName(generation.status)
-                    if (summary.outdated) +" (${texts.generations.outdatedMark})"
+                    if (summary.outdated) {
+                        +" (${texts.generations.outdatedMark})"
+                    }
                 }
                 td { +"${generation.alternativesFound}" }
             }
@@ -188,14 +215,21 @@ private fun FlowContent.generationTable(overview: GenerationOverview, texts: UiT
  * A generation: progress with stop button and automatic reload while it runs (FR-011), afterwards the alternatives
  * with their objective values, sortable by every objective (FR-018, FR-020).
  */
-suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails, sortKey: String?, descending: Boolean, now: Instant) {
+suspend fun ApplicationCall.respondGenerationDetails(
+    details: GenerationDetails,
+    sortKey: String?,
+    descending: Boolean,
+    now: Instant,
+) {
     val texts = texts
     val generation = details.generation
     val refresh = if (generation.isRunning) REFRESH_SECONDS else null
     respondPage(texts.generations.generationTitle(texts.generations.dateTime(generation.startedAt)), refreshSeconds = refresh) { session ->
         p { +"${texts.generations.statusColumn}: ${texts.generations.statusName(generation.status)}" }
         p { +texts.generations.minimumShare(generation.minimumPlacedShare) }
-        if (details.summary.outdated) p(classes = "warning") { +texts.generations.outdatedHint }
+        if (details.summary.outdated) {
+            p(classes = "warning") { +texts.generations.outdatedHint }
+        }
         if (generation.isRunning) {
             val elapsed = texts.generations.duration(Duration.between(generation.startedAt, now).seconds.coerceAtLeast(0))
             p { +texts.generations.progress(elapsed, generation.alternativesFound) }
@@ -206,10 +240,14 @@ suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails,
         }
         if (generation.status == GenerationStatus.FAILED_INFEASIBLE) {
             p(classes = "errors") { +texts.generations.infeasibleHint }
-            details.names?.let { names -> constraintList(generation.constraintSnapshot.filter { it.id in generation.infeasibleConstraintIds }, names, texts) }
+            details.names?.let { names ->
+                constraintList(generation.constraintSnapshot.filter { it.id in generation.infeasibleConstraintIds }, names, texts)
+            }
         }
         val columns = objectiveColumns(generation, details.names, texts, details.alternatives)
-        if (details.alternatives.size > 1) p { a(href = comparePath(generation)) { +texts.generations.compareLink } }
+        if (details.alternatives.size > 1) {
+            p { a(href = comparePath(generation)) { +texts.generations.compareLink } }
+        }
         alternativeTable(details, columns, columns.firstOrNull { it.key == sortKey }, descending, texts) { key, dir ->
             "${generationPath(generation)}?sort=$key&dir=$dir"
         }
@@ -240,10 +278,15 @@ suspend fun ApplicationCall.respondDeleteConfirmation(details: GenerationDetails
 }
 
 /** The constraints and fixations of the generation's snapshot, named with today's names (FR-022). */
-private fun FlowContent.constraintsInEffect(details: GenerationDetails, texts: UiTexts) {
+private fun FlowContent.constraintsInEffect(
+    details: GenerationDetails,
+    texts: UiTexts,
+) {
     val names = details.names ?: return
     val generation = details.generation
-    if (generation.constraintSnapshot.isEmpty() && generation.fixationSnapshot.isEmpty()) return
+    if (generation.constraintSnapshot.isEmpty() && generation.fixationSnapshot.isEmpty()) {
+        return
+    }
     h2 { +texts.constraints.inEffectHeading }
     ul {
         generation.constraintSnapshot.forEach { li { +describe(it, names, texts) } }
@@ -266,10 +309,17 @@ fun FlowContent.alternativeTable(
         return
     }
     val numbered = details.alternatives.mapIndexed { index, alternative -> index + 1 to alternative }
-    val sorted = if (sortColumn == null) numbered else {
-        val ascending = numbered.sortedBy { (_, alternative) -> sortColumn.valueOf(alternative) }
-        if (descending) ascending.reversed() else ascending
-    }
+    val sorted =
+        if (sortColumn == null) {
+            numbered
+        } else {
+            val ascending = numbered.sortedBy { (_, alternative) -> sortColumn.valueOf(alternative) }
+            if (descending) {
+                ascending.reversed()
+            } else {
+                ascending
+            }
+        }
     val generation = details.generation
     table {
         tr {

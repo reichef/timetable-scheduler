@@ -21,10 +21,14 @@ suspend fun ApplicationCall.receiveCheckedForm(): Parameters {
     val form = receiveParameters()
     val expectedToken = sessions.get<UserSession>()?.csrfToken ?: throw CsrfViolation()
     val sentToken = form[CSRF_FIELD] ?: throw CsrfViolation()
-    if (!MessageDigest.isEqual(expectedToken.toByteArray(), sentToken.toByteArray())) throw CsrfViolation()
+    if (!MessageDigest.isEqual(expectedToken.toByteArray(), sentToken.toByteArray())) {
+        throw CsrfViolation()
+    }
     return form
 }
 
 fun FORM.csrfField(session: UserSession?) {
-    if (session != null) input(type = InputType.hidden, name = CSRF_FIELD) { value = session.csrfToken }
+    if (session != null) {
+        input(type = InputType.hidden, name = CSRF_FIELD) { value = session.csrfToken }
+    }
 }

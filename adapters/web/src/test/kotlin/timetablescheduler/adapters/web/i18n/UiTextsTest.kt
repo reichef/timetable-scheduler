@@ -18,34 +18,38 @@ import kotlin.test.assertTrue
 
 /** FR-045: every interface text exists in both languages and is really translated. */
 class UiTextsTest {
+    private val validationErrors =
+        listOf(
+            ValidationError.BlankValue("name"),
+            ValidationError.TooLong("name", 80),
+            ValidationError.OutOfRange("weeklyLoad", 0, 38),
+            ValidationError.OutOfRange("password", 10, null),
+            ValidationError.InvalidFormat("startTime"),
+            ValidationError.DuplicateValue("identifier"),
+            ValidationError.InvalidReference("features"),
+            ValidationError.Overlap,
+            ValidationError.EndNotAfterStart,
+            ValidationError.LastSchoolRemoved,
+            ValidationError.NoActivePlannerLeft(SchoolId.new()),
+            ValidationError.IncorrectCurrentPassword,
+        )
 
-    private val validationErrors = listOf(
-        ValidationError.BlankValue("name"),
-        ValidationError.TooLong("name", 80),
-        ValidationError.OutOfRange("weeklyLoad", 0, 38),
-        ValidationError.OutOfRange("password", 10, null),
-        ValidationError.InvalidFormat("startTime"),
-        ValidationError.DuplicateValue("identifier"),
-        ValidationError.InvalidReference("features"),
-        ValidationError.Overlap,
-        ValidationError.EndNotAfterStart,
-        ValidationError.LastSchoolRemoved,
-        ValidationError.NoActivePlannerLeft(SchoolId.new()),
-        ValidationError.IncorrectCurrentPassword,
-    )
-
-    private val readinessIssues = listOf(
-        ReadinessIssue.SubjectNoSuitableRoom(SubjectId.new(), emptySet()),
-        ReadinessIssue.SubjectNoQualifiedTeacher(SubjectId.new()),
-        ReadinessIssue.SubjectTeacherCapacityShortfall(SubjectId.new(), 3),
-        ReadinessIssue.LevelExceedsGrid(ClassLevelId.new(), 2),
-        ReadinessIssue.TeacherWithoutQualification(TeacherId.new()),
-        ReadinessIssue.TeacherZeroLoad(TeacherId.new()),
-        ReadinessIssue.TeacherLoadExceedsGrid(TeacherId.new(), 1),
-    )
+    private val readinessIssues =
+        listOf(
+            ReadinessIssue.SubjectNoSuitableRoom(SubjectId.new(), emptySet()),
+            ReadinessIssue.SubjectNoQualifiedTeacher(SubjectId.new()),
+            ReadinessIssue.SubjectTeacherCapacityShortfall(SubjectId.new(), 3),
+            ReadinessIssue.LevelExceedsGrid(ClassLevelId.new(), 2),
+            ReadinessIssue.TeacherWithoutQualification(TeacherId.new()),
+            ReadinessIssue.TeacherZeroLoad(TeacherId.new()),
+            ReadinessIssue.TeacherLoadExceedsGrid(TeacherId.new(), 1),
+        )
 
     /** Renders [text] in both catalogs and checks both are filled and differ. */
-    private fun assertTranslated(description: String, text: (UiTexts) -> String) {
+    private fun assertTranslated(
+        description: String,
+        text: (UiTexts) -> String,
+    ) {
         val german = text(GermanTexts)
         val english = text(EnglishTexts)
         assertTrue(german.isNotBlank() && english.isNotBlank(), "$description is empty")

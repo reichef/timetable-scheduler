@@ -51,19 +51,39 @@ interface ConstraintTexts {
     val fixationTitle: String
     val deleteConstraint: String
     val deleteFixation: String
+
     fun typeName(type: ConstraintType): String
+
     fun kindName(kind: ConstraintKind): String
+
     fun weightName(weight: SoftWeight): String
+
     fun newConstraintTitle(type: ConstraintType): String
-    fun ruleText(rule: ConstraintRule, kind: ConstraintKind, names: RuleNames): String
-    fun fixationText(className: String, subjectName: String, teacherShortCode: String): String
+
+    fun ruleText(
+        rule: ConstraintRule,
+        kind: ConstraintKind,
+        names: RuleNames,
+    ): String
+
+    fun fixationText(
+        className: String,
+        subjectName: String,
+        teacherShortCode: String,
+    ): String
+
     fun invalidityReason(reason: FixationInvalidity): String
 
     /** "– Muss" / "– Soll (mittel)" after a description. */
-    fun kindSuffix(kind: ConstraintKind, weight: SoftWeight?): String =
+    fun kindSuffix(
+        kind: ConstraintKind,
+        weight: SoftWeight?,
+    ): String =
         if (kind == ConstraintKind.SOFT && weight != null) " – ${kindName(kind)} (${weightName(weight)})" else " – ${kindName(kind)}"
 }
 
 /** Lists slots in week order, e.g. "Dienstag 1. Stunde, Dienstag 2. Stunde". */
-internal fun slotList(slots: Set<DaySlot>, names: RuleNames): String =
-    slots.sortedBy(names.slotOrder).joinToString(", ") { names.slotName(it) }
+internal fun slotList(
+    slots: Set<DaySlot>,
+    names: RuleNames,
+): String = slots.sortedBy(names.slotOrder).joinToString(", ") { names.slotName(it) }

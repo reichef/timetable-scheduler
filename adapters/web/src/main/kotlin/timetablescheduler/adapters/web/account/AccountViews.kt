@@ -34,9 +34,15 @@ const val OWN_PASSWORD_PATH = "/account/password"
 fun accountPath(account: UserAccount) = "$ACCOUNTS_PATH/${account.id.value}"
 
 /** Entered values of the new-account form; the password is never shown again. */
-data class AccountFormInput(val username: String, val role: String)
+data class AccountFormInput(
+    val username: String,
+    val role: String,
+)
 
-private fun FORM.roleSelect(selectedRole: String?, texts: UiTexts) {
+private fun FORM.roleSelect(
+    selectedRole: String?,
+    texts: UiTexts,
+) {
     label {
         +texts.accounts.role
         select {
@@ -61,7 +67,11 @@ suspend fun ApplicationCall.respondAccountList(
     val texts = texts
     respondPage(texts.accounts.title, status) { session ->
         table {
-            tr { th { +texts.auth.username }; th { +texts.accounts.roleColumn }; th { +texts.accounts.statusColumn } }
+            tr {
+                th { +texts.auth.username }
+                th { +texts.accounts.roleColumn }
+                th { +texts.accounts.statusColumn }
+            }
             accounts.forEach { account ->
                 tr {
                     td { a(href = accountPath(account)) { +account.username } }
@@ -123,7 +133,9 @@ suspend fun ApplicationCall.respondOwnPasswordForm(
 ) {
     val texts = texts
     respondPage(texts.accounts.ownPasswordTitle, status) { session ->
-        if (changed) p(classes = "notice") { +texts.accounts.passwordChanged }
+        if (changed) {
+            p(classes = "notice") { +texts.accounts.passwordChanged }
+        }
         validationErrors(errors, texts)
         form(action = OWN_PASSWORD_PATH, method = FormMethod.post) {
             csrfField(session)

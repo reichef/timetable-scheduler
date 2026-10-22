@@ -3,9 +3,9 @@ package timetablescheduler.adapters.web.generation
 import timetablescheduler.adapters.web.TestSystem
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.scheduling.StartRequest
-import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
@@ -14,7 +14,9 @@ import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.TUESDAY
 
 /** A ready school for generation pages: 2 days, slots 1 / break / 2, class 5a with Mathematik 2 and Deutsch 1. */
-class GenerationTestData(system: TestSystem) {
+class GenerationTestData(
+    system: TestSystem,
+) {
     val world = system.world
     val schoolId: SchoolId = system.firstSchoolId()
 
@@ -34,14 +36,19 @@ class GenerationTestData(system: TestSystem) {
 
     val generationsPath = "/schools/${schoolId.value}/generations"
 
-    private fun lesson(subject: timetablescheduler.domain.curriculum.Subject, day: java.time.DayOfWeek, early: Boolean) =
-        LessonAssignment(class5a.id, subject.id, schmidt.id, roomA.id, DaySlot(day, if (early) first.id else second.id))
+    private fun lesson(
+        subject: timetablescheduler.domain.curriculum.Subject,
+        day: java.time.DayOfWeek,
+        early: Boolean,
+    ) = LessonAssignment(class5a.id, subject.id, schmidt.id, roomA.id, DaySlot(day, if (early) first.id else second.id))
 
     /** All three lessons placed. */
-    fun complete() = TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, true), lesson(german, MONDAY, false)), emptyMap())
+    fun complete() =
+        TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, true), lesson(german, MONDAY, false)), emptyMap())
 
     /** German on Tuesday instead of Monday: as complete as [complete], but a different week. */
-    fun germanOnTuesday() = TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, true), lesson(german, TUESDAY, false)), emptyMap())
+    fun germanOnTuesday() =
+        TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, true), lesson(german, TUESDAY, false)), emptyMap())
 
     /**
      * Runs a generation that finds [complete] and stores [others] as further alternatives; returns the generation with
@@ -50,12 +57,27 @@ class GenerationTestData(system: TestSystem) {
     fun generationWith(vararg others: TimetableCandidate): Pair<Generation, List<String>> {
         world.solver.candidates = { listOf(complete()) }
         val admin = world.accounts.findByUsernameIgnoreCase(TestSystem.ADMIN)!!
-        val generation = (world.useCases.scheduling.start.execute(admin.id, schoolId, StartRequest(timeLimitMinutes = 1)) as UseCaseResult.Success).value
+        val generation =
+            (
+                world.useCases.scheduling.start.execute(
+                    admin.id,
+                    schoolId,
+                    StartRequest(timeLimitMinutes = 1),
+                ) as UseCaseResult.Success
+            ).value
         others.forEach { world.storeAlternative(generation, it) }
-        val paths = world.generations.findAlternatives(generation.id).map { "$generationsPath/${generation.id.value}/alternatives/${it.id.value}" }
+        val paths =
+            world.generations
+                .findAlternatives(
+                    generation.id,
+                ).map { "$generationsPath/${generation.id.value}/alternatives/${it.id.value}" }
         return generation to paths
     }
 
     /** German is missing. */
-    fun withoutGerman() = TimetableCandidate(listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, false)), mapOf(CourseKey(class5a.id, german.id) to 1))
+    fun withoutGerman() =
+        TimetableCandidate(
+            listOf(lesson(math, MONDAY, true), lesson(math, TUESDAY, false)),
+            mapOf(CourseKey(class5a.id, german.id) to 1),
+        )
 }
