@@ -242,11 +242,40 @@ As in feature 001. Kotlin base package `timetablescheduler`. Abbreviations:
 
 ---
 
+## Phase 8: Extended Validation with a Test School of Realistic Size
+
+**Goal**: Check on a school of realistic size — a fictitious G9 Gymnasium in the style of Baden-Württemberg, grades
+5–10, 3 classes per level — that timetable generation works in principle, in a way that can be repeated for later
+features.
+
+**Test set**: [test-set-bw-gymnasium.md](test-set-bw-gymnasium.md). **All data is marked as test data** (school
+"TESTDATEN – Testgymnasium Musterstadt", teachers "Testlehrkraft NN", rooms "TEST-…"); it is not real school data.
+
+**Independent Test**: `./gradlew :bootstrap:testSchoolTest` seeds the test school into a fresh database, runs one
+generation with the default time limit and checks the expected results of the test set.
+
+`BOOT_T` = `bootstrap/src/test/kotlin/timetablescheduler/bootstrap`. The test set is test code only and never part of
+the production artifact.
+
+- [X] T110 [P] Describe the test set as typed Kotlin data in `BOOT_T/testschool/BwGymnasiumTestSet.kt` exactly as in `test-set-bw-gymnasium.md` (grid, features, rooms, subjects, weekly periods per level, 18 classes with home rooms, 32 teachers with qualifications, loads and unavailability, 20 constraints, 3 fixations), with a file header stating that it is fictitious test data; test it first in `BOOT_T/testschool/BwGymnasiumTestSetTest.kt`: 31 rooms, 18 subjects, 18 classes, 32 teachers, 588 weekly lessons, 705 periods of teacher capacity, 20 constraints, every subject of every curriculum taught by at least one qualified teacher, every school, teacher and room name carrying its test marker
+- [X] T111 Implement `BOOT_T/testschool/TestSchoolSeeder.kt`: enters the test set through the application use cases as the initial planner (so every validation of 001 and 002 applies; no direct SQL), renames the installed school to the test name and returns the created ids; refuses to run when the school already has rooms, subjects, classes or teachers, so it can never mix test data into existing data; logs only counts (constitution III); test the refusal and a complete seeding with the in-memory fakes in `BOOT_T/testschool/TestSchoolSeederTest.kt`
+- [X] T112 Add Testcontainers PostgreSQL to the test dependencies of `bootstrap/build.gradle.kts` and register two tasks: `testSchoolTest` (JUnit tag `testschool`, excluded from `test` and `build` like `performanceTest`, never up to date) and `seedTestSchool` (runs `BOOT_T/testschool/SeedTestSchool.kt` on the test runtime classpath)
+- [X] T113 Implement `BOOT_T/testschool/SeedTestSchool.kt`: reads the `TTS_*` configuration, applies the migrations, runs the installation and the seeder against that database, so the test school can be inspected in the running application; prints the school id and counts only
+- [X] T114 Implement the scenario test `BOOT_T/testschool/TestSchoolScenarioTest.kt` (tag `testschool`): PostgreSQL via Testcontainers, the real wiring of `Main.kt` (Exposed repositories, `TimefoldTimetableSolver`, background executor); seed, assert the readiness check has no blocking issue, start a generation with the default time limit, wait for its end and assert the expected results of the test set (first alternative < 2 min, ≥ 3 alternatives, independent re-check of all hard constraints, fixations and unavailability on the stored alternatives, no lessons of grades 5–6 in the 9./10. Stunde, room features and home rooms respected, no dominated alternative); print the recorded metrics of the test set (times, counts, objective values — no names) — class names (e.g. "5a") of the fictitious test set are printed with the unplaced lessons, nothing else
+- [X] T115 Run `./gradlew :bootstrap:testSchoolTest` and record the metrics in this task; if fewer than 3 alternatives place at least 90 % of the lessons (see the near-empty alternatives found in T104), raise it for `/speckit-clarify` on this feature before the pull request (T109) — 2026-10-22, default time limit 10 min: the run ended FINISHED with **1 alternative** that places all 588 lessons with 0 soft violations (objectives class fill 1.0, teacher load usage 0.834 = 588/705, other soft 1.0); first alternative after 4 s, first useful one after 83 s; every hard constraint, fixation, unavailability and room rule held. **The assertion "≥ 3 alternatives" (SC-001) fails**: this alternative is optimal in every objective, so Pareto-correctly no other one is kept, and timetables with equal values are not reported because the solver only reports improvements. Raised for `/speckit-clarify` (see T116 for the 3-minute run with 10 alternatives); the scenario test keeps the SC-001 assertion until the specification is refined
+- [X] T116 Seed a fresh database `timetable_testschool` with `./gradlew :bootstrap:seedTestSchool`, start `:bootstrap:run` against it and review in the user interface: generation list and result table, comparison chart, class 5a, teacher T07, room TEST-NW1, choosing an alternative; record the findings in this task — 2026-10-22 on `timetable_testschool`: seeding via `seedTestSchool` (31 rooms, 18 subjects, 18 classes, 32 teachers), app pages checked over HTTP: school with test marker, readiness without blocking issues, constraints, generation progress, result table, class 5a (home room TEST-R101, nothing in the 9./10. Stunde), teacher T07, comparison chart, choosing; room TEST-NW1 holds only Biologie/BNT/Chemie/Physik/Profilfach (verified in the database; the scripted page check matched the language switch "Deutsch" and was a script defect). A generation with a 3-minute limit ended with 10 alternatives — trade-offs exist while the solver has not yet reached the optimum
+- [X] T117 [P] Document the test school in `README.md` and `quickstart.md` (commands, separate database, the "test data — not a real school" note, how to extend the test set in later features)
+
+**Checkpoint**: Generation is validated on a school of realistic size; the scenario can be rerun for later features
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 7)**
+- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 7)** → **Extended validation (Phase 8)**
+- T109 (pull request) waits for Phase 8.
 - Feature 001 (branch `one-school`) must be in place; this branch is based on it.
 
 ### User Story Dependencies
@@ -257,7 +286,7 @@ As in feature 001. Kotlin base package `timetablescheduler`. Abbreviations:
 - **US4 (P4)**: after US1; deletion protection of the chosen timetable needs US3.
 
 ```text
-Setup → Foundational → US1 → US2 → US3 → US4 → Polish
+Setup → Foundational → US1 → US2 → US3 → US4 → Polish → Extended validation → T109 (pull request)
 ```
 
 ### Within Each Phase

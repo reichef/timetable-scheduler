@@ -39,6 +39,7 @@ set -a; . ./.env; set +a                      # load the configuration into the 
 ./gradlew build                               # compile, unit, route and Testcontainers tests
 ./gradlew :bootstrap:run                      # http://localhost:8080 – applies Flyway migrations on start
 ./gradlew :adapters:solver:performanceTest    # optional, ~10 min: SC-001-sized school (not part of build)
+./gradlew :bootstrap:testSchoolTest           # optional, ~10 min: test school end to end (not part of build)
 ```
 
 Log in at `http://localhost:8080/login` with the initial planner. Planners manage further accounts under *Konten* (*Accounts*).
@@ -63,6 +64,22 @@ The end-to-end validation scenarios are listed in the quickstarts of
   violate a hard constraint are highlighted, also in the chosen timetable.
 
 The solver is [Timefold Solver](https://timefold.ai) (Apache 2.0), used only in the `adapters:solver` module.
+
+## Test school (test data)
+
+A fictitious G9 Gymnasium in the style of Baden-Württemberg (grades 5–10, three classes each, 32 teachers, 20
+constraints) checks timetable generation on a school of realistic size. **It is test data, not a real school:** the
+school is called "TESTDATEN – Testgymnasium Musterstadt", teachers "Testlehrkraft NN", rooms "TEST-…", and the weekly
+periods are an assumption. Description and accepted simplifications:
+[test-set-bw-gymnasium.md](specs/002-timetable-generation/test-set-bw-gymnasium.md).
+
+- `./gradlew :bootstrap:testSchoolTest` seeds it into a PostgreSQL container, runs one generation with the default
+  time limit and checks the results (Docker required).
+- `./gradlew :bootstrap:seedTestSchool` seeds it into the database of the `TTS_*` variables to look at it with
+  `:bootstrap:run`. Use a **separate, empty database**; the seeder refuses a school that already has master data.
+
+The test set lives in `bootstrap/src/test/.../testschool` and is never part of the application. Later features extend
+it there (and in the description) when they need further data.
 
 ## Interface language
 

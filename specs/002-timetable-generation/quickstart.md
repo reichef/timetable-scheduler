@@ -59,6 +59,22 @@ Run feature 001 quickstart scenarios 0–14 first (school, rooms incl. chemistry
 | 26 | all | Switch to English on generation, alternative, comparison and constraint pages | All texts English, names unchanged |
 | 27 | all | Inspect the application log after scenarios 1–24 | Only ids, statuses, counts and durations; no names of teachers, classes, subjects, rooms |
 
+## Test school of realistic size (test data)
+
+The fictitious test school of [test-set-bw-gymnasium.md](test-set-bw-gymnasium.md) — **test data, not a real
+school** — repeats the generation on 18 classes and 32 teachers:
+
+```sh
+./gradlew :bootstrap:testSchoolTest            # container database, one generation, assertions and metrics (~10 min)
+
+# inspect it in the application, in a separate empty database (never the developer database)
+docker compose exec -T db psql -U timetable_owner -d timetable -c "CREATE DATABASE timetable_testschool"
+docker compose exec -T db psql -U timetable_owner -d timetable_testschool -c "GRANT USAGE, CREATE ON SCHEMA public TO timetable_app"
+set -a; . ./.env; set +a
+TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :bootstrap:seedTestSchool
+TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :bootstrap:run
+```
+
 ## Automated checks
 
 - `./gradlew build` includes: domain tests for `HardConstraintChecker`, `ObjectiveEvaluator`, `ParetoArchive`, `InfeasibilityPreCheck`, every constraint type; solver adapter tests asserting 0 hard violations and non-dominance on seeded data sets (SC-002, SC-003) and full placement for a data set with a known complete solution (SC-004); route tests for every contract row; log confidentiality test (FR-026).
