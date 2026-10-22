@@ -37,7 +37,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class GenerationRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
     private val accounts = ExposedUserAccountRepository()
     private val generations = ExposedGenerationRepository()
@@ -54,9 +53,13 @@ class GenerationRepositoryIT : PostgresTestBase() {
     private fun storedGeneration(): Generation =
         Generation.start(school.id, planner.id, startedAt, 10, "a".repeat(64)).valid().also { inTransaction { generations.insert(it) } }
 
-    private fun alternativeOf(generation: Generation, classFill: Double = 0.75): Alternative {
+    private fun alternativeOf(
+        generation: Generation,
+        classFill: Double = 0.75,
+    ): Alternative {
         val course = CourseKey(SchoolClassId.new(), SubjectId.new())
-        val lesson = LessonAssignment(course.classId, course.subjectId, TeacherId.new(), RoomId.new(), DaySlot(DayOfWeek.MONDAY, TimeSlotId.new()))
+        val lesson =
+            LessonAssignment(course.classId, course.subjectId, TeacherId.new(), RoomId.new(), DaySlot(DayOfWeek.MONDAY, TimeSlotId.new()))
         return Alternative(
             id = AlternativeId.new(),
             generationId = generation.id,
@@ -131,19 +134,40 @@ class GenerationRepositoryIT : PostgresTestBase() {
 
     @Test
     fun `the snapshot of constraints and fixations, separate objectives and infeasible constraints round-trip (FR-022)`() {
-        val noGaps = SchedulingConstraint(SchedulingConstraintId.new(), school.id, ConstraintKind.SOFT, SoftWeight.LOW, true, ConstraintRule.ClassNoGaps(ClassScope.AllClasses), 3)
-        val excluded = SchedulingConstraint(
-            SchedulingConstraintId.new(), school.id, ConstraintKind.HARD, null, true,
-            ConstraintRule.SubjectExcludedSlots(SubjectId.new(), null, setOf(DaySlot(DayOfWeek.MONDAY, TimeSlotId.new()))), 0,
-        )
+        val noGaps =
+            SchedulingConstraint(
+                SchedulingConstraintId.new(),
+                school.id,
+                ConstraintKind.SOFT,
+                SoftWeight.LOW,
+                true,
+                ConstraintRule.ClassNoGaps(ClassScope.AllClasses),
+                3,
+            )
+        val excluded =
+            SchedulingConstraint(
+                SchedulingConstraintId.new(),
+                school.id,
+                ConstraintKind.HARD,
+                null,
+                true,
+                ConstraintRule.SubjectExcludedSlots(SubjectId.new(), null, setOf(DaySlot(DayOfWeek.MONDAY, TimeSlotId.new()))),
+                0,
+            )
         val fixation = TeacherFixation(TeacherFixationId.new(), school.id, SchoolClassId.new(), SubjectId.new(), TeacherId.new(), 2)
-        val generation = Generation.start(school.id, planner.id, startedAt, 10, "a".repeat(64)).valid().copy(
-            separateObjectiveIds = listOf(noGaps.id),
-            constraintSnapshot = listOf(noGaps, excluded),
-            fixationSnapshot = listOf(fixation),
-        )
+        val generation =
+            Generation.start(school.id, planner.id, startedAt, 10, "a".repeat(64)).valid().copy(
+                separateObjectiveIds = listOf(noGaps.id),
+                constraintSnapshot = listOf(noGaps, excluded),
+                fixationSnapshot = listOf(fixation),
+            )
         inTransaction { generations.insert(generation) }
-        val ended = generation.endAs(GenerationStatus.FAILED_INFEASIBLE, startedAt.plusSeconds(60)).copy(infeasibleConstraintIds = listOf(excluded.id))
+        val ended =
+            generation
+                .endAs(
+                    GenerationStatus.FAILED_INFEASIBLE,
+                    startedAt.plusSeconds(60),
+                ).copy(infeasibleConstraintIds = listOf(excluded.id))
         inTransaction { generations.saveEnd(ended) }
 
         assertEquals(ended, inTransaction { generations.findById(generation.id) })

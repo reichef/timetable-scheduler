@@ -14,7 +14,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SchoolRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
 
     private fun <T> ValidationResult<T>.valid(): T = (this as ValidationResult.Valid).value
@@ -22,10 +21,15 @@ class SchoolRepositoryIT : PostgresTestBase() {
     private fun storedSchool(name: String): School = School.create(name).valid().also { inTransaction { schools.insert(it) } }
 
     private fun weekGrid(): TimeGrid =
-        TimeGrid.empty().withTeachingDays(DayOfWeek.entries.filter { it <= FRIDAY }.toSet())
-            .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING).valid()
-            .withSlotAdded("Pause", LocalTime.of(8, 45), LocalTime.of(9, 0), SlotKind.BREAK).valid()
-            .withSlotAdded("2. Stunde", LocalTime.of(9, 0), LocalTime.of(9, 45), SlotKind.TEACHING).valid()
+        TimeGrid
+            .empty()
+            .withTeachingDays(DayOfWeek.entries.filter { it <= FRIDAY }.toSet())
+            .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING)
+            .valid()
+            .withSlotAdded("Pause", LocalTime.of(8, 45), LocalTime.of(9, 0), SlotKind.BREAK)
+            .valid()
+            .withSlotAdded("2. Stunde", LocalTime.of(9, 0), LocalTime.of(9, 45), SlotKind.TEACHING)
+            .valid()
 
     @Test
     fun `stores and reloads a time grid with exclusions`() {
@@ -44,9 +48,12 @@ class SchoolRepositoryIT : PostgresTestBase() {
         inTransaction { schools.saveTimeGrid(school.id, grid) }
         val first = grid.slots.first()
 
-        val changed = grid.withSlotRemoved(grid.slots.last().id)
-            .withSlotUpdated(first.id, "Erste", first.startTime, first.endTime, SlotKind.TEACHING).valid()
-            .withTeachingDays(setOf(DayOfWeek.MONDAY))
+        val changed =
+            grid
+                .withSlotRemoved(grid.slots.last().id)
+                .withSlotUpdated(first.id, "Erste", first.startTime, first.endTime, SlotKind.TEACHING)
+                .valid()
+                .withTeachingDays(setOf(DayOfWeek.MONDAY))
         inTransaction { schools.saveTimeGrid(school.id, changed) }
 
         val reloaded = inTransaction { schools.findTimeGrid(school.id) }

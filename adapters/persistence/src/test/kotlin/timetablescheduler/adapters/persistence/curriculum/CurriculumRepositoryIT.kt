@@ -1,7 +1,7 @@
 package timetablescheduler.adapters.persistence.curriculum
 
-import timetablescheduler.adapters.persistence.PostgresTestBase
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
+import timetablescheduler.adapters.persistence.PostgresTestBase
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
 import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
@@ -23,7 +23,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CurriculumRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
     private val features = ExposedRoomFeatureRepository()
     private val subjects = ExposedSubjectRepository()
@@ -35,21 +34,36 @@ class CurriculumRepositoryIT : PostgresTestBase() {
 
     private fun storedSchool(): School = School.create("Gymnasium Nord").valid().also { inTransaction { schools.insert(it) } }
 
-    private fun storedFeature(schoolId: SchoolId, name: String): RoomFeature =
-        RoomFeature.create(schoolId, name).valid().also { inTransaction { features.insert(it) } }
+    private fun storedFeature(
+        schoolId: SchoolId,
+        name: String,
+    ): RoomFeature = RoomFeature.create(schoolId, name).valid().also { inTransaction { features.insert(it) } }
 
-    private fun storedSubject(schoolId: SchoolId, name: String, featureIds: Set<RoomFeatureId> = emptySet()): Subject =
-        Subject.create(schoolId, name, featureIds, featureIds).valid().also { inTransaction { subjects.insert(it) } }
+    private fun storedSubject(
+        schoolId: SchoolId,
+        name: String,
+        featureIds: Set<RoomFeatureId> = emptySet(),
+    ): Subject = Subject.create(schoolId, name, featureIds, featureIds).valid().also { inTransaction { subjects.insert(it) } }
 
-    private fun storedLevel(schoolId: SchoolId, identifier: String, vararg entries: CurriculumEntry): ClassLevel {
-        val level = ClassLevel.create(schoolId, identifier).valid()
-            .update(identifier, entries.toList(), entries.map { it.subjectId }.toSet()).valid()
+    private fun storedLevel(
+        schoolId: SchoolId,
+        identifier: String,
+        vararg entries: CurriculumEntry,
+    ): ClassLevel {
+        val level =
+            ClassLevel
+                .create(schoolId, identifier)
+                .valid()
+                .update(identifier, entries.toList(), entries.map { it.subjectId }.toSet())
+                .valid()
         inTransaction { levels.insert(level) }
         return level
     }
 
-    private fun storedClass(level: ClassLevel, suffix: String): SchoolClass =
-        SchoolClass.create(level.id, suffix).valid().also { inTransaction { classes.insert(it) } }
+    private fun storedClass(
+        level: ClassLevel,
+        suffix: String,
+    ): SchoolClass = SchoolClass.create(level.id, suffix).valid().also { inTransaction { classes.insert(it) } }
 
     @Test
     fun `subject round trip with required features and lookup by feature`() {

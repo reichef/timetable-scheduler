@@ -21,7 +21,6 @@ import timetablescheduler.domain.common.SchoolId
 import java.util.UUID
 
 class ExposedUserAccountRepository : UserAccountRepository {
-
     override fun insert(account: UserAccount) {
         UserAccountTable.insert {
             it[id] = account.id.value
@@ -35,33 +34,45 @@ class ExposedUserAccountRepository : UserAccountRepository {
     }
 
     override fun update(account: UserAccount): Boolean {
-        val updatedRows = UserAccountTable.update({
-            (UserAccountTable.id eq account.id.value) and (UserAccountTable.version eq account.version)
-        }) {
-            it[role] = account.role.name
-            it[active] = account.active
-            it[version] = account.version + 1
+        val updatedRows =
+            UserAccountTable.update({
+                (UserAccountTable.id eq account.id.value) and (UserAccountTable.version eq account.version)
+            }) {
+                it[role] = account.role.name
+                it[active] = account.active
+                it[version] = account.version + 1
+            }
+        if (updatedRows != 1) {
+            return false
         }
-        if (updatedRows != 1) return false
         AccountSchoolTable.deleteWhere { AccountSchoolTable.accountId eq account.id.value }
         insertSchoolAssignments(account)
         return true
     }
 
     /** Only the owner changes the language, so no version check (R19); `update` never writes this column. */
-    override fun updatePreferredLanguage(accountId: AccountId, language: InterfaceLanguage) {
+    override fun updatePreferredLanguage(
+        accountId: AccountId,
+        language: InterfaceLanguage,
+    ) {
         UserAccountTable.update({ UserAccountTable.id eq accountId.value }) {
             it[preferredLanguage] = language.code
         }
     }
 
     override fun findById(accountId: AccountId): UserAccount? =
-        UserAccountTable.selectAll().where { UserAccountTable.id eq accountId.value }
-            .singleOrNull()?.toAccount()
+        UserAccountTable
+            .selectAll()
+            .where { UserAccountTable.id eq accountId.value }
+            .singleOrNull()
+            ?.toAccount()
 
     override fun findByUsernameIgnoreCase(username: String): UserAccount? =
-        UserAccountTable.selectAll().where { UserAccountTable.username.lowerCase() eq username.trim().lowercase() }
-            .singleOrNull()?.toAccount()
+        UserAccountTable
+            .selectAll()
+            .where { UserAccountTable.username.lowerCase() eq username.trim().lowercase() }
+            .singleOrNull()
+            ?.toAccount()
 
     override fun existsAny(): Boolean = !UserAccountTable.selectAll().limit(1).empty()
 
@@ -72,15 +83,18 @@ class ExposedUserAccountRepository : UserAccountRepository {
                 (AccountSchoolTable.schoolId eq schoolId.value) and
                     (UserAccountTable.active eq true) and
                     (UserAccountTable.role eq Role.PLANNER.name)
-            }
-            .map { AccountId(it[UserAccountTable.id]) }
+            }.map { AccountId(it[UserAccountTable.id]) }
             .toSet()
 
     override fun findBySchool(schoolId: SchoolId): List<UserAccount> {
-        val accountIds = AccountSchoolTable.select(AccountSchoolTable.accountId)
-            .where { AccountSchoolTable.schoolId eq schoolId.value }
-            .map { it[AccountSchoolTable.accountId] }
-        if (accountIds.isEmpty()) return emptyList()
+        val accountIds =
+            AccountSchoolTable
+                .select(AccountSchoolTable.accountId)
+                .where { AccountSchoolTable.schoolId eq schoolId.value }
+                .map { it[AccountSchoolTable.accountId] }
+        if (accountIds.isEmpty()) {
+            return emptyList()
+        }
         return UserAccountTable.selectAll().where { UserAccountTable.id inList accountIds }.map { it.toAccount() }
     }
 
@@ -92,7 +106,9 @@ class ExposedUserAccountRepository : UserAccountRepository {
     }
 
     private fun schoolIdsOf(accountIds: Collection<UUID>): Map<UUID, Set<SchoolId>> =
-        AccountSchoolTable.selectAll().where { AccountSchoolTable.accountId inList accountIds }
+        AccountSchoolTable
+            .selectAll()
+            .where { AccountSchoolTable.accountId inList accountIds }
             .groupBy({ it[AccountSchoolTable.accountId] }, { SchoolId(it[AccountSchoolTable.schoolId]) })
             .mapValues { it.value.toSet() }
 

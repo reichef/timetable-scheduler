@@ -73,49 +73,81 @@ data class RuleColumns(
         // Only class-related types have a scope; teacher and exclusion types have no class or an optional one.
         val scope by lazy { if (allClasses) ClassScope.AllClasses else ClassScope.SpecificClass(SchoolClassId(classId!!)) }
         return when (type) {
-            ConstraintType.CLASS_MAX_PERIODS_PER_DAY -> ConstraintRule.ClassMaxPeriodsPerDay(scope, limit!!)
-            ConstraintType.CLASS_MIN_PERIODS_PER_DAY -> ConstraintRule.ClassMinPeriodsPerDay(scope, limit!!)
-            ConstraintType.CLASS_NO_GAPS -> ConstraintRule.ClassNoGaps(scope)
-            ConstraintType.TEACHER_MAX_PERIODS_PER_DAY -> ConstraintRule.TeacherMaxPeriodsPerDay(TeacherId(teacherId!!), limit!!)
-            ConstraintType.TEACHER_MAX_GAPS_PER_DAY -> ConstraintRule.TeacherMaxGapsPerDay(TeacherId(teacherId!!), limit!!)
-            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS -> ConstraintRule.SubjectMaxPerDayInClass(scope, subjectId?.let(::SubjectId), limit!!)
-            ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS ->
+            ConstraintType.CLASS_MAX_PERIODS_PER_DAY -> {
+                ConstraintRule.ClassMaxPeriodsPerDay(scope, limit!!)
+            }
+
+            ConstraintType.CLASS_MIN_PERIODS_PER_DAY -> {
+                ConstraintRule.ClassMinPeriodsPerDay(scope, limit!!)
+            }
+
+            ConstraintType.CLASS_NO_GAPS -> {
+                ConstraintRule.ClassNoGaps(scope)
+            }
+
+            ConstraintType.TEACHER_MAX_PERIODS_PER_DAY -> {
+                ConstraintRule.TeacherMaxPeriodsPerDay(TeacherId(teacherId!!), limit!!)
+            }
+
+            ConstraintType.TEACHER_MAX_GAPS_PER_DAY -> {
+                ConstraintRule.TeacherMaxGapsPerDay(TeacherId(teacherId!!), limit!!)
+            }
+
+            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS -> {
+                ConstraintRule.SubjectMaxPerDayInClass(scope, subjectId?.let(::SubjectId), limit!!)
+            }
+
+            ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS -> {
                 ConstraintRule.SubjectDoublePeriodsInClass(SchoolClassId(classId!!), SubjectId(subjectId!!), acrossBreaks!!)
-            ConstraintType.CLASS_EXCLUDED_SLOTS -> ConstraintRule.ClassExcludedSlots(SchoolClassId(classId!!), slots)
-            ConstraintType.TEACHER_EXCLUDED_SLOTS -> ConstraintRule.TeacherExcludedSlots(TeacherId(teacherId!!), slots)
-            ConstraintType.SUBJECT_EXCLUDED_SLOTS -> ConstraintRule.SubjectExcludedSlots(SubjectId(subjectId!!), classId?.let(::SchoolClassId), slots)
+            }
+
+            ConstraintType.CLASS_EXCLUDED_SLOTS -> {
+                ConstraintRule.ClassExcludedSlots(SchoolClassId(classId!!), slots)
+            }
+
+            ConstraintType.TEACHER_EXCLUDED_SLOTS -> {
+                ConstraintRule.TeacherExcludedSlots(TeacherId(teacherId!!), slots)
+            }
+
+            ConstraintType.SUBJECT_EXCLUDED_SLOTS -> {
+                ConstraintRule.SubjectExcludedSlots(SubjectId(subjectId!!), classId?.let(::SchoolClassId), slots)
+            }
         }
     }
 
     companion object {
         fun of(rule: ConstraintRule): RuleColumns {
             val scope = rule.classScope
-            val ruleClassId = when (rule) {
-                is ConstraintRule.SubjectDoublePeriodsInClass -> rule.classId
-                is ConstraintRule.ClassExcludedSlots -> rule.classId
-                is ConstraintRule.SubjectExcludedSlots -> rule.classId
-                else -> (scope as? ClassScope.SpecificClass)?.classId
-            }
-            val teacher = when (rule) {
-                is ConstraintRule.TeacherMaxPeriodsPerDay -> rule.teacherId
-                is ConstraintRule.TeacherMaxGapsPerDay -> rule.teacherId
-                is ConstraintRule.TeacherExcludedSlots -> rule.teacherId
-                else -> null
-            }
-            val subject = when (rule) {
-                is ConstraintRule.SubjectMaxPerDayInClass -> rule.subjectId
-                is ConstraintRule.SubjectDoublePeriodsInClass -> rule.subjectId
-                is ConstraintRule.SubjectExcludedSlots -> rule.subjectId
-                else -> null
-            }
-            val limit = when (rule) {
-                is ConstraintRule.ClassMaxPeriodsPerDay -> rule.limit
-                is ConstraintRule.ClassMinPeriodsPerDay -> rule.limit
-                is ConstraintRule.TeacherMaxPeriodsPerDay -> rule.limit
-                is ConstraintRule.TeacherMaxGapsPerDay -> rule.limit
-                is ConstraintRule.SubjectMaxPerDayInClass -> rule.limit
-                else -> null
-            }
+            val ruleClassId =
+                when (rule) {
+                    is ConstraintRule.SubjectDoublePeriodsInClass -> rule.classId
+                    is ConstraintRule.ClassExcludedSlots -> rule.classId
+                    is ConstraintRule.SubjectExcludedSlots -> rule.classId
+                    else -> (scope as? ClassScope.SpecificClass)?.classId
+                }
+            val teacher =
+                when (rule) {
+                    is ConstraintRule.TeacherMaxPeriodsPerDay -> rule.teacherId
+                    is ConstraintRule.TeacherMaxGapsPerDay -> rule.teacherId
+                    is ConstraintRule.TeacherExcludedSlots -> rule.teacherId
+                    else -> null
+                }
+            val subject =
+                when (rule) {
+                    is ConstraintRule.SubjectMaxPerDayInClass -> rule.subjectId
+                    is ConstraintRule.SubjectDoublePeriodsInClass -> rule.subjectId
+                    is ConstraintRule.SubjectExcludedSlots -> rule.subjectId
+                    else -> null
+                }
+            val limit =
+                when (rule) {
+                    is ConstraintRule.ClassMaxPeriodsPerDay -> rule.limit
+                    is ConstraintRule.ClassMinPeriodsPerDay -> rule.limit
+                    is ConstraintRule.TeacherMaxPeriodsPerDay -> rule.limit
+                    is ConstraintRule.TeacherMaxGapsPerDay -> rule.limit
+                    is ConstraintRule.SubjectMaxPerDayInClass -> rule.limit
+                    else -> null
+                }
             return RuleColumns(
                 type = rule.type,
                 allClasses = scope == ClassScope.AllClasses,
@@ -128,6 +160,9 @@ data class RuleColumns(
             )
         }
 
-        fun slotOf(day: String, slotId: UUID) = DaySlot(DayOfWeek.valueOf(day), TimeSlotId(slotId))
+        fun slotOf(
+            day: String,
+            slotId: UUID,
+        ) = DaySlot(DayOfWeek.valueOf(day), TimeSlotId(slotId))
     }
 }

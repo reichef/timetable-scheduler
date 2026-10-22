@@ -51,7 +51,6 @@ object TeacherUnavailabilityTable : Table("teacher_unavailability") {
 }
 
 class ExposedTeacherRepository : TeacherRepository {
-
     override fun insert(teacher: Teacher) {
         TeacherTable.insert {
             it[id] = teacher.id.value
@@ -65,13 +64,16 @@ class ExposedTeacherRepository : TeacherRepository {
     }
 
     override fun update(teacher: Teacher): Boolean {
-        val updatedRows = TeacherTable.update({ (TeacherTable.id eq teacher.id.value) and (TeacherTable.version eq teacher.version) }) {
-            it[name] = teacher.name
-            it[shortCode] = teacher.shortCode
-            it[weeklyLoad] = teacher.weeklyLoad
-            it[version] = teacher.version + 1
+        val updatedRows =
+            TeacherTable.update({ (TeacherTable.id eq teacher.id.value) and (TeacherTable.version eq teacher.version) }) {
+                it[name] = teacher.name
+                it[shortCode] = teacher.shortCode
+                it[weeklyLoad] = teacher.weeklyLoad
+                it[version] = teacher.version + 1
+            }
+        if (updatedRows != 1) {
+            return false
         }
-        if (updatedRows != 1) return false
         deleteDetails(teacher.id.value)
         insertDetails(teacher)
         return true
@@ -93,10 +95,14 @@ class ExposedTeacherRepository : TeacherRepository {
             .singleOrNull()
 
     override fun findQualifiedFor(subjectId: SubjectId): List<Teacher> {
-        val teacherIds = TeacherQualificationTable.select(TeacherQualificationTable.teacherId)
-            .where { TeacherQualificationTable.subjectId eq subjectId.value }
-            .map { it[TeacherQualificationTable.teacherId] }
-        if (teacherIds.isEmpty()) return emptyList()
+        val teacherIds =
+            TeacherQualificationTable
+                .select(TeacherQualificationTable.teacherId)
+                .where { TeacherQualificationTable.subjectId eq subjectId.value }
+                .map { it[TeacherQualificationTable.teacherId] }
+        if (teacherIds.isEmpty()) {
+            return emptyList()
+        }
         return loadTeachers(TeacherTable.selectAll().where { TeacherTable.id inList teacherIds }.toList())
     }
 
@@ -119,15 +125,28 @@ class ExposedTeacherRepository : TeacherRepository {
 
     /** Loads qualifications and unavailability of all [rows] with two queries instead of two per teacher. */
     private fun loadTeachers(rows: List<ResultRow>): List<Teacher> {
-        if (rows.isEmpty()) return emptyList()
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
         val teacherIds = rows.map { it[TeacherTable.id] }
-        val qualifications = TeacherQualificationTable.selectAll().where { TeacherQualificationTable.teacherId inList teacherIds }
-            .groupBy({ it[TeacherQualificationTable.teacherId] }, { SubjectId(it[TeacherQualificationTable.subjectId]) })
-        val unavailability = TeacherUnavailabilityTable.selectAll().where { TeacherUnavailabilityTable.teacherId inList teacherIds }
-            .groupBy(
-                { it[TeacherUnavailabilityTable.teacherId] },
-                { Unavailability(DayOfWeek.valueOf(it[TeacherUnavailabilityTable.dayOfWeek]), TimeSlotId(it[TeacherUnavailabilityTable.slotId])) },
-            )
+        val qualifications =
+            TeacherQualificationTable
+                .selectAll()
+                .where { TeacherQualificationTable.teacherId inList teacherIds }
+                .groupBy({ it[TeacherQualificationTable.teacherId] }, { SubjectId(it[TeacherQualificationTable.subjectId]) })
+        val unavailability =
+            TeacherUnavailabilityTable
+                .selectAll()
+                .where { TeacherUnavailabilityTable.teacherId inList teacherIds }
+                .groupBy(
+                    { it[TeacherUnavailabilityTable.teacherId] },
+                    {
+                        Unavailability(
+                            DayOfWeek.valueOf(it[TeacherUnavailabilityTable.dayOfWeek]),
+                            TimeSlotId(it[TeacherUnavailabilityTable.slotId]),
+                        )
+                    },
+                )
         return rows.map { row ->
             val teacherId = row[TeacherTable.id]
             Teacher(
@@ -146,9 +165,12 @@ class ExposedTeacherRepository : TeacherRepository {
 
 /** Teacher unavailabilities of a time slot, counted for the deletion confirmation and removed with the slot. */
 class ExposedTimeSlotUsage : TimeSlotUsage {
-
     override fun countUnavailabilities(slotId: TimeSlotId): Int =
-        TeacherUnavailabilityTable.selectAll().where { TeacherUnavailabilityTable.slotId eq slotId.value }.count().toInt()
+        TeacherUnavailabilityTable
+            .selectAll()
+            .where { TeacherUnavailabilityTable.slotId eq slotId.value }
+            .count()
+            .toInt()
 
     override fun deleteUnavailabilities(slotId: TimeSlotId) {
         TeacherUnavailabilityTable.deleteWhere { TeacherUnavailabilityTable.slotId eq slotId.value }
