@@ -84,20 +84,20 @@ satisfied is suppressed for that statement or file only, with a comment giving t
 `FEATURE/review-findings.md` as `ktlint-suppression` (data model "Suppression"). `./gradlew build` green after each
 commit.
 
-- [ ] T012 [US1] Domain — mechanical commit: `layoutFormat -PlayoutPath=domain`
-- [ ] T013 [US1] Domain — manual commit: remaining findings in `domain/` until `layoutCheck -PlayoutPath=domain` reports no violations
-- [ ] T014 [US1] Application — mechanical commit: `layoutFormat -PlayoutPath=application` (main, test fixtures, tests)
-- [ ] T015 [US1] Application — manual commit: remaining findings in `application/`
-- [ ] T016 [US1] Persistence — mechanical commit: `layoutFormat -PlayoutPath=adapters/persistence` (migrations are SQL and not touched)
-- [ ] T017 [US1] Persistence — manual commit: remaining findings in `adapters/persistence/`
-- [ ] T018 [US1] Solver — mechanical commit: `layoutFormat -PlayoutPath=adapters/solver`
-- [ ] T019 [US1] Solver — manual commit: remaining findings in `adapters/solver/` (constraint streams: keep the chained calls readable; wrap per call, not per argument where `chain-method-continuation` allows)
-- [ ] T020 [US1] Web — mechanical commit: `layoutFormat -PlayoutPath=adapters/web`
-- [ ] T021 [US1] Web — manual commit: remaining findings in `adapters/web/` (texts in `GermanTexts.kt`/`EnglishTexts.kt` and `ConstraintTextCatalogs.kt` are wrapped by splitting the Kotlin expression, never by changing the displayed text; UI texts tests must stay unchanged)
-- [ ] T022 [US1] Bootstrap — mechanical commit: `layoutFormat -PlayoutPath=bootstrap`
-- [ ] T023 [US1] Bootstrap — manual commit: remaining findings in `bootstrap/` (incl. the test school data in `bootstrap/src/test/.../testschool/`)
-- [ ] T024 [US1] Build scripts and tooling: `layoutFormat` and remaining findings in the root `build.gradle.kts`, `settings.gradle.kts` and `tooling/layout-rules/` (the rule module must pass its own rules)
-- [ ] T025 [US1] Run `./gradlew layoutCheck` over the whole project: `Layout check: no violations`; record the result in `FEATURE/review-findings.md` (SC-001)
+- [X] T012 [US1] Domain — mechanical commit: `layoutFormat -PlayoutPath=domain` (a0fd215)
+- [X] T013 [US1] Domain — manual commit: remaining findings in `domain/` until `layoutCheck -PlayoutPath=domain` reports no violations (31590be)
+- [X] T014 [US1] Application — mechanical commit: `layoutFormat -PlayoutPath=application` (main, test fixtures, tests) (417a3a0)
+- [X] T015 [US1] Application — manual commit: remaining findings in `application/` (63fb08e)
+- [X] T016 [US1] Persistence — mechanical commit: `layoutFormat -PlayoutPath=adapters/persistence` (migrations are SQL and not touched) (643f260)
+- [X] T017 [US1] Persistence — manual commit: remaining findings in `adapters/persistence/` (d7a27e1; the rule refinement for column mappings is 4254aa0, see review-findings F-001)
+- [X] T018 [US1] Solver — mechanical commit: `layoutFormat -PlayoutPath=adapters/solver` (da6de44)
+- [X] T019 [US1] Solver — manual commit: remaining findings in `adapters/solver/` (constraint streams: keep the chained calls readable; wrap per call, not per argument where `chain-method-continuation` allows) (585bc07)
+- [X] T020 [US1] Web — mechanical commit: `layoutFormat -PlayoutPath=adapters/web` (33e964b)
+- [X] T021 [US1] Web — manual commit: remaining findings in `adapters/web/` (texts in `GermanTexts.kt`/`EnglishTexts.kt` and `ConstraintTextCatalogs.kt` are wrapped by splitting the Kotlin expression, never by changing the displayed text; UI texts tests must stay unchanged) (b4edfd9; displayed texts unchanged, 120 web tests green)
+- [X] T022 [US1] Bootstrap — mechanical commit: `layoutFormat -PlayoutPath=bootstrap` (70478d2)
+- [X] T023 [US1] Bootstrap — manual commit: remaining findings in `bootstrap/` (incl. the test school data in `bootstrap/src/test/.../testschool/`) (6b0e1b7)
+- [X] T024 [US1] Build scripts and tooling: `layoutFormat` and remaining findings in the root `build.gradle.kts`, `settings.gradle.kts` and `tooling/layout-rules/` (the rule module must pass its own rules) (bcb9f68)
+- [X] T025 [US1] Run `./gradlew layoutCheck` over the whole project: `Layout check: no violations`; record the result in `FEATURE/review-findings.md` (SC-001) — done: `Layout check: no violations` (2026-10-22), no ktlint suppression needed
 
 **Checkpoint**: The whole code base passes the check; behaviour unchanged (build green)
 

@@ -52,7 +52,17 @@ Scratch files under `tooling/scratch/` (deleted afterwards), checked with `-Play
 | multi-line parameter list without trailing comma | `standard:trailing-comma-on-declaration-site` | ✓ |
 | `val label = if (dropped) … else …`, `find() ?: return label` | no violation | ✓ no violation |
 
+## Result of user story 1 (T025, 2026-10-22)
+
+`./gradlew layoutCheck` over the whole code base: **`Layout check: no violations`**. Every module got one mechanical
+commit (`layoutFormat`) and one manual commit; all module tests stayed green after each step (domain 176,
+application 150, persistence 55, solver 17, web 120, bootstrap 26, layout rules 17). No ktlint rule had to be
+suppressed.
+
 ## Findings
 
 | Id | Module | Location | Rule | Description | Resolution | Status |
 |----|--------|----------|------|-------------|------------|--------|
+| F-001 | tooling/layout-rules | `BlankLineBetweenStepsRule` | layout:blank-line-between-steps | Column mappings (`insert { it[x] = … }`, up to 13 assignments) were reported, although a mapping is one step and blank lines inside it would separate nothing | Rule refined test-first: a body of assignments only counts as one mapping step (4254aa0; research.md R2, data-model.md) | fixed |
+| F-002 | web, solver, bootstrap | `TradeOffChart.render`, `ConstraintTextCatalogs`, `GenerationPerformanceTest`, `TestSchoolScenarioTest.printMetrics` | standard:max-line-length | Auto-format broke long string templates inside `${…}` | Parts of the text named first (edge coordinates, teacher, classes, `report(…)`), each template on one line; output unchanged | fixed |
+| F-003 | build | `build.gradle.kts` (T002 code) | — | `configurations.creating` delegate deprecated since Gradle 9.6 (compiler warning) | `configurations.create(…)` | fixed |
