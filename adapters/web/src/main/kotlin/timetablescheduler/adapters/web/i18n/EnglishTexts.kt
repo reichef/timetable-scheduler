@@ -100,6 +100,7 @@ object EnglishTexts : UiTexts {
             "dayOfWeek" to "Weekday",
             "slot" to "Time slot",
             "timeLimitMinutes" to "Time limit",
+            "minimumPlacedShare" to "Minimum share of placed lessons",
             "homeRoomId" to "Home room",
             "limit" to "Limit",
             "classId" to "Class",
@@ -326,6 +327,7 @@ object EnglishTexts : UiTexts {
         override val title = "Generations"
         override val startHeading = "Start a new generation"
         override val timeLimitLabel = "Time limit in minutes (1–60)"
+        override val minimumShareLabel = "Minimum share of placed lessons (%)"
         override val startButton = "Start generation"
         override val warningsIntro = "Notes from the readiness check:"
         override val warningsConfirm = "I have read the notes and want to start anyway."
@@ -342,7 +344,7 @@ object EnglishTexts : UiTexts {
         override val noGenerations = "No generations yet."
         override val stopButton = "Stop"
         override val alternativesHeading = "Equally optimal alternatives"
-        override val noAlternatives = "No alternatives found."
+        override val noAlternatives = "No alternative found yet."
         override val unplacedColumn = "Not placed"
         override val softViolationsColumn = "Soft violations"
         override val openAlternative = "Open"
@@ -373,6 +375,7 @@ object EnglishTexts : UiTexts {
         override val deleteTitle = "Delete generation?"
         override val deleteIntro = "The generation and all its alternatives are deleted permanently."
         override val deleteButton = "Delete permanently"
+        override fun minimumShare(percent: Int) = "Minimum share of placed lessons: $percent % of the best alternative"
         override fun changedLessons(count: Int) = if (count == 1) "1 lesson changed" else "$count lessons changed"
         override fun chartCaption(xTitle: String, yTitle: String) = "$xTitle (horizontal) against $yTitle (vertical)"
         override fun diffTitle(first: Int, second: Int) = "Alternatives $first and $second compared"

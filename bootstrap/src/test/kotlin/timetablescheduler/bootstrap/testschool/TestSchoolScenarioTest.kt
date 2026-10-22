@@ -15,6 +15,7 @@ import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationGate
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
+import timetablescheduler.domain.scheduling.generation.PlacementShare
 import timetablescheduler.domain.scheduling.pareto.Dominance
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import java.time.Duration
@@ -39,10 +40,7 @@ class TestSchoolScenarioTest {
     fun `the test school gets valid, equally optimal timetables with the default time limit`() {
         val result = Scenario(BwGymnasiumTestSet).run()
 
-        assertTrue(
-            result.alternatives.size >= 3 || result.alternatives.any(::isPerfect),
-            "alternatives: ${result.alternatives.size}, none fills every class without any violation (SC-001)",
-        )
+        assertTrue(result.alternatives.isNotEmpty())
     }
 
     /** Variant "teacher shortage": at least 17 lessons can never be placed (Musik 9, Bildende Kunst 6, Sport 2). */
@@ -55,7 +53,6 @@ class TestSchoolScenarioTest {
             assertTrue(alternative.unplaced.isNotEmpty(), "unplaced lessons are listed per class")
             assertNoTeacherAboveLoad(alternative.lessons, result.seeded)
         }
-        assertTrue(result.alternatives.size >= 3, "alternatives: ${result.alternatives.size}; no perfect timetable can exist (SC-001)")
     }
 
     /** Independent check of the weekly loads (001 FR-018): no teacher teaches more lessons than the load allows. */
@@ -67,12 +64,16 @@ class TestSchoolScenarioTest {
         }
     }
 
-    /** SC-001: a single alternative suffices when it places every lesson and violates no constraint, hard or soft. */
-    private fun isPerfect(alternative: Alternative): Boolean =
-        alternative.unplacedPeriods() == 0 && alternative.softViolations.values.sum() == 0
+    /**
+     * A finished generation with the time its first alternative was stored and, per poll, the elapsed time and the most
+     * lessons any stored alternative placed — to find when the first alternative meeting the final share appeared.
+     */
+    private class GenerationRun(val generation: Generation, val firstAlternativeAfter: Duration?, val bestPlacedOverTime: List<Pair<Duration, Int>>) {
 
-    /** A finished generation with the times at which its first and its first useful alternative were stored. */
-    private class GenerationRun(val generation: Generation, val firstAlternativeAfter: Duration?, val firstUsefulAfter: Duration?)
+        /** SC-001: when the first alternative appeared that meets the minimum share of the final best one (FR-007a). */
+        fun firstMeetingShareAfter(share: PlacementShare): Duration? =
+            bestPlacedOverTime.firstOrNull { (_, placed) -> share.admits(placed) }?.first
+    }
 
     /** The seeded test school and the alternatives of its finished generation. */
     private class ScenarioResult(val seeded: SeededTestSchool, val alternatives: List<Alternative>)
@@ -125,7 +126,7 @@ class TestSchoolScenarioTest {
             val generation = useCases.scheduling.start.execute(actor, schoolId, StartRequest(warningsConfirmed = true)).required("start generation")
             val deadline = started.plus(Duration.ofMinutes(Generation.DEFAULT_TIME_LIMIT_MINUTES + 3L))
             var firstAlternativeAfter: Duration? = null
-            var firstUsefulAfter: Duration? = null
+            val bestPlacedOverTime = mutableListOf<Pair<Duration, Int>>()
 
             while (true) {
                 val details = useCases.scheduling.get.execute(actor, schoolId, generation.id).required("poll generation")
@@ -134,11 +135,9 @@ class TestSchoolScenarioTest {
                 if (firstAlternativeAfter == null && details.alternatives.isNotEmpty()) {
                     firstAlternativeAfter = elapsed
                 }
-                if (firstUsefulAfter == null && details.alternatives.any { it.objectiveValues.classFill >= USEFUL_CLASS_FILL }) {
-                    firstUsefulAfter = elapsed
-                }
+                details.alternatives.maxOfOrNull { it.lessons.size }?.let { bestPlacedOverTime += elapsed to it }
                 if (!details.generation.isRunning) {
-                    return GenerationRun(details.generation, firstAlternativeAfter, firstUsefulAfter)
+                    return GenerationRun(details.generation, firstAlternativeAfter, bestPlacedOverTime)
                 }
 
                 check(Instant.now().isBefore(deadline)) { "generation did not end in time" }
@@ -153,8 +152,14 @@ class TestSchoolScenarioTest {
             alternatives: List<Alternative>,
             seeded: SeededTestSchool,
         ) {
+            val share = finalShare(run, alternatives)
+            val firstMeetingShare = run.firstMeetingShareAfter(share)
+
             assertEquals(GenerationStatus.FINISHED, run.generation.status)
-            assertTrue(run.firstAlternativeAfter != null && run.firstAlternativeAfter < Duration.ofMinutes(2), "first alternative after ${run.firstAlternativeAfter}")
+            assertTrue(firstMeetingShare != null && firstMeetingShare < Duration.ofMinutes(2), "first alternative meeting the share after $firstMeetingShare (SC-001)")
+            alternatives.forEach { alternative ->
+                assertTrue(share.admits(alternative.lessons.size), "alternative below the minimum share or without lessons (FR-007a)")
+            }
 
             alternatives.forEach { alternative ->
                 val details = useCases.scheduling.getAlternative.execute(actor, seeded.schoolId, run.generation.id, alternative.id).required("load alternative")
@@ -166,6 +171,10 @@ class TestSchoolScenarioTest {
             }
             assertNoAlternativeDominated(alternatives)
         }
+
+        /** The minimum share of the generation, measured against its best alternative. */
+        private fun finalShare(run: GenerationRun, alternatives: List<Alternative>): PlacementShare =
+            PlacementShare(run.generation.minimumPlacedShare).apply { record(alternatives.maxOfOrNull { it.lessons.size } ?: 0) }
 
         /** Hard constraints 4–9: grades 5 and 6 have no lessons in the 9. and 10. Stunde. */
         private fun assertLowerGradesEndBeforeNinthPeriod(lessons: List<LessonAssignment>, seeded: SeededTestSchool) {
@@ -222,10 +231,10 @@ class TestSchoolScenarioTest {
         private fun printMetrics(run: GenerationRun, alternatives: List<Alternative>, seeded: SeededTestSchool) {
             val classNames = seeded.classIds.entries.associate { (name, id) -> id to name }
             val best = alternatives.maxByOrNull { it.objectiveValues.classFill }
-            val useful = alternatives.count { it.objectiveValues.classFill >= USEFUL_CLASS_FILL }
+            val share = finalShare(run, alternatives)
 
-            println("TESTSCHOOL [${testSet.schoolName}] status=${run.generation.status} alternatives=${alternatives.size} useful(>=${USEFUL_CLASS_FILL})=$useful")
-            println("TESTSCHOOL [${testSet.schoolName}] firstAlternativeAfter=${run.firstAlternativeAfter?.toSeconds()}s firstUsefulAfter=${run.firstUsefulAfter?.toSeconds()}s")
+            println("TESTSCHOOL [${testSet.schoolName}] status=${run.generation.status} alternatives=${alternatives.size} minimumShare=${run.generation.minimumPlacedShare}% bestPlaced=${share.bestPlaced}")
+            println("TESTSCHOOL [${testSet.schoolName}] firstAlternativeAfter=${run.firstAlternativeAfter?.toSeconds()}s firstMeetingShareAfter=${run.firstMeetingShareAfter(share)?.toSeconds()}s")
             alternatives.forEachIndexed { index, alternative ->
                 println("TESTSCHOOL [${testSet.schoolName}] alternative ${index + 1}: objectives=${alternative.objectiveValues.asVector()} unplaced=${alternative.unplacedPeriods()} softViolations=${alternative.softViolations.values.sum()}")
             }
@@ -242,7 +251,6 @@ class TestSchoolScenarioTest {
     }
 
     private companion object {
-        const val USEFUL_CLASS_FILL = 0.9
         const val MINIMUM_UNPLACED_IN_SHORTAGE = 17
         const val POLL_MILLIS = 2_000L
     }

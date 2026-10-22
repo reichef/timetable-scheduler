@@ -3,12 +3,17 @@ package timetablescheduler.application.scheduling
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.fakes.GenerationEvent
+import timetablescheduler.domain.scheduling.DaySlot
 import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintKind
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.SoftWeight
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
 import timetablescheduler.domain.scheduling.pareto.Dominance
+import timetablescheduler.domain.scheduling.solution.CourseKey
+import timetablescheduler.domain.scheduling.solution.TimetableCandidate
+import java.time.DayOfWeek.TUESDAY
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -154,5 +159,57 @@ class GenerationRunnerTest {
             ApplicationError.NotFound,
             assertIs<UseCaseResult.Failure>(test.scheduling.stop.execute(test.admin.id, other.id, startedGeneration().id)).error,
         )
+    }
+
+    /**
+     * A soft rule that the complete timetable violates (Mathematik on Tuesday) but the half-filled one does not, so the
+     * two are equally optimal and only the minimum share of placed lessons decides (FR-007a).
+     */
+    private fun halfFilledIsNotDominated() {
+        val tuesday = setOf(DaySlot(TUESDAY, test.first.id), DaySlot(TUESDAY, test.second.id))
+        val rule = ConstraintRule.SubjectExcludedSlots(test.math.id, null, tuesday)
+
+        world.useCases.constraints.create.execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.SOFT, SoftWeight.MEDIUM, rule)).value()
+    }
+
+    private fun startedGeneration(minimumPlacedShare: Int): Generation =
+        test.scheduling.start.execute(
+            test.admin.id,
+            test.school.id,
+            StartRequest(timeLimitMinutes = 1, warningsConfirmed = true, minimumPlacedShare = minimumPlacedShare),
+        ).value()
+
+    @Test
+    fun `an equally optimal alternative placing too few lessons is not kept (FR-007a)`() {
+        halfFilledIsNotDominated()
+        world.solver.candidates = { listOf(test.complete(), test.halfFilled()) }
+
+        val withDefaultShare = startedGeneration()
+        val withShareOf50 = startedGeneration(minimumPlacedShare = 50)
+
+        assertEquals(listOf(2), alternativesOf(withDefaultShare).map { it.lessons.size })
+        assertEquals(setOf(1, 2), alternativesOf(withShareOf50).map { it.lessons.size }.toSet())
+    }
+
+    @Test
+    fun `a kept alternative is removed when a better one makes it fall below the share (FR-007a)`() {
+        halfFilledIsNotDominated()
+        world.solver.candidates = { listOf(test.halfFilled(), test.complete()) }
+
+        val generation = startedGeneration()
+
+        assertEquals(listOf(2), alternativesOf(generation).map { it.lessons.size })
+        assertEquals(1, world.generations.findById(generation.id)!!.alternativesFound)
+    }
+
+    @Test
+    fun `an alternative without any placed lesson is never kept, so such a run ends without alternatives (FR-007a)`() {
+        val empty = TimetableCandidate(emptyList(), mapOf(CourseKey(test.class5a.id, test.math.id) to 2))
+        world.solver.candidates = { listOf(empty) }
+
+        val generation = startedGeneration()
+
+        assertEquals(emptyList(), alternativesOf(generation))
+        assertEquals(GenerationStatus.FINISHED, world.generations.findById(generation.id)!!.status)
     }
 }

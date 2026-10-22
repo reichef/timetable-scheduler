@@ -18,6 +18,7 @@ object GenerationTable : Table("generation") {
     val inputFingerprint = char("input_fingerprint", 64)
     val alternativesFound = integer("alternatives_found")
     val referenceAlternativeId = javaUUID("reference_alternative_id").nullable()
+    val minimumPlacedShare = short("minimum_placed_share")
     override val primaryKey = PrimaryKey(id)
 }
 

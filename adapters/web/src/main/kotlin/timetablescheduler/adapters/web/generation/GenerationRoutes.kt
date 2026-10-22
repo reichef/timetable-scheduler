@@ -30,6 +30,7 @@ import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.generation.AlternativeId
+import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.validation.ValidationError
 import java.time.Instant
@@ -45,9 +46,10 @@ private suspend fun ApplicationCall.showStartFormAgain(
     errors: List<ValidationError>,
     enteredTimeLimit: String,
     startFromChosen: Boolean,
+    enteredShare: String,
 ) {
     respondResult(scheduling.list.execute(actor, schoolId)) {
-        respondGenerationList(it, errors, enteredTimeLimit, HttpStatusCode.UnprocessableEntity, startFromChosen)
+        respondGenerationList(it, errors, enteredTimeLimit, HttpStatusCode.UnprocessableEntity, startFromChosen, enteredShare)
     }
 }
 
@@ -70,8 +72,14 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val input = FormInput(form)
             val timeLimit = input.int("timeLimitMinutes")
+            // Older forms without the field start with the default share (FR-007a).
+            val share = if (form.text(StartRequest.FIELD_MINIMUM_PLACED_SHARE).isBlank()) {
+                Generation.DEFAULT_MINIMUM_PLACED_SHARE
+            } else {
+                input.int(StartRequest.FIELD_MINIMUM_PLACED_SHARE)
+            }
             val startFromChosen = form[StartRequest.FIELD_START_FROM_CHOSEN] == "true"
-            val result = if (timeLimit == null) UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
+            val result = if (timeLimit == null || share == null) UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
             else scheduling.start.execute(
                 call.actor,
                 schoolId,
@@ -80,12 +88,13 @@ fun Route.generationRoutes(dependencies: WebDependencies) {
                     warningsConfirmed = form[StartRequest.FIELD_WARNINGS_CONFIRMED] == "true",
                     separateObjectiveIds = form.uuids(StartRequest.FIELD_SEPARATE_OBJECTIVES).map(::SchedulingConstraintId),
                     startFromChosen = startFromChosen,
+                    minimumPlacedShare = share,
                 ),
             )
             call.respondFormResult(
                 result,
                 generationsPath(schoolId),
-                onInvalid = { errors -> call.showStartFormAgain(scheduling, call.actor, schoolId, errors, form.text("timeLimitMinutes"), startFromChosen) },
+                onInvalid = { errors -> call.showStartFormAgain(scheduling, call.actor, schoolId, errors, form.text("timeLimitMinutes"), startFromChosen, form.text(StartRequest.FIELD_MINIMUM_PLACED_SHARE)) },
             ) { generation -> call.seeOther(generationPath(generation)) }
         }
 

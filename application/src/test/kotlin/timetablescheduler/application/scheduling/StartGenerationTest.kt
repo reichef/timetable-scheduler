@@ -148,4 +148,24 @@ class StartGenerationTest {
         assertEquals(listOf(active), generation.constraintSnapshot)
         assertEquals(listOf(fixation), generation.fixationSnapshot)
     }
+
+    @Test
+    fun `the minimum share of placed lessons is stored with the generation and must be between 50 and 100 (FR-007a)`() {
+        fun startWithShare(share: Int?) = test.scheduling.start.execute(
+            test.admin.id,
+            test.school.id,
+            if (share == null) StartRequest(warningsConfirmed = true) else StartRequest(warningsConfirmed = true, minimumPlacedShare = share),
+        )
+        val outOfRange = ApplicationError.Invalid(listOf(ValidationError.OutOfRange(Generation.FIELD_MINIMUM_PLACED_SHARE, 50, 100)))
+
+        assertEquals(outOfRange, startWithShare(49).error())
+        assertEquals(outOfRange, startWithShare(101).error())
+
+        val withDefault = startWithShare(null).value()
+        world.generations.saveEnd(withDefault.endAs(GenerationStatus.STOPPED, withDefault.startedAt))
+        val withShare = startWithShare(95).value()
+
+        assertEquals(90, world.generations.findById(withDefault.id)!!.minimumPlacedShare)
+        assertEquals(95, world.generations.findById(withShare.id)!!.minimumPlacedShare)
+    }
 }

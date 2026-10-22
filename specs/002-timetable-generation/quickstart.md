@@ -58,6 +58,7 @@ Run feature 001 quickstart scenarios 0–14 first (school, rooms incl. chemistry
 | 25 | all | Log in as a teacher account, open `/schools/{s}/generations`, `/constraints`, `/timetable` | `403`, no data |
 | 26 | all | Switch to English on generation, alternative, comparison and constraint pages | All texts English, names unchanged |
 | 27 | all | Inspect the application log after scenarios 1–24 | Only ids, statuses, counts and durations; no names of teachers, classes, subjects, rooms |
+| 28 | US1 | Start with *Mindestanteil verplanter Stunden* 95 %; then start another run and stop it within the first seconds | Generation page shows "Mindestanteil verplanter Stunden: 95 % der besten Alternative"; no alternative places fewer than 95 % of the lessons of the best one; the stopped run shows "Noch keine Alternative gefunden." if it found no real timetable yet; 49 or 101 → `422` |
 
 ## Test school of realistic size (test data)
 
@@ -78,4 +79,4 @@ TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :boot
 ## Automated checks
 
 - `./gradlew build` includes: domain tests for `HardConstraintChecker`, `ObjectiveEvaluator`, `ParetoArchive`, `InfeasibilityPreCheck`, every constraint type; solver adapter tests asserting 0 hard violations and non-dominance on seeded data sets (SC-002, SC-003) and full placement for a data set with a known complete solution (SC-004); route tests for every contract row; log confidentiality test (FR-026).
-- `./gradlew :adapters:solver:performanceTest` (tagged, not part of `build`): generated SC-001-sized school, first alternative < 2 min, ≥ 3 alternatives within 10 min (or one alternative that fills every class and violates no constraint).
+- `./gradlew :adapters:solver:performanceTest` (tagged, not part of `build`): generated SC-001-sized school, first alternative meeting the minimum share of placed lessons < 2 min, no alternative below the share or without placed lessons; the number of alternatives is recorded, not asserted (SC-001).

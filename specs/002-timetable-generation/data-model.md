@@ -85,6 +85,7 @@ Built by the application from master data and active constraints: teaching day-s
 | `startedBy` | `UserAccountId` | |
 | `startedAt`, `finishedAt?` | Instant | |
 | `timeLimitMinutes` | Int | 1…60, default 10 (FR-009) |
+| `minimumPlacedShare` | Int (percent) | 50…100, default 90 (FR-007a): an alternative is kept only if it places at least this share of the lessons placed by the best alternative of the generation; an alternative without placed lessons is never kept |
 | `maxAlternatives` | Int | 10 (FR-008) |
 | `status` | `RUNNING` → `FINISHED` \| `STOPPED` \| `FAILED` \| `FAILED_INFEASIBLE` | `STOPPED` = stopped early by a planner; `FAILED` = technical error or server restart; `FAILED_INFEASIBLE` = ended without a single valid alternative because hard constraints could not be met (G4) — never set when at least one valid alternative exists |
 | `inputFingerprint` | String | outdated ⇔ ≠ current fingerprint (G8) |

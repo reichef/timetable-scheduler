@@ -24,7 +24,7 @@ Technical approach: the existing Kotlin/Ktor/PostgreSQL application (feature 001
 
 **Project Type**: Web application (server-rendered, single deployable)
 
-**Performance Goals**: first alternative ≤ 2 min, ≥ 3 alternatives within the 10-minute default for an SC-001-sized school, or 1 alternative that fills every class and violates no constraint (G12); all pages incl. comparison and grids < 1 s (001 R15); fingerprint < 50 ms (G8)
+**Performance Goals**: first alternative meeting the minimum share of placed lessons (FR-007a) ≤ 2 min for an SC-001-sized school; no fixed number of alternatives — all equally optimal ones found within the time limit are shown (SC-001, G12); all pages incl. comparison and grids < 1 s (001 R15); fingerprint < 50 ms (G8)
 
 **Constraints**: Hard constraints never violated (Constitution IV, SC-002); no confidential data in logs incl. solver logs (G13); one running generation per school; Kotlin/Gradle only, no new browser script
 

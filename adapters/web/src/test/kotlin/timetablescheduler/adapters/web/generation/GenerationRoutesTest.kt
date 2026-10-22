@@ -169,4 +169,49 @@ class GenerationRoutesTest {
         assertEquals(HttpStatusCode.NotFound, planner.get("/schools/${UUID.randomUUID()}/generations").status)
         assertEquals(HttpStatusCode.NotFound, planner.get("${data.generationsPath}/${UUID.randomUUID()}").status)
     }
+
+    @Test
+    fun `the start form offers the minimum share of placed lessons, which the result shows (FR-007a)`() = testApplication {
+        val system = TestSystem().installed()
+        val data = GenerationTestData(system)
+        system.world.solver.candidates = { listOf(data.complete()) }
+        val client = startWith(system)
+        client.login()
+
+        val form = client.get(data.generationsPath).bodyAsText()
+        client.submitChecked(data.generationsPath, "timeLimitMinutes" to "2", "minimumPlacedShare" to "95")
+        val result = client.get("${data.generationsPath}/${system.latestGeneration().id.value}").bodyAsText()
+
+        assertTrue("Mindestanteil verplanter Stunden (%)" in form)
+        assertTrue(Regex("""name="minimumPlacedShare"[^>]*value="90"""").containsMatchIn(form))
+        assertEquals(95, system.latestGeneration().minimumPlacedShare)
+        assertTrue("Mindestanteil verplanter Stunden: 95 %" in result)
+    }
+
+    @Test
+    fun `a minimum share outside 50 to 100 percent re-renders the form with 422`() = testApplication {
+        val system = TestSystem().installed()
+        val data = GenerationTestData(system)
+        val client = startWith(system)
+        client.login()
+
+        val response = client.submitChecked(data.generationsPath, "timeLimitMinutes" to "2", "minimumPlacedShare" to "49")
+
+        assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
+        assertTrue("Mindestanteil verplanter Stunden muss zwischen 50 und 100 liegen." in response.bodyAsText())
+    }
+
+    @Test
+    fun `a generation that ended without alternatives says that none was found yet (FR-009)`() = testApplication {
+        val system = TestSystem().installed()
+        val data = GenerationTestData(system)
+        system.world.solver.candidates = { emptyList() }
+        val client = startWith(system)
+        client.login()
+
+        client.submitChecked(data.generationsPath, "timeLimitMinutes" to "2")
+        val result = client.get("${data.generationsPath}/${system.latestGeneration().id.value}").bodyAsText()
+
+        assertTrue("Noch keine Alternative gefunden." in result)
+    }
 }

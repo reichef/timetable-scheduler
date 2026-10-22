@@ -15,6 +15,7 @@ import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.constraint.SoftWeight
 import timetablescheduler.domain.scheduling.evaluation.HardConstraintChecker
 import timetablescheduler.domain.scheduling.evaluation.ObjectiveEvaluator
+import timetablescheduler.domain.scheduling.generation.PlacementShare
 import timetablescheduler.domain.scheduling.pareto.ParetoArchive
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.TimetableCandidate
@@ -26,58 +27,63 @@ import kotlin.test.assertTrue
 
 /**
  * SC-001 (G12): a school of the target size — 40 rooms, 15 subjects, 6 levels, 25 classes, 60 teachers, a 5 × 10 grid
- * and 20 constraints — gets its first valid timetable within 2 minutes and, within 10 minutes, at least 3 equally
- * optimal alternatives or one timetable that places every lesson without any violation.
- * Runs only with `./gradlew :adapters:solver:performanceTest`.
+ * and 20 constraints — gets its first alternative meeting the minimum share of placed lessons (90 % of the best
+ * alternative, FR-007a) within 2 minutes; the alternatives are kept like the generation runner keeps them. There is
+ * no fixed number of alternatives; it is recorded. Runs only with `./gradlew :adapters:solver:performanceTest`.
  */
 @Tag("performance")
 class GenerationPerformanceTest {
 
     @Test
-    fun `a school of the target size gets a first timetable within 2 minutes and 3 alternatives or one perfect timetable within 10 minutes (SC-001)`() {
+    fun `a school of the target size gets an alternative meeting the minimum share within 2 minutes (SC-001)`() {
         val problem = targetSizeSchool()
         val listener = TimingListener(problem)
 
         TimefoldTimetableSolver().solve(problem, Duration.ofMinutes(10), StopSignal { false }, listener)
 
-        val firstAfter = checkNotNull(listener.firstUsefulAfter) { "no valid timetable placing $USEFUL_CLASS_FILL of the lessons" }
-        println("SC-001: first useful timetable after ${firstAfter.toSeconds()} s, ${listener.archive.entries.size} alternatives " +
-            "${listener.archive.entries.map { it.objectives }}, ${listener.invalid} invalid candidates")
+        val firstAfter = checkNotNull(listener.firstMeetingShareAfter()) { "no valid timetable meeting the minimum share" }
+        println("SC-001: first alternative meeting the share after ${firstAfter.toSeconds()} s, ${listener.archive.entries.size} alternatives " +
+            "${listener.archive.entries.map { it.objectives }}, best placed ${listener.share.bestPlaced}, ${listener.invalid} invalid candidates")
+
         assertEquals(0, listener.invalid)
-        assertTrue(firstAfter < Duration.ofMinutes(2), "first timetable after $firstAfter")
-        assertTrue(
-            listener.archive.entries.size >= 3 || listener.perfectFound,
-            "alternatives: ${listener.archive.entries.size}, none fills every class without any violation",
-        )
+        assertTrue(firstAfter < Duration.ofMinutes(2), "first alternative meeting the share after $firstAfter")
+        assertTrue(listener.archive.entries.isNotEmpty())
+        listener.archive.entries.forEach { entry ->
+            assertTrue(listener.share.admits(entry.item.lessons.size), "kept alternative below the minimum share (FR-007a)")
+        }
     }
 
     /**
-     * Records when the first useful timetable arrived — the solver's very first report is the still empty start
-     * timetable — and keeps the equally optimal ones, like the generation runner.
+     * Keeps the alternatives like the generation runner (minimum share, then Pareto archive) and records when every
+     * valid timetable arrived, so the first one meeting the share of the final best can be found afterwards.
      */
     private class TimingListener(private val problem: SchedulingProblem) : SolverListener {
         private val start = System.nanoTime()
+        private val arrivals = mutableListOf<Pair<Duration, Int>>()
         val archive = ParetoArchive<TimetableCandidate> { first, second -> first.sameTimetableAs(second) }
-        var firstUsefulAfter: Duration? = null
+        val share = PlacementShare(MINIMUM_PLACED_SHARE)
         var invalid = 0
-
-        /** SC-001: one timetable placing every lesson without any violation, hard or soft, is sufficient on its own. */
-        var perfectFound = false
 
         override fun onCandidate(candidate: TimetableCandidate) {
             if (HardConstraintChecker.violationsOf(problem, candidate).isNotEmpty()) {
                 invalid++
                 return
             }
-            val evaluation = ObjectiveEvaluator.evaluate(problem, candidate)
-            val values = evaluation.values
 
-            if (candidate.unplacedPeriods() == 0 && evaluation.softViolations.values.sum() == 0) {
-                perfectFound = true
+            val placed = candidate.lessons.size
+            arrivals += Duration.ofNanos(System.nanoTime() - start) to placed
+            if (!share.admits(placed)) {
+                return
             }
-            if (firstUsefulAfter == null && values.classFill >= USEFUL_CLASS_FILL) firstUsefulAfter = Duration.ofNanos(System.nanoTime() - start)
-            archive.offer(candidate, values.asVector())
+
+            val change = archive.offer(candidate, ObjectiveEvaluator.evaluate(problem, candidate).values.asVector())
+            if (change.admitted && share.record(placed)) {
+                archive.removeIf { !share.admits(it.lessons.size) }
+            }
         }
+
+        /** When the first timetable arrived that places at least the share of the final best one's lessons. */
+        fun firstMeetingShareAfter(): Duration? = arrivals.firstOrNull { (_, placed) -> share.admits(placed) }?.first
 
         override fun onInfeasiblePass() = Unit
     }
@@ -134,6 +140,6 @@ class GenerationPerformanceTest {
     private companion object {
         const val TEACHERS = 60
         const val LOAD = 15
-        const val USEFUL_CLASS_FILL = 0.9
+        const val MINIMUM_PLACED_SHARE = 90
     }
 }

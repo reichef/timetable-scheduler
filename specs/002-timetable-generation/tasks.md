@@ -281,12 +281,52 @@ capacity so that some classes and subjects can certainly not be served completel
 
 ---
 
+## Phase 9: Minimum Share of Placed Lessons and Refined SC-001 (Clarifications 2026-10-22)
+
+**Goal**: Near-empty timetables are no longer offered as "equally optimal" alternatives, and SC-001 no longer demands a
+fixed number of alternatives (spec: FR-007a, FR-009, SC-001, edge cases, clarification session 2026-10-22).
+
+**Independent Test**: Start a generation with the default minimum share of 90 %: no alternative of the result places
+fewer than 90 % of the lessons of the best alternative, none places no lesson at all; a run stopped before the first
+real timetable says that no alternative was found yet.
+
+**Rules** (verbatim from the spec): an alternative is kept only if it places at least the minimum share of the number
+of lessons placed by the best alternative of the same generation; the share is set on the start form, **default 90 %,
+between 50 % and 100 %**, stored with the generation and shown with its result; alternatives that fall below the share
+when a better alternative is found are removed; the share applies before the dominance rule; an alternative without
+any placed lesson is never kept; a run that ends without alternatives states that no alternative was found yet.
+
+### Tests for the minimum share (write first, must fail)
+
+- [X] T122 [P] Domain tests in `DOM_T/scheduling/generation/PlacementShareTest.kt`: kept ⇔ placed lessons ≥ share × placed lessons of the best alternative (share in whole percent, compared without rounding errors, e.g. 90 % of 569 = 512.1 → 513 needed); an alternative with 0 placed lessons is never kept, also when it is the best one; raising the best removes every kept alternative below the share; and in `DOM_T/scheduling/generation/GenerationTest.kt`: `minimumPlacedShare` defaults to 90 and is rejected outside 50–100 as `OutOfRange("minimumPlacedShare", 50, 100)`
+- [X] T123 [P] Application tests in `APP_T/scheduling/GenerationRunnerTest.kt`: a near-empty candidate reported after a good one is not stored; a good candidate reported after a near-empty one removes the near-empty alternative from the repository; an empty candidate is never stored; a run whose solver reports only empty candidates ends with 0 alternatives (status `FINISHED`, or `STOPPED` when stopped); and in `APP_T/scheduling/StartGenerationTest.kt`: the share from the request is stored with the generation, default 90, 49 and 101 are refused with `422`-style `Invalid`
+- [X] T124 [P] Repository test in `PER_T/scheduling/GenerationRepositoryIT.kt`: `minimumPlacedShare` round-trips
+- [X] T125 [P] Route tests in `WEB_T/generation/GenerationRoutesTest.kt`: the start form has the field `minimumPlacedShare` (label "Mindestanteil verplanter Stunden (%)" / "Minimum share of placed lessons (%)", default 90); 49 or 101 → `422` naming the field; the generation page shows the share; a finished or stopped generation without alternatives shows "Noch keine Alternative gefunden." / "No alternative found yet."
+
+### Implementation of the minimum share
+
+- [X] T126 Implement `minimumPlacedShare` in `DOM/scheduling/generation/Generation.kt` (`FIELD_MINIMUM_PLACED_SHARE = "minimumPlacedShare"`, `DEFAULT_MINIMUM_PLACED_SHARE = 90`, range 50–100 validated in `Generation.start`) and the rule in `DOM/scheduling/generation/PlacementShare.kt` (a compact function with a comment explaining the integer comparison `placed * 100 >= share * bestPlaced` and the "never empty" rule); add the removal of entries by predicate to `DOM/scheduling/pareto/ParetoArchive.kt` if needed, to pass T122 — the run only raises the best when the new alternative is actually kept (a timetable with more lessons can still be dominated when class priorities differ)
+- [X] T127 Create `PER_R/V9__minimum_placed_share.sql`: `ALTER TABLE generation ADD COLUMN minimum_placed_share SMALLINT NOT NULL DEFAULT 90 CHECK (minimum_placed_share BETWEEN 50 AND 100)`; map it in `PER/scheduling/GenerationTables.kt` and `PER/scheduling/ExposedGenerationRepository.kt` to pass T124
+- [X] T128 Add `minimumPlacedShare` to `StartRequest` (`FIELD_MINIMUM_PLACED_SHARE`) and store it in `StartGeneration` in `APP/scheduling/GenerationUseCases.kt`; apply the rule in the alternative collector of `APP/scheduling/GenerationRunner.kt` before the Pareto archive and remove alternatives that fall below the share when a new best one arrives (removing them from the repository in the same transaction), to pass T123
+- [X] T129 Add the start-form field, the share on the generation page and the "no alternative found yet" message in `WEB/generation/GenerationRoutes.kt` and `WEB/generation/GenerationViews.kt`, texts in `WEB/i18n/UiTexts.kt`, `GermanTexts.kt`, `EnglishTexts.kt`; update `contracts/web-routes.md` (start form field, `422` for the share) and `data-model.md` (Generation: `minimumPlacedShare`), to pass T125
+
+### Follow-up of the refined SC-001
+
+- [X] T130 [P] Update the documents that still state "≥ 3 alternatives": `plan.md` (performance goals), `research.md` (G12), `quickstart.md` (automated checks; new scenario 28: start with minimum share 95 %, no alternative below 95 % of the best; stop a run within the first seconds → "no alternative found yet"), `test-set-bw-gymnasium.md` (expected results of both scenarios)
+- [X] T131 Adapt the assertions of `SOL_T/GenerationPerformanceTest.kt` and `BOOT_T/testschool/TestSchoolScenarioTest.kt` to the refined SC-001: the first alternative meeting the 90 % share within 2 minutes; no alternative below 90 % of the best one and none without placed lessons; no fixed minimum number of alternatives (the number is recorded, not asserted)
+- [X] T132 Run `./gradlew build`, `./gradlew :bootstrap:testSchoolTest` and `./gradlew :adapters:solver:performanceTest`, and the new quickstart scenario 28 against `:bootstrap:run`; record the results in this task — 2026-10-22: `./gradlew build` green (544 tests). Quickstart 28 on `timetable_shortage`: 5/5 checks (share field with default 90, 49 % → 422, share shown, with 95 % all 10 alternatives place 536–558 of best 558 lessons; the run stopped within seconds had already found one real timetable, so the "no alternative found yet" page is covered by the route test). `testSchoolTest` (both scenarios, 20 min): full test school 1 alternative placing all 588 lessons, first one meeting the share after 77 s; teacher-shortage variant 1 alternative placing 569 lessons (19 unplaced: Musik 9, Bildende Kunst 6, Sport 2, BNT 1, Medienbildung 1) with only 2 soft violations, first one meeting the share after 87 s — no near-empty alternative any more. `performanceTest` (11 min): first alternative meeting the share after 6 s, 1 alternative placing all 750 lessons (the near-empty alternatives of T104 are gone)
+
+**Checkpoint**: Only useful alternatives are offered; SC-001 is testable independently of chance and computing time
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 7)** → **Extended validation (Phase 8)**
-- T109 (pull request) waits for Phase 8.
+- **Setup (Phase 1)** → **Foundational (Phase 2)** → user stories → **Polish (Phase 7)** → **Extended validation (Phase 8)** → **Minimum share (Phase 9)**
+- T109 (pull request) waits for Phase 9.
+- Phase 9: T122–T125 together (different files); T126 → T127 → T128 → T129; T130 and T131 in parallel after T128; T132 last.
 - Feature 001 (branch `one-school`) must be in place; this branch is based on it.
 
 ### User Story Dependencies
@@ -297,7 +337,7 @@ capacity so that some classes and subjects can certainly not be served completel
 - **US4 (P4)**: after US1; deletion protection of the chosen timetable needs US3.
 
 ```text
-Setup → Foundational → US1 → US2 → US3 → US4 → Polish → Extended validation → T109 (pull request)
+Setup → Foundational → US1 → US2 → US3 → US4 → Polish → Extended validation → Minimum share → T109 (pull request)
 ```
 
 ### Within Each Phase

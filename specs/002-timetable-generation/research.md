@@ -114,7 +114,7 @@ Decisions R1–R19 of feature 001 ([research](../001-scheduling-master-data/rese
 
 ## G12 — Performance (SC-001)
 
-- **Decision**: Construction heuristic `FIRST_FIT_DECREASING` followed by late acceptance / tabu local search (Timefold defaults); first pass gets max(60 s, limit / passes) so that the first alternative is available within 2 minutes; number of passes = 2 + number of objectives + 2 spread vectors (6–11: 2 to 7 objectives incl. up to 3 separate soft-constraint objectives and the stability objective). A performance smoke test with a generated SC-001-sized school asserts "first alternative < 2 min, ≥ 3 alternatives within 10 min — or one alternative that fills every class and violates no constraint" (tagged, run in CI with a reduced limit and locally in full).
+- **Decision**: Construction heuristic `FIRST_FIT_DECREASING` followed by late acceptance / tabu local search (Timefold defaults); first pass gets max(60 s, limit / passes) so that the first alternative is available within 2 minutes; number of passes = 2 + number of objectives + 2 spread vectors (6–11: 2 to 7 objectives incl. up to 3 separate soft-constraint objectives and the stability objective). A performance smoke test with a generated SC-001-sized school asserts "first alternative meeting the minimum share of placed lessons < 2 min; no alternative below the share or without placed lessons" (refined SC-001: no fixed number of alternatives) (tagged, run in CI with a reduced limit and locally in full).
 - **Rationale**: Timefold reaches feasible school timetables of this size within seconds to a minute in its reference benchmarks; the rest of the budget improves trade-offs.
 
 ## G13 — Confidentiality (FR-026)

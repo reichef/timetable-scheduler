@@ -135,8 +135,9 @@ Teacher fixations (class teachers): Deutsch 5a → T01, Mathematik 5b → T07, E
 Asserted by the scenario test:
 
 - The readiness check reports no blocking issue; the start is not refused.
-- The first alternative is available within 2 minutes; at the end at least 3 alternatives, or one alternative that
-  places every lesson of every class and violates no constraint (SC-001, refined 2026-10-22).
+- The first alternative meeting the minimum share of placed lessons (default 90 %) is available within 2 minutes;
+  no alternative places fewer than 90 % of the best alternative's lessons, none places no lesson at all (SC-001,
+  FR-007a; there is no fixed number of alternatives).
 - No alternative violates a hard constraint, a fixation or an unavailability (re-checked independently); 5th and 6th
   graders have no lessons in the 9. and 10. Stunde; lab, sports, music, art and computer subjects take place only in
   rooms with the feature, all other subjects in the home room.
@@ -176,7 +177,8 @@ Expected results (asserted by the scenario test):
   issues; the generation starts once the warnings are confirmed and ends normally.
 - Every alternative leaves at least 17 lessons unplaced and lists them per class; no teacher exceeds the weekly load.
 - All hard rules, room rules, fixations and unavailability of the first test set hold; no alternative is dominated.
-- As no perfect timetable can exist, SC-001 requires at least 3 alternatives.
+- No alternative places fewer than 90 % of the best alternative's lessons (FR-007a); the number of alternatives is
+  recorded, not asserted (SC-001).
 
 Recorded: number of alternatives and their objective values, unplaced lessons per class and per subject of the best
 alternative.

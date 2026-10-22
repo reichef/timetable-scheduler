@@ -50,6 +50,14 @@ class ParetoArchive<T>(
         return ArchiveChange(admitted = offered in kept, evicted = (dominated + pruned).map { it.item }.filterNot { it === item })
     }
 
+    /** Removes and returns the kept items matching [shouldRemove], e.g. those below the minimum share (FR-007a). */
+    fun removeIf(shouldRemove: (T) -> Boolean): List<T> {
+        val removed = kept.filter { shouldRemove(it.item) }
+
+        kept.removeAll(removed)
+        return removed.map { it.item }
+    }
+
     private fun isDuplicate(existing: ParetoEntry<T>, offered: ParetoEntry<T>): Boolean =
         existing.objectives == offered.objectives && sameTimetable(existing.item, offered.item)
 

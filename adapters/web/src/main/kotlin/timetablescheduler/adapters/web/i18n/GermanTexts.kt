@@ -100,6 +100,7 @@ object GermanTexts : UiTexts {
             "dayOfWeek" to "Wochentag",
             "slot" to "Zeitfenster",
             "timeLimitMinutes" to "Zeitlimit",
+            "minimumPlacedShare" to "Mindestanteil verplanter Stunden",
             "homeRoomId" to "Klassenraum",
             "limit" to "Grenzwert",
             "classId" to "Klasse",
@@ -322,6 +323,7 @@ object GermanTexts : UiTexts {
         override val title = "Stundenplanläufe"
         override val startHeading = "Neuen Lauf starten"
         override val timeLimitLabel = "Zeitlimit in Minuten (1–60)"
+        override val minimumShareLabel = "Mindestanteil verplanter Stunden (%)"
         override val startButton = "Lauf starten"
         override val warningsIntro = "Hinweise aus der Bereitschaftsprüfung:"
         override val warningsConfirm = "Ich habe die Hinweise gelesen und möchte trotzdem starten."
@@ -338,7 +340,7 @@ object GermanTexts : UiTexts {
         override val noGenerations = "Noch keine Läufe."
         override val stopButton = "Stoppen"
         override val alternativesHeading = "Gleichwertige Alternativen"
-        override val noAlternatives = "Keine Alternativen gefunden."
+        override val noAlternatives = "Noch keine Alternative gefunden."
         override val unplacedColumn = "Nicht verplant"
         override val softViolationsColumn = "Soll-Verstöße"
         override val openAlternative = "Ansehen"
@@ -370,6 +372,7 @@ object GermanTexts : UiTexts {
         override val deleteTitle = "Lauf löschen?"
         override val deleteIntro = "Der Lauf und alle seine Alternativen werden endgültig gelöscht."
         override val deleteButton = "Endgültig löschen"
+        override fun minimumShare(percent: Int) = "Mindestanteil verplanter Stunden: $percent % der besten Alternative"
         override fun changedLessons(count: Int) = if (count == 1) "1 Stunde geändert" else "$count Stunden geändert"
         override fun chartCaption(xTitle: String, yTitle: String) = "$xTitle (waagerecht) gegen $yTitle (senkrecht)"
         override fun diffTitle(first: Int, second: Int) = "Alternative $first und $second im Vergleich"

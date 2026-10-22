@@ -15,8 +15,10 @@ class GenerationTest {
 
     private val startedAt = Instant.parse("2026-10-09T08:00:00Z")
 
-    private fun start(timeLimitMinutes: Int = Generation.DEFAULT_TIME_LIMIT_MINUTES) =
-        Generation.start(SchoolId.new(), AccountId.new(), startedAt, timeLimitMinutes, inputFingerprint = "f".repeat(64))
+    private fun start(
+        timeLimitMinutes: Int = Generation.DEFAULT_TIME_LIMIT_MINUTES,
+        minimumPlacedShare: Int = Generation.DEFAULT_MINIMUM_PLACED_SHARE,
+    ) = Generation.start(SchoolId.new(), AccountId.new(), startedAt, timeLimitMinutes, inputFingerprint = "f".repeat(64), minimumPlacedShare)
 
     private fun started() = assertIs<ValidationResult.Valid<Generation>>(start()).value
 
@@ -58,5 +60,16 @@ class GenerationTest {
 
         assertFailsWith<IllegalStateException> { ended.endAs(GenerationStatus.STOPPED, startedAt) }
         assertFailsWith<IllegalArgumentException> { started().endAs(GenerationStatus.RUNNING, startedAt) }
+    }
+
+    @Test
+    fun `the minimum share of placed lessons defaults to 90 and must be between 50 and 100 percent (FR-007a)`() {
+        val outOfRange = ValidationResult.Invalid(listOf(ValidationError.OutOfRange(Generation.FIELD_MINIMUM_PLACED_SHARE, 50, 100)))
+
+        assertEquals(90, started().minimumPlacedShare)
+        assertEquals(outOfRange, start(minimumPlacedShare = 49))
+        assertEquals(outOfRange, start(minimumPlacedShare = 101))
+        assertEquals(50, assertIs<ValidationResult.Valid<Generation>>(start(minimumPlacedShare = 50)).value.minimumPlacedShare)
+        assertEquals(100, assertIs<ValidationResult.Valid<Generation>>(start(minimumPlacedShare = 100)).value.minimumPlacedShare)
     }
 }

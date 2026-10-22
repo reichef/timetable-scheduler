@@ -105,6 +105,7 @@ suspend fun ApplicationCall.respondGenerationList(
     enteredTimeLimit: String? = null,
     status: HttpStatusCode = HttpStatusCode.OK,
     startFromChosen: Boolean = false,
+    enteredShare: String? = null,
 ) {
     val texts = texts
     respondPage(texts.generations.title, status) { session ->
@@ -113,6 +114,12 @@ suspend fun ApplicationCall.respondGenerationList(
         form(action = generationsPath(overview.schoolId), method = FormMethod.post) {
             csrfField(session)
             textField("timeLimitMinutes", texts.generations.timeLimitLabel, enteredTimeLimit ?: "${Generation.DEFAULT_TIME_LIMIT_MINUTES}", InputType.number)
+            textField(
+                StartRequest.FIELD_MINIMUM_PLACED_SHARE,
+                texts.generations.minimumShareLabel,
+                enteredShare ?: "${Generation.DEFAULT_MINIMUM_PLACED_SHARE}",
+                InputType.number,
+            )
             if (overview.gate.warnings.isNotEmpty()) {
                 p { +texts.generations.warningsIntro }
                 ul { overview.gate.warnings.forEach { issue -> li { issueEntry(overview.readiness, issue, texts) } } }
@@ -187,6 +194,7 @@ suspend fun ApplicationCall.respondGenerationDetails(details: GenerationDetails,
     val refresh = if (generation.isRunning) REFRESH_SECONDS else null
     respondPage(texts.generations.generationTitle(texts.generations.dateTime(generation.startedAt)), refreshSeconds = refresh) { session ->
         p { +"${texts.generations.statusColumn}: ${texts.generations.statusName(generation.status)}" }
+        p { +texts.generations.minimumShare(generation.minimumPlacedShare) }
         if (details.summary.outdated) p(classes = "warning") { +texts.generations.outdatedHint }
         if (generation.isRunning) {
             val elapsed = texts.generations.duration(Duration.between(generation.startedAt, now).seconds.coerceAtLeast(0))

@@ -15,6 +15,7 @@ import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
+import timetablescheduler.domain.scheduling.generation.PlacementShare
 import timetablescheduler.domain.scheduling.pareto.ArchiveChange
 import timetablescheduler.domain.scheduling.pareto.ParetoArchive
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
@@ -24,7 +25,8 @@ import java.time.Duration
 
 /**
  * Runs one generation in the background (G2, G4, G6): every timetable the solver reports is checked against all
- * hard constraints by the domain, evaluated, and offered to the Pareto archive; archive changes are stored at once,
+ * hard constraints by the domain, must reach the minimum share of placed lessons (FR-007a), is evaluated, and offered
+ * to the Pareto archive; archive changes are stored at once,
  * so a stop or crash keeps what was found. The end status follows G4: `FAILED_INFEASIBLE` only when not a single
  * valid alternative was found while the solver reported infeasible passes.
  */
@@ -79,6 +81,7 @@ class GenerationRunner(
     /** Receives the solver's timetables for one generation and keeps the equally optimal valid ones. */
     private inner class AlternativeCollector(private val generation: Generation, private val problem: SchedulingProblem) : SolverListener {
         private val archive = ParetoArchive<Alternative>(generation.maxAlternatives) { first, second -> first.candidate.sameTimetableAs(second.candidate) }
+        private val placementShare = PlacementShare(generation.minimumPlacedShare)
         var discardedCount = 0
             private set
         var infeasiblePassSeen = false
@@ -91,6 +94,12 @@ class GenerationRunner(
                 discardedCount++
                 return
             }
+
+            val placed = candidate.lessons.size
+            if (!placementShare.admits(placed)) {
+                return
+            }
+
             val evaluation = ObjectiveEvaluator.evaluate(problem, candidate)
             val alternative = Alternative(
                 id = AlternativeId.new(),
@@ -101,17 +110,26 @@ class GenerationRunner(
                 softViolations = evaluation.softViolations,
                 changedLessons = evaluation.changedLessons,
             )
-            store(archive.offer(alternative, alternative.objectiveValues.asVector()), alternative)
+            // Only a kept alternative can be the best one; when it is, the others are measured against it again.
+            val change = archive.offer(alternative, alternative.objectiveValues.asVector())
+            val bestRose = change.admitted && placementShare.record(placed)
+            val belowShare = if (bestRose) archive.removeIf { !placementShare.admits(it.lessons.size) } else emptyList()
+
+            store(change, alternative, belowShare)
         }
 
         override fun onInfeasiblePass() {
             infeasiblePassSeen = true
         }
 
-        private fun store(change: ArchiveChange<Alternative>, alternative: Alternative) {
-            if (!change.admitted && change.evicted.isEmpty()) return
+        /** Stores an archive change; alternatives that fell below the minimum share are removed with it (FR-007a). */
+        private fun store(change: ArchiveChange<Alternative>, alternative: Alternative, belowShare: List<Alternative>) {
+            if (!change.admitted && change.evicted.isEmpty() && belowShare.isEmpty()) {
+                return
+            }
+
             inTransaction {
-                change.evicted.forEach { generations.removeAlternative(it.id) }
+                (change.evicted + belowShare).forEach { generations.removeAlternative(it.id) }
                 if (change.admitted) generations.addAlternative(alternative)
                 generations.updateProgress(generation.id, keptCount())
             }

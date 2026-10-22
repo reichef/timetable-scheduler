@@ -249,6 +249,7 @@ interface GenerationTexts {
     val title: String
     val startHeading: String
     val timeLimitLabel: String
+    val minimumShareLabel: String
     val startButton: String
     val warningsIntro: String
     val warningsConfirm: String
@@ -298,6 +299,7 @@ interface GenerationTexts {
     val deleteIntro: String
     val deleteButton: String
     fun changedLessons(count: Int): String
+    fun minimumShare(percent: Int): String
     fun chartCaption(xTitle: String, yTitle: String): String
     fun diffTitle(first: Int, second: Int): String
     fun hardRuleName(rule: HardRule): String

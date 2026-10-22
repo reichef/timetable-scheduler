@@ -148,4 +148,13 @@ class GenerationRepositoryIT : PostgresTestBase() {
 
         assertEquals(ended, inTransaction { generations.findById(generation.id) })
     }
+
+    @Test
+    fun `the minimum share of placed lessons round-trips (FR-007a)`() {
+        val generation = Generation.start(school.id, planner.id, startedAt, 10, "c".repeat(64), minimumPlacedShare = 95).valid()
+
+        inTransaction { generations.insert(generation) }
+
+        assertEquals(95, inTransaction { generations.findById(generation.id) }!!.minimumPlacedShare)
+    }
 }

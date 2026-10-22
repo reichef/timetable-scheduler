@@ -41,7 +41,8 @@ enum class GenerationStatus { RUNNING, FINISHED, STOPPED, FAILED, FAILED_INFEASI
  * fingerprint of the scheduling input at its start, which tells whether it is outdated (G8). The snapshot of the
  * constraints and fixations in effect at the start stays unchanged when they are changed or deleted later; the soft
  * constraints compared separately (FR-006a) refer to it. [infeasibleConstraintIds] names the hard constraints that can
- * force violations when the generation ended as infeasible (FR-017).
+ * force violations when the generation ended as infeasible (FR-017). [minimumPlacedShare] is the share of the best
+ * alternative's placed lessons, in percent, every kept alternative must reach (FR-007a).
  */
 data class Generation(
     val id: GenerationId,
@@ -59,6 +60,7 @@ data class Generation(
     val fixationSnapshot: List<TeacherFixation> = emptyList(),
     val infeasibleConstraintIds: List<SchedulingConstraintId> = emptyList(),
     val referenceAlternativeId: AlternativeId? = null,
+    val minimumPlacedShare: Int = DEFAULT_MINIMUM_PLACED_SHARE,
 ) {
     val isRunning: Boolean get() = status == GenerationStatus.RUNNING
 
@@ -73,10 +75,23 @@ data class Generation(
         const val DEFAULT_TIME_LIMIT_MINUTES = 10
         const val MIN_TIME_LIMIT_MINUTES = 1
         const val MAX_TIME_LIMIT_MINUTES = 60
+        const val FIELD_MINIMUM_PLACED_SHARE = "minimumPlacedShare"
+        const val DEFAULT_MINIMUM_PLACED_SHARE = 90
+        const val MIN_MINIMUM_PLACED_SHARE = 50
+        const val MAX_MINIMUM_PLACED_SHARE = 100
 
-        fun start(schoolId: SchoolId, startedBy: AccountId, startedAt: Instant, timeLimitMinutes: Int, inputFingerprint: String): ValidationResult<Generation> {
+        fun start(
+            schoolId: SchoolId,
+            startedBy: AccountId,
+            startedAt: Instant,
+            timeLimitMinutes: Int,
+            inputFingerprint: String,
+            minimumPlacedShare: Int = DEFAULT_MINIMUM_PLACED_SHARE,
+        ): ValidationResult<Generation> {
             val validation = ValidationCollector()
             validation.intInRange(FIELD_TIME_LIMIT, timeLimitMinutes, MIN_TIME_LIMIT_MINUTES, MAX_TIME_LIMIT_MINUTES)
+            validation.intInRange(FIELD_MINIMUM_PLACED_SHARE, minimumPlacedShare, MIN_MINIMUM_PLACED_SHARE, MAX_MINIMUM_PLACED_SHARE)
+
             return validation.result {
                 Generation(
                     id = GenerationId.new(),
@@ -89,6 +104,7 @@ data class Generation(
                     status = GenerationStatus.RUNNING,
                     inputFingerprint = inputFingerprint,
                     alternativesFound = 0,
+                    minimumPlacedShare = minimumPlacedShare,
                 )
             }
         }

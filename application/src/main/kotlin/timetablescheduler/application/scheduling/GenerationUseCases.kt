@@ -28,18 +28,20 @@ import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** What the planner chose on the start form (FR-009, FR-010). */
+/** What the planner chose on the start form (FR-007a, FR-009, FR-010). */
 data class StartRequest(
     val timeLimitMinutes: Int = Generation.DEFAULT_TIME_LIMIT_MINUTES,
     val warningsConfirmed: Boolean = false,
     val separateObjectiveIds: List<SchedulingConstraintId> = emptyList(),
     val startFromChosen: Boolean = false,
+    val minimumPlacedShare: Int = Generation.DEFAULT_MINIMUM_PLACED_SHARE,
 ) {
     companion object {
         const val FIELD_WARNINGS_CONFIRMED = "warningsConfirmed"
         const val FIELD_SEPARATE_OBJECTIVES = "separateObjective"
         const val MAX_SEPARATE_OBJECTIVES = 3
         const val FIELD_START_FROM_CHOSEN = "startFromChosen"
+        const val FIELD_MINIMUM_PLACED_SHARE = Generation.FIELD_MINIMUM_PLACED_SHARE
     }
 }
 
@@ -101,7 +103,7 @@ class StartGeneration(
                 val reference = if (request.startFromChosen) requireChosen(schoolId) else null
                 val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds, reference = reference?.lessons)
                 val fingerprint = SchedulingInputFingerprint.of(schedulingProblem)
-                val generation = Generation.start(schoolId, actor, clock.instant(), request.timeLimitMinutes, fingerprint).bind().copy(
+                val generation = Generation.start(schoolId, actor, clock.instant(), request.timeLimitMinutes, fingerprint, request.minimumPlacedShare).bind().copy(
                     separateObjectiveIds = request.separateObjectiveIds,
                     constraintSnapshot = stored.constraints.filter { it.active },
                     fixationSnapshot = stored.fixations,

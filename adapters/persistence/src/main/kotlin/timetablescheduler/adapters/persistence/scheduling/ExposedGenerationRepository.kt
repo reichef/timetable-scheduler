@@ -56,6 +56,7 @@ class ExposedGenerationRepository : GenerationRepository {
             it[inputFingerprint] = generation.inputFingerprint
             it[alternativesFound] = generation.alternativesFound
             it[referenceAlternativeId] = generation.referenceAlternativeId?.value
+            it[minimumPlacedShare] = generation.minimumPlacedShare.toShort()
         }
         GenerationSeparateObjectiveTable.batchInsert(generation.separateObjectiveIds.withIndex()) { (index, constraintId) ->
             this[GenerationSeparateObjectiveTable.generationId] = generation.id.value
@@ -301,6 +302,7 @@ class ExposedGenerationRepository : GenerationRepository {
         inputFingerprint = this[GenerationTable.inputFingerprint],
         alternativesFound = this[GenerationTable.alternativesFound],
         referenceAlternativeId = this[GenerationTable.referenceAlternativeId]?.let(::AlternativeId),
+        minimumPlacedShare = this[GenerationTable.minimumPlacedShare].toInt(),
     )
 
     private fun decimalOf(value: Double): BigDecimal = BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP)
