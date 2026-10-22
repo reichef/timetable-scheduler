@@ -112,6 +112,7 @@ class CreateAccount(
         transactions.inTransaction {
             outcome {
                 val planner = access.requirePlanner(actor).bind()
+
                 val created = UserAccount.create(username, role, planner.schoolIds)
                 val errors =
                     validationErrorsOf(created) + duplicateUsernameErrors(username) +
@@ -120,8 +121,10 @@ class CreateAccount(
                     fail(ApplicationError.Invalid(errors))
                 }
                 val account = created.bind()
+
                 accounts.insert(account)
                 credentials.save(account.id, hasher.hash(initialPassword))
+
                 account
             }
         }
@@ -243,6 +246,7 @@ class ChangeOwnPassword(
                     fail(ApplicationError.Invalid(listOf(ValidationError.IncorrectCurrentPassword)))
                 }
                 requireValidPassword(newPassword)
+
                 credentials.save(account.id, hasher.hash(newPassword))
             }
         }

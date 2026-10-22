@@ -106,11 +106,14 @@ class StartGeneration(
             transactions.inTransaction {
                 outcome {
                     access.requireSchoolAccess(actor, schoolId).bind()
+
                     generations.findRunning(schoolId)?.let { fail(ApplicationError.GenerationRunning(it.id)) }
                     requireReady(schoolId, request)
+
                     val stored = problems.load(schoolId)
                     requireValidSeparateObjectives(request, stored)
                     requireNoContradictions(schoolId, stored)
+
                     val reference = if (request.startFromChosen) requireChosen(schoolId) else null
                     val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds, reference = reference?.lessons)
                     val fingerprint = SchedulingInputFingerprint.of(schedulingProblem)
@@ -130,8 +133,10 @@ class StartGeneration(
                                 fixationSnapshot = stored.fixations,
                                 referenceAlternativeId = reference?.alternativeId,
                             )
+
                     generations.insert(generation)
                     problem = schedulingProblem
+
                     generation
                 }
             }

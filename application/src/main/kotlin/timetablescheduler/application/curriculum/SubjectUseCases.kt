@@ -82,10 +82,13 @@ class UpdateSubject(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val subject = loadSubjectOfSchool(subjects, schoolId, subjectId).copy(version = expectedVersion)
                 val updated = subject.update(name, requiredFeatureIds, roomFeatures.featureIdsOf(schoolId)).bind()
                 requireUniqueName(subjects, updated)
+
                 requireUpdated(subjects.update(updated))
+
                 updated.copy(version = expectedVersion + 1)
             }
         }

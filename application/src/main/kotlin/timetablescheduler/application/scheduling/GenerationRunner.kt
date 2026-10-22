@@ -69,10 +69,12 @@ class GenerationRunner(
                         emptyList()
                     },
             )
+
         inTransaction { generations.saveEnd(ended) }
         if (collector.discardedCount > 0) {
             eventLog.discarded(generation.id, collector.discardedCount)
         }
+
         eventLog.finished(
             generation.id,
             status,

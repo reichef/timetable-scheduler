@@ -104,8 +104,7 @@ class ListConstraints(
                         problem.fixations
                             .mapNotNull { fixation ->
                                 TeacherFixationRules.invalidityOf(fixation, problem)?.let {
-                                    fixation.id to
-                                        it
+                                    fixation.id to it
                                 }
                             }.toMap(),
                     names = names.load(schoolId),
@@ -178,11 +177,14 @@ class UpdateConstraint(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val stored = loadConstraintOfSchool(constraints, schoolId, constraintId)
                 val problem = context.load(schoolId)
                 requireValid(input, problem.copy(constraints = problem.constraints.filterNot { it.id == constraintId }))
                 val updated = stored.copy(kind = input.kind, weight = input.effectiveWeight, rule = input.rule, version = expectedVersion)
+
                 requireUpdated(constraints.update(updated))
+
                 updated.copy(version = expectedVersion + 1)
             }
         }

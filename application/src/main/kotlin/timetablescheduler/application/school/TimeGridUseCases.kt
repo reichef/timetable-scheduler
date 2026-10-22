@@ -51,10 +51,13 @@ private class TimeGridChange(
         change: OutcomeScope.(TimeGrid) -> TimeGrid,
     ): TimeGrid {
         access.requireSchoolAccess(actor, schoolId).bind()
+
         val school = loadSchoolForChange(schools, schoolId, expectedVersion)
         val changedGrid = change(schools.findTimeGrid(schoolId))
+
         requireUpdated(schools.update(school))
         schools.saveTimeGrid(schoolId, changedGrid)
+
         return changedGrid
     }
 }
@@ -223,6 +226,7 @@ class DeleteTimeSlot(
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
+
                 val dependants = dependantSources.dependantsOf(slotId)
                 if (dependants.isNotEmpty()) {
                     fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
@@ -236,6 +240,7 @@ class DeleteTimeSlot(
                         grid.withSlotRemoved(slotId)
                     }
                 }
+
                 SlotDeletionResult(removedUnavailabilities)
             }
         }

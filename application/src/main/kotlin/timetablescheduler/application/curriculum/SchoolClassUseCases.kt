@@ -89,11 +89,14 @@ class CreateSchoolClass(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 loadLevelOfSchool(levels, schoolId, levelId)
                 val schoolClass = SchoolClass.create(levelId, suffix, priorityWeight).bind().withHomeRoom(homeRoomId)
                 requireUniqueSuffix(classes, schoolClass)
                 requireAvailableHomeRoom(rooms, classes, levels, schoolId, schoolClass)
+
                 classes.insert(schoolClass)
+
                 schoolClass
             }
         }
@@ -118,6 +121,7 @@ class UpdateSchoolClass(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val (schoolClass, _) = loadClassOfSchool(classes, levels, schoolId, classId)
                 val updated =
                     schoolClass
@@ -127,7 +131,9 @@ class UpdateSchoolClass(
                         .withHomeRoom(homeRoomId)
                 requireUniqueSuffix(classes, updated)
                 requireAvailableHomeRoom(rooms, classes, levels, schoolId, updated)
+
                 requireUpdated(classes.update(updated))
+
                 updated.copy(version = expectedVersion + 1)
             }
         }
@@ -149,12 +155,14 @@ class DeleteSchoolClass(
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
+
                 val (schoolClass, _) = loadClassOfSchool(classes, levels, schoolId, classId)
                 requireVersion(schoolClass.version, expectedVersion)
                 val dependants = dependantSources.dependantsOf(classId)
                 if (dependants.isNotEmpty()) {
                     fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 }
+
                 classes.delete(classId)
             }
         }

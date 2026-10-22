@@ -57,7 +57,18 @@ sealed interface ApplicationError {
     ) : ApplicationError
 }
 
-enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLASS, TIME_SLOT, TEACHER, SCHEDULING_CONSTRAINT, TEACHER_FIXATION, CHOSEN_TIMETABLE }
+enum class DependantType {
+    ROOM,
+    ROOM_FEATURE,
+    SUBJECT,
+    CLASS_LEVEL,
+    SCHOOL_CLASS,
+    TIME_SLOT,
+    TEACHER,
+    SCHEDULING_CONSTRAINT,
+    TEACHER_FIXATION,
+    CHOSEN_TIMETABLE,
+}
 
 /**
  * An entry that prevents a deletion (FR-023). For constraints [constraintType] says which catalogue entry it is, so the

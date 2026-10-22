@@ -78,10 +78,13 @@ class CreateTeacher(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek()
                 val teacher = Teacher.create(schoolId, name, shortCode, weeklyLoad, teachingSlotsPerWeek).bind()
                 requireUniqueShortCode(teachers, teacher)
+
                 teachers.insert(teacher)
+
                 teacher
             }
         }
@@ -105,10 +108,12 @@ class UpdateTeacher(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val teacher = loadTeacherOfSchool(teachers, schoolId, teacherId).copy(version = expectedVersion)
                 val teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek()
                 val updated = teacher.withGeneralData(name, shortCode, weeklyLoad, teachingSlotsPerWeek).bind()
                 requireUniqueShortCode(teachers, updated)
+
                 saveTeacher(teachers, updated)
             }
         }
@@ -175,6 +180,7 @@ class DeleteTeacher(
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
+
                 val teacher = loadTeacherOfSchool(teachers, schoolId, teacherId)
                 if (teacher.version != expectedVersion) {
                     fail(ApplicationError.VersionConflict)
@@ -183,6 +189,7 @@ class DeleteTeacher(
                 if (dependants.isNotEmpty()) {
                     fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 }
+
                 teachers.delete(teacherId)
             }
         }

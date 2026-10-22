@@ -145,10 +145,12 @@ class AccountManagementUseCasesTest {
 
         assertEquals(denied, accounts.list.execute(teacher.id))
         assertEquals(denied, accounts.get.execute(teacher.id, admin.id))
+
         assertEquals(denied, accounts.create.execute(teacher.id, "neu-konto", Role.PLANNER, "anfangs-passwort"))
         assertEquals(denied, accounts.updateRole.execute(teacher.id, teacher.id, Role.PLANNER, teacher.version))
         assertEquals(denied, accounts.deactivate.execute(teacher.id, admin.id, admin.version))
         assertEquals(denied, accounts.activate.execute(teacher.id, admin.id, admin.version))
+
         assertEquals(denied, accounts.resetPassword.execute(teacher.id, admin.id, "neues-passwort-1"))
     }
 

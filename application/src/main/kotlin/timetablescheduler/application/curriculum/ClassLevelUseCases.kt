@@ -110,12 +110,16 @@ class UpdateClassLevel(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val level = loadLevelOfSchool(levels, schoolId, levelId).copy(version = expectedVersion)
                 val schoolSubjects = subjects.findBySchool(schoolId).map { it.id }.toSet()
+
                 val updated = level.update(identifier, curriculum, schoolSubjects).bind()
                 requireUniqueIdentifier(levels, updated)
+
                 requireUpdated(levels.update(updated))
                 val saved = updated.copy(version = expectedVersion + 1)
+
                 ClassLevelSaved(saved, LevelExceedsGridRule.check(saved, schools.findTimeGrid(schoolId).teachingSlotsPerWeek()))
             }
         }

@@ -39,9 +39,11 @@ class InstallationUseCaseTest {
         assertEquals(InstallationOutcome.INSTALLED, assertIs<UseCaseResult.Success<InstallationOutcome>>(result).value)
         val school = assertNotNull(schools.findByNameIgnoreCase("Gymnasium Nord"))
         val planner = assertNotNull(accounts.findByUsernameIgnoreCase("admin"))
+
         assertEquals(Role.PLANNER, planner.role)
         assertTrue(planner.active)
         assertEquals(setOf(school.id), planner.schoolIds)
+
         assertTrue(hasher.matches("sehr-geheim-1", assertNotNull(credentials.findPasswordHash(planner.id))))
     }
 

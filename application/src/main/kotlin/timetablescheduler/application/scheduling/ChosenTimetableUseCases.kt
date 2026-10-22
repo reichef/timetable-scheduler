@@ -93,22 +93,27 @@ class ChooseAlternative(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
                 val alternative =
                     generations.findAlternative(alternativeId)?.takeIf { it.generationId == generationId }
                         ?: fail(ApplicationError.NotFound)
+
                 val problem = problems.load(schoolId)
                 val violations = HardConstraintChecker.violationsOf(problem, TimetableCandidate(alternative.lessons, alternative.unplaced))
                 if (violations.isNotEmpty()) {
                     fail(ApplicationError.AlternativeConflicts(violations, names.load(schoolId), problem.constraints))
                 }
+
                 if (alternative.unplaced.isNotEmpty() && !unplacedConfirmed) {
                     return@outcome ChooseOutcome.ConfirmationRequired(generation, alternative, alternative.unplaced, names.load(schoolId))
                 }
+
                 val current = chosenTimetables.find(schoolId)
                 if (current?.version != expectedChosenVersion) {
                     fail(ApplicationError.VersionConflict)
                 }
+
                 val chosen =
                     ChosenTimetable(
                         schoolId,
@@ -118,10 +123,11 @@ class ChooseAlternative(
                         clock.instant(),
                         alternative.lessons,
                         alternative.unplaced,
-                        version =
-                            current?.version?.plus(1) ?: 0,
+                        version = current?.version?.plus(1) ?: 0,
                     )
+
                 requireUpdated(chosenTimetables.save(chosen, expectedChosenVersion))
+
                 ChooseOutcome.Chosen(chosen)
             }
         }
@@ -179,6 +185,7 @@ class CompareAlternatives(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
                 val alternatives = generations.findAlternatives(generationId)
                 val firstIndex = alternatives.indexOfFirst { it.id == first }
@@ -186,6 +193,7 @@ class CompareAlternatives(
                 if (firstIndex < 0 || secondIndex < 0) {
                     fail(ApplicationError.NotFound)
                 }
+
                 AlternativeComparison(
                     generation,
                     alternatives[firstIndex],

@@ -46,10 +46,12 @@ class InstallationUseCase(
                 PasswordPolicy.validate(setup.plannerPassword)?.let { fail(ApplicationError.Invalid(listOf(it))) }
                 val firstSchool = School.create(setup.schoolName).bind()
                 val initialPlanner = UserAccount.create(setup.plannerUsername, Role.PLANNER, setOf(firstSchool.id)).bind()
+
                 schools.insert(firstSchool)
                 accounts.insert(initialPlanner)
                 credentials.save(initialPlanner.id, hasher.hash(setup.plannerPassword))
                 DefaultConstraints.forSchool(firstSchool.id).forEach(constraints::insert)
+
                 InstallationOutcome.INSTALLED
             }
         }

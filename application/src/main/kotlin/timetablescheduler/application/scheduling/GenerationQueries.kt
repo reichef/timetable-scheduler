@@ -184,14 +184,17 @@ class GetAlternative(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
                 val alternatives = generations.findAlternatives(generationId)
                 val position = alternatives.indexOfFirst { it.id == alternativeId }
                 if (position < 0) {
                     fail(ApplicationError.NotFound)
                 }
+
                 val problem = problems.load(schoolId)
                 val alternative = alternatives[position]
+
                 AlternativeDetails(
                     generation,
                     alternatives[position],

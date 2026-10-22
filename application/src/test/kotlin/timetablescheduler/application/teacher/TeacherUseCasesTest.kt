@@ -119,6 +119,7 @@ class TeacherUseCasesTest {
     fun `deleting a time slot removes the unavailabilities of that slot and reports their count`() {
         val anna = world.teacher(nord.id, "Anna Schmidt", "SCHA")
         val max = world.teacher(nord.id, "Max Meyer", "MEY")
+
         val sixth = periods[5]
         world.markUnavailable(anna, Unavailability(FRIDAY, sixth.id), Unavailability(FRIDAY, periods[0].id))
         world.markUnavailable(max, Unavailability(DayOfWeek.MONDAY, sixth.id))
@@ -136,6 +137,7 @@ class TeacherUseCasesTest {
         assertEquals(2, preview.unavailabilityCount)
         assertEquals(2, result.removedUnavailabilities)
         assertEquals(setOf(Unavailability(FRIDAY, periods[0].id)), world.teachers.findById(anna.id)!!.unavailability)
+
         assertEquals(emptySet(), world.teachers.findById(max.id)!!.unavailability)
     }
 

@@ -70,6 +70,7 @@ class ReadinessReportLoader(
         val schoolSubjects = subjects.findBySchool(schoolId).sortedBy { it.name.lowercase() }
         val schoolLevels = levels.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
         val schoolTeachers = teachers.findBySchool(schoolId).sortedWith(compareBy({ it.name.lowercase() }, { it.shortCode }))
+
         val input =
             ReadinessInput(
                 teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek(),
@@ -81,6 +82,7 @@ class ReadinessReportLoader(
                 fixations = schoolFixations,
             )
         val levelsById = schoolLevels.associateBy { it.id }
+
         return ReadinessReport(
             schoolId = schoolId,
             issues = ReadinessCheck.issuesOf(input),
@@ -92,8 +94,7 @@ class ReadinessReportLoader(
                 schoolClasses
                     .mapNotNull { schoolClass ->
                         levelsById[schoolClass.classLevelId]?.let {
-                            schoolClass.id to
-                                schoolClass.displayName(it)
+                            schoolClass.id to schoolClass.displayName(it)
                         }
                     }.toMap(),
             fixations = schoolFixations.associateBy { it.id },

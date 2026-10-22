@@ -20,10 +20,12 @@ class GetSchoolReadinessTest {
     fun `report contains the issues of the school's data and the entries to name them`() {
         world.teachingDays(nord.id, DayOfWeek.MONDAY)
         world.slot(nord.id, "1. Stunde", "08:00", "08:45")
+
         val lab = world.feature(nord.id, "Chemieraum")
         val chemie = world.subject(nord.id, "Chemie", setOf(lab.id))
         val level = world.classLevel(nord.id, "6", chemie to 2)
         world.schoolClass(level, "a")
+
         val anna = world.teacher(nord.id, "Anna Schmidt", "SCHA", weeklyLoad = 2, qualifiedSubjects = setOf(chemie.id))
 
         val report = assertIs<UseCaseResult.Success<ReadinessReport>>(readiness.execute(admin.id, nord.id)).value
@@ -37,6 +39,7 @@ class GetSchoolReadinessTest {
             report.issues,
         )
         assertEquals("Chemie", report.subjectName(chemie.id))
+
         assertEquals("Chemieraum", report.featureName(lab.id))
     }
 

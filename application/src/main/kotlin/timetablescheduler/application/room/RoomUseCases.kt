@@ -96,6 +96,7 @@ class DeleteRoomFeature(
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
+
                 val feature = roomFeatures.findById(featureId)
                 if (feature == null || feature.schoolId != schoolId) {
                     fail(ApplicationError.NotFound)
@@ -104,6 +105,7 @@ class DeleteRoomFeature(
                 if (dependants.isNotEmpty()) {
                     fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 }
+
                 roomFeatures.delete(featureId)
             }
         }
@@ -149,10 +151,13 @@ class UpdateRoom(
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val room = loadRoomOfSchool(rooms, schoolId, roomId).copy(version = expectedVersion)
                 val updated = room.update(identifier, featureIds, roomFeatures.featureIdsOf(schoolId)).bind()
                 requireUniqueIdentifier(rooms, updated)
+
                 requireUpdated(rooms.update(updated))
+
                 updated.copy(version = expectedVersion + 1)
             }
         }
@@ -173,6 +178,7 @@ class DeleteRoom(
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
+
                 val room = loadRoomOfSchool(rooms, schoolId, roomId)
                 if (room.version != expectedVersion) {
                     fail(ApplicationError.VersionConflict)
@@ -181,6 +187,7 @@ class DeleteRoom(
                 if (dependants.isNotEmpty()) {
                     fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 }
+
                 rooms.delete(roomId)
             }
         }
