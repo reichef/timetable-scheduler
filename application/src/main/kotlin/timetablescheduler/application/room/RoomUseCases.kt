@@ -127,13 +127,16 @@ class DeleteRoom(
     private val transactions: TransactionRunner,
     private val access: SchoolAccessPolicy,
     private val rooms: RoomRepository,
+    private val dependantSources: List<DependantSource<RoomId>>,
 ) {
     fun execute(actor: AccountId, schoolId: SchoolId, roomId: RoomId, expectedVersion: Int): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
-                access.requireSchoolAccess(actor, schoolId).bind()
+                val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 val room = loadRoomOfSchool(rooms, schoolId, roomId)
                 if (room.version != expectedVersion) fail(ApplicationError.VersionConflict)
+                val dependants = dependantSources.dependantsOf(roomId)
+                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 rooms.delete(roomId)
             }
         }

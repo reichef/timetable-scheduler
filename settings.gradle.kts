@@ -5,5 +5,6 @@ include(
     "application",
     "adapters:persistence",
     "adapters:web",
+    "adapters:solver",
     "bootstrap",
 )

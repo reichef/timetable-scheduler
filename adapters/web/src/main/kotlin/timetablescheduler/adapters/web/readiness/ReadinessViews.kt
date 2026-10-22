@@ -17,7 +17,7 @@ import timetablescheduler.domain.readiness.ReadinessIssue
 fun readinessPath(schoolId: SchoolId) = "/schools/${schoolId.value}/readiness"
 
 /** One list entry: a link to the affected entry and what is wrong with it. */
-private fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIssue, texts: UiTexts) {
+internal fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIssue, texts: UiTexts) {
     val school = "/schools/${report.schoolId.value}"
     when (issue) {
         is ReadinessIssue.SubjectNoSuitableRoom -> {
@@ -44,6 +44,17 @@ private fun FlowContent.issueEntry(report: ReadinessReport, issue: ReadinessIssu
         is ReadinessIssue.TeacherLoadExceedsGrid -> {
             a(href = "$school/teachers/${issue.teacherId.value}") { +report.teacherName(issue.teacherId) }
             +texts.readiness.excessPeriods(issue.excessPeriods)
+        }
+        is ReadinessIssue.InvalidTeacherFixation -> {
+            val fixation = report.fixation(issue.fixationId)
+            a(href = "$school/teacher-fixations/${issue.fixationId.value}") {
+                +texts.constraints.fixationText(
+                    fixation?.let { report.className(it.classId) }.orEmpty(),
+                    fixation?.let { report.subjectName(it.subjectId) }.orEmpty(),
+                    fixation?.let { report.teacherName(it.teacherId) }.orEmpty(),
+                )
+            }
+            +": ${texts.constraints.invalidityReason(issue.reason)}"
         }
     }
 }

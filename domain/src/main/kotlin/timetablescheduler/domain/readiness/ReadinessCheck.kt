@@ -6,6 +6,8 @@ import timetablescheduler.domain.curriculum.ClassLevel
 import timetablescheduler.domain.curriculum.SchoolClass
 import timetablescheduler.domain.curriculum.Subject
 import timetablescheduler.domain.room.Room
+import timetablescheduler.domain.scheduling.constraint.TeacherFixation
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationRules
 import timetablescheduler.domain.teacher.Teacher
 
 /** Everything of one school the readiness check looks at. */
@@ -16,6 +18,7 @@ data class ReadinessInput(
     val levels: List<ClassLevel>,
     val classes: List<SchoolClass>,
     val teachers: List<Teacher>,
+    val fixations: List<TeacherFixation> = emptyList(),
 )
 
 /**
@@ -35,7 +38,8 @@ object ReadinessCheck {
             input.levels.mapNotNull { LevelExceedsGridRule.check(it, input.teachingSlotsPerWeek) } +
             teachersWithoutQualification(input.teachers) +
             teachersWithZeroLoad(input.teachers) +
-            teachersAboveGrid(input.teachers, input.teachingSlotsPerWeek)
+            teachersAboveGrid(input.teachers, input.teachingSlotsPerWeek) +
+            invalidFixations(input)
     }
 
     private fun subjectsInAnyCurriculum(input: ReadinessInput): List<Subject> {
@@ -85,6 +89,22 @@ object ReadinessCheck {
 
     private fun teachersWithZeroLoad(teachers: List<Teacher>): List<ReadinessIssue> =
         teachers.filter { it.weeklyLoad == 0 }.map { ReadinessIssue.TeacherZeroLoad(it.id) }
+
+    /** `INVALID_TEACHER_FIXATION`: fixations made invalid by later master-data changes (002 FR-013a). */
+    private fun invalidFixations(input: ReadinessInput): List<ReadinessIssue> {
+        val levelsById = input.levels.associateBy { it.id }
+        val curricula = input.classes.associate { schoolClass ->
+            schoolClass.id to levelsById[schoolClass.classLevelId]?.let { ClassCurriculumResolver.curriculumOf(schoolClass, it) }.orEmpty()
+        }
+        fun periodsOf(fixation: TeacherFixation) = curricula[fixation.classId]?.firstOrNull { it.subjectId == fixation.subjectId }?.periodsPerWeek
+        val teachersById = input.teachers.associateBy { it.id }
+        return input.fixations.mapNotNull { fixation ->
+            val teacher = teachersById[fixation.teacherId]
+            val fixedPeriods = input.fixations.filter { it.teacherId == fixation.teacherId }.sumOf { periodsOf(it) ?: 0 }
+            TeacherFixationRules.invalidityOf(periodsOf(fixation), fixation.subjectId, teacher?.qualifiedSubjectIds.orEmpty(), teacher?.weeklyLoad ?: 0, fixedPeriods)
+                ?.let { ReadinessIssue.InvalidTeacherFixation(fixation.id, it) }
+        }
+    }
 
     /** `TEACHER_LOAD_EXCEEDS_GRID`: e.g. after the grid was reduced below a load that was valid when saved. */
     private fun teachersAboveGrid(teachers: List<Teacher>, teachingSlotsPerWeek: Int): List<ReadinessIssue> =

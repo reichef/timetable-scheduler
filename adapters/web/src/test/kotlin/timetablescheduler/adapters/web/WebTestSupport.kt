@@ -26,8 +26,7 @@ class TestSystem {
     /** Installs the first school "Gymnasium Nord" with planner `admin` / `sehr-geheim-1`. */
     fun installed(): TestSystem = apply {
         with(world) {
-            InstallationUseCase(transactions, schools, accounts, credentials, hasher)
-                .execute(InitialSetup("Gymnasium Nord", ADMIN, PASSWORD))
+            installation().execute(InitialSetup("Gymnasium Nord", ADMIN, PASSWORD))
         }
     }
 

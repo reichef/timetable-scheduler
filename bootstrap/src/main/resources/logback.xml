@@ -12,6 +12,8 @@
     <logger name="Exposed" level="WARN"/>
     <!-- Its TRACE/DEBUG output repeats exception messages, which may contain confidential data: never lower it. -->
     <logger name="io.ktor.server.plugins.statuspages" level="WARN"/>
+    <!-- Timefold logs scores and, below WARN, planning values (lessons, teachers): never lower it (FR-026, G13). -->
+    <logger name="ai.timefold" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

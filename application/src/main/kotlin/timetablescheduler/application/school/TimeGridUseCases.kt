@@ -1,5 +1,8 @@
 package timetablescheduler.application.school
 
+import timetablescheduler.application.access.DependantSource
+import timetablescheduler.application.access.DependantVisibilityFilter
+import timetablescheduler.application.access.dependantsOf
 import timetablescheduler.application.access.SchoolAccessPolicy
 import timetablescheduler.application.error.OutcomeScope
 import timetablescheduler.application.error.UseCaseResult
@@ -179,15 +182,19 @@ class PreviewTimeSlotDeletion(
 /** Never blocked: removes the slot, its day exclusions and the teacher unavailabilities entered for it. */
 class DeleteTimeSlot(
     private val transactions: TransactionRunner,
-    access: SchoolAccessPolicy,
+    private val access: SchoolAccessPolicy,
     schools: SchoolRepository,
     private val slotUsage: TimeSlotUsage,
+    private val dependantSources: List<DependantSource<TimeSlotId>>,
 ) {
     private val change = TimeGridChange(access, schools)
 
     fun execute(actor: AccountId, schoolId: SchoolId, slotId: TimeSlotId, expectedVersion: Int): UseCaseResult<SlotDeletionResult> =
         transactions.inTransaction {
             outcome {
+                val planner = access.requireSchoolAccess(actor, schoolId).bind()
+                val dependants = dependantSources.dependantsOf(slotId)
+                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
                 var removedUnavailabilities = 0
                 with(change) {
                     apply(actor, schoolId, expectedVersion) { grid ->

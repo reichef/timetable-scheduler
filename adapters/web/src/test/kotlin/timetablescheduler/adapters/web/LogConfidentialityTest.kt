@@ -6,11 +6,14 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import org.slf4j.LoggerFactory
+import timetablescheduler.adapters.web.generation.FIELD_CHOSEN_VERSION
+import timetablescheduler.adapters.web.generation.GenerationTestData
 import timetablescheduler.adapters.web.i18n.EnglishTexts
 import timetablescheduler.adapters.web.i18n.GermanTexts
 import timetablescheduler.adapters.web.i18n.UiTexts
@@ -64,6 +67,51 @@ class LogConfidentialityTest {
 
     @Test
     fun `the same holds with the English interface`() = businessAndTechnicalErrorsKeepLogsClean(EnglishTexts)
+
+    @Test
+    fun `scheduling steps keep names and lessons out of the log (002 FR-026, G13)`() = schedulingStepsKeepLogsClean(GermanTexts)
+
+    @Test
+    fun `scheduling steps keep the log clean with the English interface too`() = schedulingStepsKeepLogsClean(EnglishTexts)
+
+    /**
+     * Creates a constraint and a fixation, runs a generation, compares and chooses an alternative and tries to delete
+     * a teacher of the chosen timetable, all with recognizable names; none of them may reach the log.
+     */
+    private fun schedulingStepsKeepLogsClean(texts: UiTexts) = testApplication {
+        val system = TestSystem().installed()
+        val data = GenerationTestData(system)
+        val school = "/schools/${data.schoolId.value}"
+        val client = startWith(system)
+        client.login()
+        client.switchLanguage(texts.language.code)
+
+        client.submitChecked("$school/constraints", "type" to "CLASS_NO_GAPS", "classId" to "${data.class5a.id.value}", "kind" to "SOFT", "weight" to "LOW")
+        client.submitChecked(
+            "$school/teacher-fixations",
+            "classId" to "${data.class5a.id.value}", "subjectId" to "${data.math.id.value}", "teacherId" to "${data.schmidt.id.value}",
+        )
+        system.world.solver.candidates = { listOf(data.complete()) }
+        val started = client.submitChecked("$school/generations", "timeLimitMinutes" to "1")
+        val generationPath = started.headers[HttpHeaders.Location]!!
+        val generation = system.world.generations.findBySchool(data.schoolId).single()
+        val alternative = system.world.generations.findAlternatives(generation.id).single()
+        val alternativePath = "$generationPath/alternatives/${alternative.id.value}"
+        client.get(alternativePath)
+        client.get("$generationPath/compare")
+        client.submitChecked("$alternativePath/choose", FIELD_CHOSEN_VERSION to "")
+        client.get("$school/timetable")
+        val blocked = client.submitChecked("$school/teachers/${data.schmidt.id.value}/delete", "version" to "${system.world.teachers.findById(data.schmidt.id)!!.version}")
+
+        assertEquals(HttpStatusCode.SeeOther, started.status)
+        assertEquals(HttpStatusCode.Conflict, blocked.status)
+        assertTrue(texts.errors.describe(DependantType.CHOSEN_TIMETABLE) in blocked.bodyAsText())
+        val logLines = capturedLog.list.map { it.fullText() }
+        // Ids may be logged (constitution III); names, short codes and lesson contents may not.
+        listOf("Anna Schmidt", "SCHA", "Mathematik", "Deutsch", "A-101", "1. Stunde").forEach { value ->
+            assertEquals(emptyList(), logLines.filter { value in it }, "log must not contain \"$value\"")
+        }
+    }
 
     /** Runs the confidential steps in the language of [texts] (FR-048) and checks pages and log output. */
     private fun businessAndTechnicalErrorsKeepLogsClean(texts: UiTexts) = testApplication {

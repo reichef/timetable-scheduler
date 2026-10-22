@@ -152,4 +152,24 @@ class CurriculumRoutesTest {
         assertTrue("${system.schoolPath()}/subjects" in dashboard)
         assertTrue("${system.schoolPath()}/class-levels" in dashboard)
     }
+
+    @Test
+    fun `the class form saves a home room and rejects a room already used by another class (002 FR-002a)`() = testApplication {
+        val system = TestSystem().installed()
+        val schoolId = system.firstSchoolId()
+        val room = system.world.room(schoolId, "A-101")
+        val level = system.world.classLevel(schoolId, "5")
+        val classesPath = "${system.schoolPath()}/class-levels/${level.id.value}/classes"
+        val client = startWith(system)
+        client.login()
+
+        assertTrue("A-101" in client.get("$classesPath/new").bodyAsText())
+        val created = client.submitChecked(classesPath, "suffix" to "a", "priorityWeight" to "10", "homeRoomId" to "${room.id.value}")
+        val duplicate = client.submitChecked(classesPath, "suffix" to "b", "priorityWeight" to "10", "homeRoomId" to "${room.id.value}")
+
+        assertEquals(HttpStatusCode.SeeOther, created.status)
+        assertEquals(room.id, system.world.schoolClasses.findBySchool(schoolId).single().homeRoomId)
+        assertEquals(HttpStatusCode.UnprocessableEntity, duplicate.status)
+        assertTrue("Der Raum ist bereits Klassenraum von 5a." in duplicate.bodyAsText())
+    }
 }

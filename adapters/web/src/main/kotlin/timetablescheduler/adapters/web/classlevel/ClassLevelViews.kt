@@ -1,6 +1,11 @@
 package timetablescheduler.adapters.web.classlevel
 
 import io.ktor.http.HttpStatusCode
+import kotlinx.html.FORM
+import kotlinx.html.label
+import kotlinx.html.option
+import kotlinx.html.select
+import timetablescheduler.domain.room.Room
 import io.ktor.server.application.ApplicationCall
 import kotlinx.html.FlowContent
 import kotlinx.html.FormMethod
@@ -45,7 +50,29 @@ fun classPath(schoolId: SchoolId, schoolClass: SchoolClass) = "/schools/${school
 data class CurriculumFormInput(val identifier: String, val periodsBySubject: Map<SubjectId, String>)
 
 /** Entered values of the class form. */
-data class ClassFormInput(val suffix: String, val priorityWeight: String)
+data class ClassFormInput(val suffix: String, val priorityWeight: String, val homeRoomId: String = "")
+
+/** Optional home room of the class (002 FR-002a); the empty option means none. */
+private fun FORM.homeRoomSelect(rooms: List<Room>, selectedRoomId: String, texts: UiTexts) {
+    label {
+        +texts.classLevels.homeRoomLabel
+        select {
+            name = "homeRoomId"
+            option {
+                value = ""
+                selected = selectedRoomId.isEmpty()
+                +texts.classLevels.noHomeRoom
+            }
+            rooms.forEach { room ->
+                option {
+                    value = "${room.id.value}"
+                    selected = selectedRoomId == "${room.id.value}"
+                    +room.identifier
+                }
+            }
+        }
+    }
+}
 
 private fun FlowContent.gridWarning(warning: ReadinessIssue.LevelExceedsGrid?, weeklyPeriods: Int, teachingSlotsPerWeek: Int, texts: UiTexts) {
     if (warning == null) return
@@ -156,6 +183,7 @@ suspend fun ApplicationCall.respondNewClassForm(
             csrfField(session)
             textField("suffix", texts.classLevels.suffixLabel, entered?.suffix ?: proposal.suffix)
             textField("priorityWeight", texts.classLevels.weightLabel, entered?.priorityWeight ?: "${SchoolClass.DEFAULT_PRIORITY_WEIGHT}", InputType.number)
+            homeRoomSelect(proposal.rooms, entered?.homeRoomId.orEmpty(), texts)
             button { +texts.common.create }
         }
         p { a(href = levelPath(level)) { +texts.classLevels.toLevel } }
@@ -191,6 +219,7 @@ suspend fun ApplicationCall.respondSchoolClassDetails(
             hiddenField("version", "${schoolClass.version}")
             textField("suffix", texts.classLevels.suffixLabel, entered?.suffix ?: schoolClass.suffix)
             textField("priorityWeight", texts.classLevels.weightLabel, entered?.priorityWeight ?: "${schoolClass.priorityWeight}", InputType.number)
+            homeRoomSelect(details.rooms, entered?.homeRoomId ?: schoolClass.homeRoomId?.value?.toString().orEmpty(), texts)
             button { +texts.common.save }
         }
         form(action = "$path/delete", method = FormMethod.post) {

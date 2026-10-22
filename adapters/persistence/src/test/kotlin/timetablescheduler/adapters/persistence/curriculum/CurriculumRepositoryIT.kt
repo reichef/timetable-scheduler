@@ -1,7 +1,9 @@
 package timetablescheduler.adapters.persistence.curriculum
 
 import timetablescheduler.adapters.persistence.PostgresTestBase
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import timetablescheduler.adapters.persistence.room.ExposedRoomFeatureRepository
+import timetablescheduler.adapters.persistence.room.ExposedRoomRepository
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.common.SchoolId
@@ -9,11 +11,13 @@ import timetablescheduler.domain.curriculum.ClassLevel
 import timetablescheduler.domain.curriculum.CurriculumEntry
 import timetablescheduler.domain.curriculum.SchoolClass
 import timetablescheduler.domain.curriculum.Subject
+import timetablescheduler.domain.room.Room
 import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.school.School
 import timetablescheduler.domain.validation.ValidationResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -25,6 +29,7 @@ class CurriculumRepositoryIT : PostgresTestBase() {
     private val subjects = ExposedSubjectRepository()
     private val levels = ExposedClassLevelRepository()
     private val classes = ExposedSchoolClassRepository()
+    private val rooms = ExposedRoomRepository()
 
     private fun <T> ValidationResult<T>.valid(): T = (this as ValidationResult.Valid).value
 
@@ -134,5 +139,30 @@ class CurriculumRepositoryIT : PostgresTestBase() {
 
         assertNull(inTransaction { levels.findById(level.id) })
         assertNull(inTransaction { subjects.findById(mathe.id) })
+    }
+
+    @Test
+    fun `a class keeps its home room and is found by it (002 FR-002a)`() {
+        val school = storedSchool()
+        val room = Room.create(school.id, "A-101", emptySet(), emptySet()).valid().also { inTransaction { rooms.insert(it) } }
+        val level = storedLevel(school.id, "5")
+        val class5a = storedClass(level, "a")
+
+        inTransaction { classes.update(class5a.withHomeRoom(room.id)) }
+
+        assertEquals(room.id, inTransaction { classes.findById(class5a.id) }!!.homeRoomId)
+        assertEquals(class5a.id, inTransaction { classes.findByHomeRoom(room.id) }!!.id)
+    }
+
+    @Test
+    fun `a room is the home room of at most one class and cannot be deleted while it is one`() {
+        val school = storedSchool()
+        val room = Room.create(school.id, "A-101", emptySet(), emptySet()).valid().also { inTransaction { rooms.insert(it) } }
+        val level = storedLevel(school.id, "5")
+        inTransaction { classes.update(storedClass(level, "a").withHomeRoom(room.id)) }
+        val class5b = storedClass(level, "b")
+
+        assertFailsWith<ExposedSQLException> { inTransaction { classes.update(class5b.withHomeRoom(room.id)) } }
+        assertFailsWith<ExposedSQLException> { inTransaction { rooms.delete(room.id) } }
     }
 }

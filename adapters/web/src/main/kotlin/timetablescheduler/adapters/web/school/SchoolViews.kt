@@ -55,5 +55,8 @@ private fun FlowContent.sectionLinks(school: School, dashboard: SchoolDashboard,
         li { a(href = "${schoolPath(school)}/subjects") { +texts.school.subjectsLink } }
         li { a(href = "${schoolPath(school)}/class-levels") { +texts.school.classLevelsLink } }
         li { a(href = "${schoolPath(school)}/teachers") { +texts.school.teachersLink } }
+        li { a(href = "${schoolPath(school)}/constraints") { +texts.school.constraintsLink } }
+        li { a(href = "${schoolPath(school)}/generations") { +texts.school.generationsLink } }
+        li { a(href = "${schoolPath(school)}/timetable") { +texts.school.chosenTimetableLink } }
     }
 }

@@ -5,6 +5,7 @@ import timetablescheduler.application.port.SchoolClassRepository
 import timetablescheduler.application.port.SubjectRepository
 import timetablescheduler.domain.common.ClassLevelId
 import timetablescheduler.domain.common.RoomFeatureId
+import timetablescheduler.domain.common.RoomId
 import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
@@ -69,4 +70,6 @@ class InMemorySchoolClassRepository(private val levels: InMemoryClassLevelReposi
     override fun findByLevel(levelId: ClassLevelId): List<SchoolClass> = entries.values.filter { it.classLevelId == levelId }
     override fun findBySchool(schoolId: SchoolId): List<SchoolClass> =
         entries.values.filter { levels.findById(it.classLevelId)?.schoolId == schoolId }
+
+    override fun findByHomeRoom(roomId: RoomId): SchoolClass? = entries.values.firstOrNull { it.homeRoomId == roomId }
 }

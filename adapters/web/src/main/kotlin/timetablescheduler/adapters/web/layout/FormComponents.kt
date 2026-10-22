@@ -3,6 +3,7 @@ package timetablescheduler.adapters.web.layout
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import kotlinx.html.FlowContent
+import timetablescheduler.adapters.web.timetable.conflictList
 import kotlinx.html.FORM
 import kotlinx.html.InputType
 import kotlinx.html.a
@@ -15,7 +16,10 @@ import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.ul
 import timetablescheduler.adapters.web.i18n.UiTexts
+import timetablescheduler.adapters.web.constraint.constraintList
 import timetablescheduler.adapters.web.i18n.texts
+import timetablescheduler.adapters.web.readiness.issueEntry
+import timetablescheduler.adapters.web.readiness.readinessPath
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.domain.common.RoomFeatureId
 import timetablescheduler.domain.room.RoomFeature
@@ -73,10 +77,32 @@ suspend fun ApplicationCall.respondBusinessFailure(error: ApplicationError, back
         is ApplicationError.DeletionBlocked -> respondPage(texts.errors.deletionBlockedTitle, HttpStatusCode.Conflict) {
             p { +texts.errors.deletionBlocked }
             ul {
-                error.visibleDependants.forEach { li { +"${texts.errors.describe(it.type)}: ${it.displayName}" } }
+                error.visibleDependants.forEach { dependant ->
+                    val kind = dependant.constraintType?.let { type -> "${texts.errors.describe(dependant.type)} „${texts.constraints.typeName(type)}“" }
+                    li { +"${kind ?: texts.errors.describe(dependant.type)}: ${dependant.displayName}" }
+                }
                 if (error.hiddenDependantCount > 0) li { +texts.errors.hiddenDependants(error.hiddenDependantCount) }
             }
             if (backLink != null) a(href = backLink) { +texts.common.back }
+        }
+        is ApplicationError.GenerationBlocked -> respondPage(texts.generations.blockedTitle, HttpStatusCode.Conflict) {
+            p { +texts.generations.blockedIntro }
+            ul { error.blockingIssues.forEach { issue -> li { issueEntry(error.names, issue, texts) } } }
+            a(href = readinessPath(error.names.schoolId)) { +texts.generations.toReadiness }
+        }
+        is ApplicationError.ContradictingConstraints -> respondPage(texts.constraints.contradictionTitle, HttpStatusCode.Conflict) {
+            p { +texts.constraints.contradictionIntro }
+            constraintList(error.constraints, error.names, texts)
+            if (backLink != null) a(href = backLink) { +texts.common.back }
+        }
+        is ApplicationError.AlternativeConflicts -> respondPage(texts.generations.conflictsTitle, HttpStatusCode.Conflict) {
+            p { +texts.generations.conflictsIntro }
+            conflictList(error.violations, error.constraints, error.names, texts)
+            if (backLink != null) a(href = backLink) { +texts.common.back }
+        }
+        is ApplicationError.GenerationRunning -> respondPage(texts.generations.runningTitle, HttpStatusCode.Conflict) {
+            p { +texts.generations.runningExists }
+            if (backLink != null) a(href = "$backLink/${error.generationId.value}") { +texts.generations.toRunning }
         }
         is ApplicationError.Invalid -> respondPage(texts.errors.invalidInputTitle, HttpStatusCode.UnprocessableEntity) {
             validationErrors(error.errors, texts)

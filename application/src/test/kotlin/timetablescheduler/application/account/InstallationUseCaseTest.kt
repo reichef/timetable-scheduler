@@ -4,6 +4,7 @@ import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.fakes.InMemoryPasswordCredentialRepository
 import timetablescheduler.application.fakes.InMemorySchoolRepository
+import timetablescheduler.application.fakes.InMemorySchedulingConstraintRepository
 import timetablescheduler.application.fakes.InMemoryTransactionRunner
 import timetablescheduler.application.fakes.InMemoryUserAccountRepository
 import timetablescheduler.application.fakes.PlainTextTestPasswordHasher
@@ -22,7 +23,7 @@ class InstallationUseCaseTest {
     private val accounts = InMemoryUserAccountRepository()
     private val credentials = InMemoryPasswordCredentialRepository()
     private val hasher = PlainTextTestPasswordHasher()
-    private val installation = InstallationUseCase(InMemoryTransactionRunner(), schools, accounts, credentials, hasher)
+    private val installation = InstallationUseCase(InMemoryTransactionRunner(), schools, accounts, credentials, hasher, InMemorySchedulingConstraintRepository())
 
     private val initialSetup = InitialSetup(
         schoolName = "Gymnasium Nord",

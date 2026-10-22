@@ -5,9 +5,15 @@ import timetablescheduler.application.error.Dependant
 import timetablescheduler.application.error.DependantType
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.scheduling.constraint.ConstraintType
 
 /** An entry blocking a deletion, together with the schools it belongs to (needed for the visibility rule). */
-data class DependantRef(val type: DependantType, val displayName: String, val schoolIds: Set<SchoolId>)
+data class DependantRef(
+    val type: DependantType,
+    val displayName: String,
+    val schoolIds: Set<SchoolId>,
+    val constraintType: ConstraintType? = null,
+)
 
 /** Finds the entries that would block deleting the entity identified by [K]. */
 fun interface DependantSource<K> {
@@ -23,7 +29,7 @@ object DependantVisibilityFilter {
     fun deletionBlocked(dependants: List<DependantRef>, actor: UserAccount): ApplicationError.DeletionBlocked {
         val (visible, hidden) = dependants.partition { dependant -> dependant.schoolIds.any { it in actor.schoolIds } }
         return ApplicationError.DeletionBlocked(
-            visibleDependants = visible.map { Dependant(it.type, it.displayName) }.sortedWith(compareBy({ it.type }, { it.displayName })),
+            visibleDependants = visible.map { Dependant(it.type, it.displayName, it.constraintType) }.sortedWith(compareBy({ it.type }, { it.displayName })),
             hiddenDependantCount = hidden.size,
         )
     }

@@ -16,6 +16,8 @@ interface SchoolRepository {
 
     fun findByNameIgnoreCase(name: String): School?
 
+    fun findAllIds(): List<SchoolId>
+
     fun findTimeGrid(schoolId: SchoolId): TimeGrid
 
     /** Stores teaching days, slots and exclusions; existing slots keep their identity. */

@@ -2,6 +2,18 @@ package timetablescheduler.application.fakes
 
 import timetablescheduler.application.MasterDataPorts
 import timetablescheduler.application.MasterDataUseCases
+import timetablescheduler.application.SchedulingPorts
+import timetablescheduler.application.account.InstallationUseCase
+import timetablescheduler.application.scheduling.SchedulingProblemBuilder
+import timetablescheduler.domain.scheduling.evaluation.ObjectiveEvaluator
+import timetablescheduler.domain.scheduling.generation.Alternative
+import timetablescheduler.domain.scheduling.generation.AlternativeId
+import timetablescheduler.domain.scheduling.generation.Generation
+import timetablescheduler.domain.scheduling.problem.SchedulingProblem
+import timetablescheduler.domain.scheduling.solution.TimetableCandidate
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.common.RoomFeatureId
@@ -39,10 +51,20 @@ class MasterDataWorld {
     val classLevels = InMemoryClassLevelRepository()
     val schoolClasses = InMemorySchoolClassRepository(classLevels)
 
+    val constraints = InMemorySchedulingConstraintRepository()
+    val fixations = InMemoryTeacherFixationRepository()
+    val generations = InMemoryGenerationRepository()
+    val chosenTimetables = InMemoryChosenTimetableRepository()
+    val solver = FakeTimetableSolver()
+    val executor = ImmediateGenerationExecutor()
+    val generationLog = RecordingGenerationEventLog()
+    val clock: Clock = Clock.fixed(Instant.parse("2026-10-09T08:00:00Z"), ZoneOffset.UTC)
+
     val ports = MasterDataPorts(
         transactions, schools, accounts, credentials, hasher, rooms, roomFeatures, timeSlotUsage, subjects, classLevels, schoolClasses, teachers,
     )
-    val useCases = MasterDataUseCases(ports)
+    val schedulingPorts = SchedulingPorts(constraints, fixations, generations, chosenTimetables, solver, executor, generationLog, clock)
+    val useCases = MasterDataUseCases(ports, schedulingPorts)
 
     val schoolUseCases get() = useCases.schools
     val roomUseCases get() = useCases.rooms
@@ -118,6 +140,20 @@ class MasterDataWorld {
     fun markUnavailable(teacher: Teacher, vararg entries: Unavailability) {
         val stored = teachers.findById(teacher.id)!!
         teachers.update(stored.copy(unavailability = stored.unavailability + entries))
+    }
+
+    /** The installation use case wired to this world; it seeds the default constraints (002 FR-013c). */
+    fun installation() = InstallationUseCase(transactions, schools, accounts, credentials, hasher, constraints)
+
+    /** The scheduling problem of the school's current data, as a generation would see it. */
+    fun problemOf(schoolId: SchoolId): SchedulingProblem =
+        SchedulingProblemBuilder(schools, rooms, subjects, classLevels, schoolClasses, teachers).build(schoolId)
+
+    /** Stores [candidate] directly as an alternative of [generation], evaluated against the school's current data. */
+    fun storeAlternative(generation: Generation, candidate: TimetableCandidate): Alternative {
+        val evaluation = ObjectiveEvaluator.evaluate(problemOf(generation.schoolId), candidate)
+        return Alternative(AlternativeId.new(), generation.id, evaluation.values, candidate.lessons, candidate.unplaced, evaluation.softViolations)
+            .also(generations::addAlternative)
     }
 
     fun bumpSchoolVersion(schoolId: SchoolId) {
