@@ -40,8 +40,10 @@ val testSchoolTest by tasks.registering(Test::class) {
 }
 
 val seedTestSchool by tasks.registering(JavaExec::class) {
-    description = "Seeds the fictitious test school into the database given by the TTS_* variables (must be empty)."
+    description = "Seeds the fictitious test school (-PtestSchool=full|understaffed) into the database of the TTS_* variables (must be empty)."
     group = "application"
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("timetablescheduler.bootstrap.testschool.SeedTestSchoolKt")
+    // `-PtestSchool=understaffed` seeds the teacher-shortage variant instead of the full test school.
+    args(providers.gradleProperty("testSchool").getOrElse("full"))
 }

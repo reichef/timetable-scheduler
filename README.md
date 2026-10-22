@@ -75,8 +75,10 @@ periods are an assumption. Description and accepted simplifications:
 
 - `./gradlew :bootstrap:testSchoolTest` seeds it into a PostgreSQL container, runs one generation with the default
   time limit and checks the results (Docker required).
-- `./gradlew :bootstrap:seedTestSchool` seeds it into the database of the `TTS_*` variables to look at it with
-  `:bootstrap:run`. Use a **separate, empty database**; the seeder refuses a school that already has master data.
+- A variant with a teacher shortage (28 teachers, 574 periods for 588 lessons) checks that lessons which cannot be
+  served are reported as "not placed" without breaking any rule; `testSchoolTest` runs both scenarios (~20 minutes).
+- `./gradlew :bootstrap:seedTestSchool` (or `-PtestSchool=understaffed` for the variant) seeds it into the database of
+  the `TTS_*` variables to look at it with `:bootstrap:run`. Use a **separate, empty database**; the seeder refuses a school that already has master data.
 
 The test set lives in `bootstrap/src/test/.../testschool` and is never part of the application. Later features extend
 it there (and in the description) when they need further data.

@@ -22,7 +22,7 @@ import timetablescheduler.domain.teacher.Unavailability
 /** Seeding was refused because the school already has master data; test data is never mixed into real data. */
 class TestSchoolSeedingRefused(message: String) : RuntimeException(message)
 
-/** The ids of the seeded test school, by the names used in [BwGymnasiumTestSet]. */
+/** The ids of the seeded test school, by the names used in its [TestSchoolData]. */
 data class SeededTestSchool(
     val schoolId: SchoolId,
     val slotIds: Map<String, TimeSlotId>,
@@ -35,12 +35,11 @@ data class SeededTestSchool(
 }
 
 /**
- * Enters [BwGymnasiumTestSet] into an installed, still empty school through the application use cases, as a planner
+ * Enters a test school ([BwGymnasiumTestSet] or a variant) into an installed, still empty school through the application use cases, as a planner
  * would in the user interface, so every validation of features 001 and 002 applies. Only counts are logged
  * (constitution III).
  */
-class TestSchoolSeeder(private val useCases: MasterDataUseCases) {
-    private val testSet = BwGymnasiumTestSet
+class TestSchoolSeeder(private val useCases: MasterDataUseCases, private val testSet: TestSchoolData = BwGymnasiumTestSet) {
 
     fun seed(actor: AccountId, schoolId: SchoolId): SeededTestSchool {
         requireEmptySchool(actor, schoolId)
@@ -76,7 +75,7 @@ class TestSchoolSeeder(private val useCases: MasterDataUseCases) {
     private fun renameSchool(actor: AccountId, schoolId: SchoolId) {
         val school = useCases.timeGrid.getTimeGrid.execute(actor, schoolId).required("load school").school
 
-        useCases.schools.rename.execute(actor, schoolId, testSet.SCHOOL_NAME, school.version).required("rename school")
+        useCases.schools.rename.execute(actor, schoolId, testSet.schoolName, school.version).required("rename school")
     }
 
     /** Each time grid change raises the school's version, so the current version is read before every change. */
@@ -137,7 +136,7 @@ class TestSchoolSeeder(private val useCases: MasterDataUseCases) {
             testSet.classes.filter { it.grade == grade }.map { schoolClass ->
                 val homeRoom = roomIds.getValue(schoolClass.homeRoom)
                 val created = curriculum.createSchoolClass
-                    .execute(actor, schoolId, level.id, schoolClass.suffix, testSet.PRIORITY_WEIGHT, homeRoom)
+                    .execute(actor, schoolId, level.id, schoolClass.suffix, testSet.priorityWeight, homeRoom)
                     .required("create class")
 
                 schoolClass.name to created.id

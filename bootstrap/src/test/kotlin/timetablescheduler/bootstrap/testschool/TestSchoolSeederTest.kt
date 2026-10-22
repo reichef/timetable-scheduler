@@ -6,6 +6,7 @@ import timetablescheduler.application.fakes.MasterDataWorld
 import timetablescheduler.application.readiness.ReadinessReport
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.readiness.ReadinessIssue
 import timetablescheduler.domain.scheduling.generation.GenerationGate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,5 +68,22 @@ class TestSchoolSeederTest {
 
         assertEquals(1, world.rooms.findBySchool(schoolId).size)
         assertTrue(world.teachers.findBySchool(schoolId).isEmpty())
+    }
+
+    @Test
+    fun `the teacher-shortage variant seeds and reports its capacity shortfalls as warnings only`() {
+        val seeded = TestSchoolSeeder(world.useCases, UnderstaffedTestSet).seed(actor, schoolId)
+
+        val report = assertIs<UseCaseResult.Success<ReadinessReport>>(world.useCases.readiness.execute(actor, schoolId)).value
+        val gate = GenerationGate.classify(report.issues)
+        val shortSubjects = gate.warnings.filterIsInstance<ReadinessIssue.SubjectTeacherCapacityShortfall>()
+            .associate { it.subjectId to it.shortfallPeriods }
+
+        assertEquals(UnderstaffedTestSet.schoolName, world.schools.findById(schoolId)!!.name)
+        assertEquals(28, world.teachers.findBySchool(schoolId).size)
+        assertEquals(emptyList(), gate.blocking)
+        listOf(BwGymnasiumTestSet.MUSIC, BwGymnasiumTestSet.ART, BwGymnasiumTestSet.SPORT).forEach { subject ->
+            assertTrue(seeded.subjectIds.getValue(subject) in shortSubjects, "no shortfall warning for $subject")
+        }
     }
 }

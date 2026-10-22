@@ -65,13 +65,13 @@ The fictitious test school of [test-set-bw-gymnasium.md](test-set-bw-gymnasium.m
 school** — repeats the generation on 18 classes and 32 teachers:
 
 ```sh
-./gradlew :bootstrap:testSchoolTest            # container database, one generation, assertions and metrics (~10 min)
+./gradlew :bootstrap:testSchoolTest            # container database; test school and teacher-shortage variant (~20 min)
 
 # inspect it in the application, in a separate empty database (never the developer database)
 docker compose exec -T db psql -U timetable_owner -d timetable -c "CREATE DATABASE timetable_testschool"
 docker compose exec -T db psql -U timetable_owner -d timetable_testschool -c "GRANT USAGE, CREATE ON SCHEMA public TO timetable_app"
 set -a; . ./.env; set +a
-TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :bootstrap:seedTestSchool
+TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :bootstrap:seedTestSchool   # -PtestSchool=understaffed for the variant
 TTS_DB_URL=jdbc:postgresql://localhost:5432/timetable_testschool ./gradlew :bootstrap:run
 ```
 

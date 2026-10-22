@@ -147,3 +147,36 @@ Recorded, not asserted (they decide whether the specification needs to be refine
 - time to the first alternative, number of alternatives, objective values of each;
 - best class fill and the number of alternatives placing at least 90 % of the lessons ("useful" alternatives);
 - unplaced lessons per class of the best alternative.
+
+## Variant: teacher shortage
+
+> **TEST DATA — NOT A REAL SCHOOL.** Same fictitious school, school name
+> **TESTDATEN – Testgymnasium Musterstadt (Lehrkräftemangel)**.
+
+Everything above stays the same — grid, rooms, subjects, weekly periods, classes, constraints, fixations and
+unavailability — except the teachers (tasks T118–T121):
+
+| Change | Teachers |
+|--------|----------|
+| removed | T16 (Englisch, Sport), T27 (Sport, Geographie), T29 (Musik, Mathematik), T31 (Bildende Kunst, Geschichte) |
+| load reduced to 18 | T07, T08, T21, T28, T30 |
+| load reduced to 15 | T19, T22 |
+
+28 teachers with 574 periods of capacity face a demand of 588 lessons. The shortage is certain in every timetable:
+
+| Subject | Demand | Qualified teachers (max. periods) | At least missing |
+|---------|--------|-----------------------------------|------------------|
+| Musik | 27 | T28 (18) | 9 |
+| Bildende Kunst | 24 | T30 (18) | 6 |
+| Sport | 42 | T26 (25), T32 (15) | 2 |
+
+Expected results (asserted by the scenario test):
+
+- The readiness check reports the capacity shortfalls of Musik, Bildende Kunst and Sport as warnings, not as blocking
+  issues; the generation starts once the warnings are confirmed and ends normally.
+- Every alternative leaves at least 17 lessons unplaced and lists them per class; no teacher exceeds the weekly load.
+- All hard rules, room rules, fixations and unavailability of the first test set hold; no alternative is dominated.
+- As no perfect timetable can exist, SC-001 requires at least 3 alternatives.
+
+Recorded: number of alternatives and their objective values, unplaced lessons per class and per subject of the best
+alternative.

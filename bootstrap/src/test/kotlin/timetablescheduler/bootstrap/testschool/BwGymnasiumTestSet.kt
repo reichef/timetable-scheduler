@@ -50,10 +50,31 @@ sealed interface TestRule {
 
 data class TestFixation(val className: String, val subject: String, val teacherCode: String)
 
-object BwGymnasiumTestSet {
+/** A test school as the seeder enters it; the variants of the test set share most of their data. */
+interface TestSchoolData {
+    val schoolName: String
+    val priorityWeight: Int
+    val grades: IntRange
+    val teachingDays: Set<DayOfWeek>
+    val slots: List<TestSlot>
+    val features: List<String>
+    val classes: List<TestClass>
+    val rooms: List<TestRoom>
+    val subjects: List<TestSubject>
+    val weeklyPeriods: Map<Int, Map<String, Int>>
+    val teachers: List<TestTeacher>
+    val constraints: List<TestConstraint>
+    val fixations: List<TestFixation>
+}
+
+object BwGymnasiumTestSet : TestSchoolData {
     const val SCHOOL_NAME = "TESTDATEN – Testgymnasium Musterstadt"
 
     const val PRIORITY_WEIGHT = 10
+
+    override val schoolName = SCHOOL_NAME
+
+    override val priorityWeight = PRIORITY_WEIGHT
 
     const val NATURAL_SCIENCE = "Naturwissenschaftsraum"
     const val SPORTS_HALL = "Sporthalle"
@@ -80,13 +101,13 @@ object BwGymnasiumTestSet {
     const val MEDIA = "Medienbildung"
     const val COMPUTER_SCIENCE = "Informatik"
 
-    val grades = 5..10
+    override val grades = 5..10
 
     val classSuffixes = listOf("a", "b", "c")
 
-    val teachingDays: Set<DayOfWeek> = DayOfWeek.entries.take(5).toSet()
+    override val teachingDays: Set<DayOfWeek> = DayOfWeek.entries.take(5).toSet()
 
-    val slots: List<TestSlot> = listOf(
+    override val slots: List<TestSlot> = listOf(
         TestSlot("1. Stunde", time("07:45"), time("08:30")),
         TestSlot("2. Stunde", time("08:35"), time("09:20")),
         TestSlot("Große Pause", time("09:20"), time("09:40"), SlotKind.BREAK),
@@ -102,9 +123,9 @@ object BwGymnasiumTestSet {
         TestSlot("10. Stunde", time("16:20"), time("17:05")),
     )
 
-    val features = listOf(NATURAL_SCIENCE, SPORTS_HALL, MUSIC_ROOM, ART_ROOM, COMPUTER_ROOM)
+    override val features = listOf(NATURAL_SCIENCE, SPORTS_HALL, MUSIC_ROOM, ART_ROOM, COMPUTER_ROOM)
 
-    val classes: List<TestClass> = grades.flatMap { grade ->
+    override val classes: List<TestClass> = grades.flatMap { grade ->
         classSuffixes.map { suffix ->
             val position = (grade - grades.first) * classSuffixes.size + classSuffixes.indexOf(suffix)
 
@@ -112,7 +133,7 @@ object BwGymnasiumTestSet {
         }
     }
 
-    val rooms: List<TestRoom> =
+    override val rooms: List<TestRoom> =
         (1..4).map { TestRoom("TEST-NW$it", NATURAL_SCIENCE) } +
             (1..2).map { TestRoom("TEST-SH$it", SPORTS_HALL) } +
             (1..2).map { TestRoom("TEST-MU$it", MUSIC_ROOM) } +
@@ -120,7 +141,7 @@ object BwGymnasiumTestSet {
             TestRoom("TEST-PC1", COMPUTER_ROOM) +
             (101..120).map { TestRoom("TEST-R$it") }
 
-    val subjects: List<TestSubject> = listOf(
+    override val subjects: List<TestSubject> = listOf(
         TestSubject(GERMAN),
         TestSubject(MATHS),
         TestSubject(ENGLISH),
@@ -142,7 +163,7 @@ object BwGymnasiumTestSet {
     )
 
     /** Weekly periods per grade (an assumption in the style of a G9 subject table). */
-    val weeklyPeriods: Map<Int, Map<String, Int>> = mapOf(
+    override val weeklyPeriods: Map<Int, Map<String, Int>> = mapOf(
         5 to mapOf(
             GERMAN to 5, MATHS to 5, ENGLISH to 5, BNT to 4, GEOGRAPHY to 2, RELIGION to 2, SPORT to 3, MUSIC to 2, ART to 2,
             MEDIA to 1,
@@ -169,7 +190,7 @@ object BwGymnasiumTestSet {
         ),
     )
 
-    val teachers: List<TestTeacher> = listOf(
+    override val teachers: List<TestTeacher> = listOf(
         TestTeacher("T01", setOf(GERMAN, HISTORY), 25),
         TestTeacher("T02", setOf(GERMAN, HISTORY), 25),
         TestTeacher("T03", setOf(GERMAN, GEOGRAPHY), 25),
@@ -205,7 +226,7 @@ object BwGymnasiumTestSet {
     )
 
     /** The 18 constraints besides the two school-wide defaults, which the installation creates. */
-    val constraints: List<TestConstraint> =
+    override val constraints: List<TestConstraint> =
         listOf(hard(TestRule.AllClassesMaxPeriodsPerDay(8))) +
             listOf("5a", "5b", "5c", "6a", "6b", "6c").map { hard(TestRule.ClassExcludedSlots(it, everyDay(9..10))) } +
             listOf("5a", "5b", "5c").map { soft(SoftWeight.MEDIUM, TestRule.DoublePeriods(it, BNT)) } +
@@ -221,7 +242,7 @@ object BwGymnasiumTestSet {
             )
 
     /** Class teachers who keep their subject (002 FR-013a). */
-    val fixations: List<TestFixation> = listOf(
+    override val fixations: List<TestFixation> = listOf(
         TestFixation("5a", GERMAN, "T01"),
         TestFixation("5b", MATHS, "T07"),
         TestFixation("5c", ENGLISH, "T13"),
