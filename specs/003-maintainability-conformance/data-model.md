@@ -8,7 +8,7 @@ the record of review findings.
 | Id | Source | Checks | Auto-fix |
 |----|--------|--------|----------|
 | `layout:control-flow-body` | Constitution I, FR-001, FR-003 | Bodies of `if`, `else`, `for`, `while`, `do` are blocks in braces whose first statement starts on its own line, indented one level deeper. Exempt: an `if`/`else` used as a value that fits on one line; single-expression `when` branches; Elvis exits (`?: return`, `?: continue`, `?: break`, `?: throw …`) | yes |
-| `layout:blank-line-between-steps` | Constitution I, FR-002 | A function or lambda body with more than 5 statements contains at least one blank line between statements, and no run of more than 5 consecutive statements lacks a blank line | no (judgement) |
+| `layout:blank-line-between-steps` | Constitution I, FR-002 | A function or lambda body with more than 5 statements contains at least one blank line between statements, and no run of more than 5 consecutive statements lacks a blank line; a body of assignments only is one mapping step and is not checked | no (judgement) |
 | `standard:*` | Constitution v2.1.0, FR-004 | every non-experimental rule of ktlint's standard rule set in the default code style `ktlint_official` — among others indentation, wrapping, `max-line-length` (140), trailing commas, blank lines, spacing, naming, imports | most yes; `max-line-length` and naming no |
 
 Experimental standard rules are disabled (research R3); the exact rule list of the verified ktlint version is

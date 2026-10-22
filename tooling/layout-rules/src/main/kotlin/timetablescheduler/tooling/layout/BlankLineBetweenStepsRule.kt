@@ -1,11 +1,14 @@
 package timetablescheduler.tooling.layout
 
 import com.pinterest.ktlint.rule.engine.core.api.AutocorrectDecision
+import com.pinterest.ktlint.rule.engine.core.api.ElementType.BINARY_EXPRESSION
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.BLOCK
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.CLASS_INITIALIZER
+import com.pinterest.ktlint.rule.engine.core.api.ElementType.EQ
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.FUN
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.FUNCTION_LITERAL
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.LBRACE
+import com.pinterest.ktlint.rule.engine.core.api.ElementType.OPERATION_REFERENCE
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.PROPERTY_ACCESSOR
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.RBRACE
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.SECONDARY_CONSTRUCTOR
@@ -20,8 +23,8 @@ import org.jetbrains.kotlin.com.intellij.lang.ASTNode
 /**
  * `layout:blank-line-between-steps` (Constitution I layout example, spec 003 FR-002): the steps of a function or lambda
  * body are separated by blank lines. A body may not contain a run of more than [MAXIMUM_STEPS_WITHOUT_BLANK_LINE]
- * statements without a blank line between two of them. Where to separate the steps is a judgement, so the rule offers
- * no auto-correct.
+ * statements without a blank line between two of them. A body of assignments only (e.g. fields mapped to columns) is a
+ * single mapping step and is not checked. Where to separate the steps is a judgement, so the rule offers no auto-correct.
  */
 class BlankLineBetweenStepsRule :
     Rule(
@@ -34,7 +37,7 @@ class BlankLineBetweenStepsRule :
         node: ASTNode,
         emit: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
     ) {
-        if (node.elementType != BLOCK || node.treeParent?.elementType !in CHECKED_BODIES) {
+        if (node.elementType != BLOCK || node.treeParent?.elementType !in CHECKED_BODIES || isMapping(node)) {
             return
         }
 
@@ -72,6 +75,15 @@ class BlankLineBetweenStepsRule :
 
         return reported
     }
+
+    private fun isMapping(block: ASTNode): Boolean {
+        val statements = block.getChildren(null).filter(::isStatement)
+
+        return statements.isNotEmpty() && statements.all(::isAssignment)
+    }
+
+    private fun isAssignment(node: ASTNode): Boolean =
+        node.elementType == BINARY_EXPRESSION && node.findChildByType(OPERATION_REFERENCE)?.firstChildNode?.elementType == EQ
 
     private fun isStatement(node: ASTNode): Boolean =
         !node.isWhiteSpace20 && !node.isPartOfComment20 && node.elementType !in setOf(LBRACE, RBRACE, SEMICOLON)

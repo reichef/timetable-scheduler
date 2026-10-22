@@ -36,7 +36,10 @@ that the constitution's layout examples are enforced as project rules as well.
      in braces and moves it to its own line.
   2. **`layout:blank-line-between-steps`** (FR-002): a function or lambda body with **more than 5 statements** must
      contain at least one blank line between statements, and no run of more than 5 consecutive statements may be
-     without a blank line. No auto-correct: where to separate steps is a judgement, so violations are fixed by hand.
+     without a blank line. A body of assignments only (fields mapped to columns, e.g. Exposed `insert { it[x] = … }`)
+     is one mapping step and is not checked (added during T016: persistence has such mappings with up to 13
+     assignments, where blank lines would be arbitrary). No auto-correct: where to separate steps is a judgement, so
+     violations are fixed by hand.
 - **Rationale**: the clarification of 2026-10-22 makes the constitution's layout examples checked rules. No ktlint
   standard rule encodes them: `if-else-bracing` only demands consistent braces among the branches of one `if`,
   `multiline-if-else` only multi-line bodies, and none knows the constitution's exceptions (values vs. actions,

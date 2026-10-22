@@ -58,6 +58,22 @@ class BlankLineBetweenStepsRuleTest {
     }
 
     @Test
+    fun `a body of assignments only is one mapping step and is not checked`() {
+        val columns = (1..7).joinToString("\n") { "        it[column$it] = value$it" }
+        val code = "fun store() {\n    table.insert {\n$columns\n    }\n}"
+
+        assertThatCode(code).hasNoLintViolations()
+    }
+
+    @Test
+    fun `a body mixing assignments with other statements is checked`() {
+        val assignments = (1..5).joinToString("\n") { "    value$it = $it" }
+        val code = "fun work() {\n$assignments\n    step(6)\n}"
+
+        assertThatCode(code).hasLintViolationWithoutAutoCorrect(7, 5, message)
+    }
+
+    @Test
     fun `expression bodies and class bodies are not checked`() {
         val properties = (1..7).joinToString("\n") { "    val p$it = $it" }
         val code = "fun answer() = listOf(1, 2, 3, 4, 5, 6, 7)\n\nclass Many {\n$properties\n}"
