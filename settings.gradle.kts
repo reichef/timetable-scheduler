@@ -7,4 +7,5 @@ include(
     "adapters:web",
     "adapters:solver",
     "bootstrap",
+    "tooling:layout-rules",
 )
