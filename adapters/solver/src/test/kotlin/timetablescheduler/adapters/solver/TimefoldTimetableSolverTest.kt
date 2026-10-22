@@ -17,11 +17,13 @@ import kotlin.test.assertTrue
 
 /** Solver adapter tests on seeded schools (SC-002 – SC-004); short time limits keep them fast. */
 class TimefoldTimetableSolverTest {
-
     private val solver = TimefoldTimetableSolver(minimumFirstPass = Duration.ofSeconds(2))
 
-    private fun solve(problem: SchedulingProblem, seconds: Long = 10, stop: StopSignal = neverStop): CollectingListener =
-        CollectingListener().also { solver.solve(problem, Duration.ofSeconds(seconds), stop, it) }
+    private fun solve(
+        problem: SchedulingProblem,
+        seconds: Long = 10,
+        stop: StopSignal = neverStop,
+    ): CollectingListener = CollectingListener().also { solver.solve(problem, Duration.ofSeconds(seconds), stop, it) }
 
     private fun SchedulingProblem.violations(candidate: TimetableCandidate) = HardConstraintChecker.violationsOf(this, candidate)
 
@@ -65,7 +67,11 @@ class TimefoldTimetableSolverTest {
 
         val best = solve(problem).candidates.last()
 
-        val featureless = problem.subjects.filter { it.requiredFeatureIds.isEmpty() }.map { it.id }.toSet()
+        val featureless =
+            problem.subjects
+                .filter { it.requiredFeatureIds.isEmpty() }
+                .map { it.id }
+                .toSet()
         best.lessons.filter { it.subjectId in featureless }.forEach { lesson ->
             assertEquals(problem.schoolClass(lesson.classId)!!.homeRoomId, lesson.roomId)
         }
@@ -90,7 +96,9 @@ class TimefoldTimetableSolverTest {
         val problem = SeededSchools.competing().problem()
 
         solve(problem).candidates.forEach { candidate ->
-            candidate.lessons.groupBy { it.course }.values.forEach { lessons -> assertEquals(1, lessons.map { it.teacherId }.distinct().size) }
+            candidate.lessons.groupBy { it.course }.values.forEach { lessons ->
+                assertEquals(1, lessons.map { it.teacherId }.distinct().size)
+            }
         }
     }
 
@@ -109,14 +117,24 @@ class TimefoldTimetableSolverTest {
     @Test
     fun `starting from a reference keeps most of it when one lesson no longer fits (FR-006b)`() {
         val original = SeededSchools.solvable().problem()
-        val reference = solve(original, seconds = 20).candidates
-            .filter { it.unplacedPeriods() == 0 && original.violations(it).isEmpty() }
-            .first()
+        val reference =
+            solve(original, seconds = 20)
+                .candidates
+                .filter { it.unplacedPeriods() == 0 && original.violations(it).isEmpty() }
+                .first()
         val moved = reference.lessons.first()
-        val problem = original.copy(
-            teachers = original.teachers.map { if (it.id == moved.teacherId) it.copy(unavailable = it.unavailable + moved.daySlot) else it },
-            reference = reference.lessons,
-        )
+        val problem =
+            original.copy(
+                teachers =
+                    original.teachers.map {
+                        if (it.id == moved.teacherId) {
+                            it.copy(unavailable = it.unavailable + moved.daySlot)
+                        } else {
+                            it
+                        }
+                    },
+                reference = reference.lessons,
+            )
 
         val reported = solve(problem, seconds = 15).candidates
 
