@@ -13,15 +13,20 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class SchoolAccessPolicyTest {
-
     private val gymnasiumNord = SchoolId.new()
     private val realschuleSued = SchoolId.new()
     private val accounts = InMemoryUserAccountRepository()
     private val policy = SchoolAccessPolicy(accounts)
 
-    private fun storedAccount(role: Role, schools: Set<SchoolId>, active: Boolean = true): UserAccount {
-        val account = (UserAccount.create("user${accounts.count()}", role, schools) as ValidationResult.Valid).value
-            .let { if (active) it else it.deactivated() }
+    private fun storedAccount(
+        role: Role,
+        schools: Set<SchoolId>,
+        active: Boolean = true,
+    ): UserAccount {
+        val account =
+            (UserAccount.create("user${accounts.count()}", role, schools) as ValidationResult.Valid)
+                .value
+                .let { if (active) it else it.deactivated() }
         accounts.insert(account)
         return account
     }

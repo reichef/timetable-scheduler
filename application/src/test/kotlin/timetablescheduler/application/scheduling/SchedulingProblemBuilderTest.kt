@@ -12,10 +12,17 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SchedulingProblemBuilderTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
-    private val builder get() = SchedulingProblemBuilder(world.schools, world.rooms, world.subjects, world.classLevels, world.schoolClasses, world.teachers)
+    private val builder get() =
+        SchedulingProblemBuilder(
+            world.schools,
+            world.rooms,
+            world.subjects,
+            world.classLevels,
+            world.schoolClasses,
+            world.teachers,
+        )
 
     @Test
     fun `teaching day-slots exclude breaks and slots removed for a day`() {

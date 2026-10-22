@@ -38,30 +38,47 @@ class GenerationRunner(
     private val eventLog: GenerationEventLog,
     private val clock: Clock,
 ) {
-    fun run(generation: Generation, problem: SchedulingProblem) {
+    fun run(
+        generation: Generation,
+        problem: SchedulingProblem,
+    ) {
         eventLog.started(generation.id)
         val stopSignal = control.stopSignalOf(generation.id)
         val collector = AlternativeCollector(generation, problem)
-        val status = try {
-            solver.solve(problem, Duration.ofMinutes(generation.timeLimitMinutes.toLong()), stopSignal, collector)
-            when {
-                collector.keptCount() == 0 && collector.infeasiblePassSeen -> GenerationStatus.FAILED_INFEASIBLE
-                stopSignal.isStopRequested() -> GenerationStatus.STOPPED
-                else -> GenerationStatus.FINISHED
+        val status =
+            try {
+                solver.solve(problem, Duration.ofMinutes(generation.timeLimitMinutes.toLong()), stopSignal, collector)
+                when {
+                    collector.keptCount() == 0 && collector.infeasiblePassSeen -> GenerationStatus.FAILED_INFEASIBLE
+                    stopSignal.isStopRequested() -> GenerationStatus.STOPPED
+                    else -> GenerationStatus.FINISHED
+                }
+            } catch (failure: Exception) {
+                eventLog.failed(generation.id, failure.javaClass.name)
+                GenerationStatus.FAILED
+            } finally {
+                control.release(generation.id)
             }
-        } catch (failure: Exception) {
-            eventLog.failed(generation.id, failure.javaClass.name)
-            GenerationStatus.FAILED
-        } finally {
-            control.release(generation.id)
-        }
-        val ended = generation.endAs(status, clock.instant()).copy(
-            alternativesFound = collector.keptCount(),
-            infeasibleConstraintIds = if (status == GenerationStatus.FAILED_INFEASIBLE) constraintsForcingViolations(problem) else emptyList(),
-        )
+        val ended =
+            generation.endAs(status, clock.instant()).copy(
+                alternativesFound = collector.keptCount(),
+                infeasibleConstraintIds =
+                    if (status == GenerationStatus.FAILED_INFEASIBLE) {
+                        constraintsForcingViolations(problem)
+                    } else {
+                        emptyList()
+                    },
+            )
         inTransaction { generations.saveEnd(ended) }
-        if (collector.discardedCount > 0) eventLog.discarded(generation.id, collector.discardedCount)
-        eventLog.finished(generation.id, status, collector.keptCount(), Duration.between(generation.startedAt, checkNotNull(ended.finishedAt)))
+        if (collector.discardedCount > 0) {
+            eventLog.discarded(generation.id, collector.discardedCount)
+        }
+        eventLog.finished(
+            generation.id,
+            status,
+            collector.keptCount(),
+            Duration.between(generation.startedAt, checkNotNull(ended.finishedAt)),
+        )
     }
 
     /** G4: only daily minimums and exclusions can force hard violations; the active hard ones are named (FR-017). */
@@ -79,8 +96,12 @@ class GenerationRunner(
     }
 
     /** Receives the solver's timetables for one generation and keeps the equally optimal valid ones. */
-    private inner class AlternativeCollector(private val generation: Generation, private val problem: SchedulingProblem) : SolverListener {
-        private val archive = ParetoArchive<Alternative>(generation.maxAlternatives) { first, second -> first.candidate.sameTimetableAs(second.candidate) }
+    private inner class AlternativeCollector(
+        private val generation: Generation,
+        private val problem: SchedulingProblem,
+    ) : SolverListener {
+        private val archive =
+            ParetoArchive<Alternative>(generation.maxAlternatives) { first, second -> first.candidate.sameTimetableAs(second.candidate) }
         private val placementShare = PlacementShare(generation.minimumPlacedShare)
         var discardedCount = 0
             private set
@@ -101,15 +122,16 @@ class GenerationRunner(
             }
 
             val evaluation = ObjectiveEvaluator.evaluate(problem, candidate)
-            val alternative = Alternative(
-                id = AlternativeId.new(),
-                generationId = generation.id,
-                objectiveValues = evaluation.values,
-                lessons = candidate.lessons,
-                unplaced = candidate.unplaced.filterValues { it > 0 },
-                softViolations = evaluation.softViolations,
-                changedLessons = evaluation.changedLessons,
-            )
+            val alternative =
+                Alternative(
+                    id = AlternativeId.new(),
+                    generationId = generation.id,
+                    objectiveValues = evaluation.values,
+                    lessons = candidate.lessons,
+                    unplaced = candidate.unplaced.filterValues { it > 0 },
+                    softViolations = evaluation.softViolations,
+                    changedLessons = evaluation.changedLessons,
+                )
             // Only a kept alternative can be the best one; when it is, the others are measured against it again.
             val change = archive.offer(alternative, alternative.objectiveValues.asVector())
             val bestRose = change.admitted && placementShare.record(placed)
@@ -123,14 +145,20 @@ class GenerationRunner(
         }
 
         /** Stores an archive change; alternatives that fell below the minimum share are removed with it (FR-007a). */
-        private fun store(change: ArchiveChange<Alternative>, alternative: Alternative, belowShare: List<Alternative>) {
+        private fun store(
+            change: ArchiveChange<Alternative>,
+            alternative: Alternative,
+            belowShare: List<Alternative>,
+        ) {
             if (!change.admitted && change.evicted.isEmpty() && belowShare.isEmpty()) {
                 return
             }
 
             inTransaction {
                 (change.evicted + belowShare).forEach { generations.removeAlternative(it.id) }
-                if (change.admitted) generations.addAlternative(alternative)
+                if (change.admitted) {
+                    generations.addAlternative(alternative)
+                }
                 generations.updateProgress(generation.id, keptCount())
             }
         }

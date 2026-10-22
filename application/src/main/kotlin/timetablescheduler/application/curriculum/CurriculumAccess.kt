@@ -18,15 +18,27 @@ import timetablescheduler.domain.validation.ValidationError
 
 // Entries are only reachable through their own school; entries of other schools answer "not found".
 
-internal fun OutcomeScope.loadSubjectOfSchool(subjects: SubjectRepository, schoolId: SchoolId, subjectId: SubjectId): Subject {
+internal fun OutcomeScope.loadSubjectOfSchool(
+    subjects: SubjectRepository,
+    schoolId: SchoolId,
+    subjectId: SubjectId,
+): Subject {
     val subject = subjects.findById(subjectId)
-    if (subject == null || subject.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (subject == null || subject.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return subject
 }
 
-internal fun OutcomeScope.loadLevelOfSchool(levels: ClassLevelRepository, schoolId: SchoolId, levelId: ClassLevelId): ClassLevel {
+internal fun OutcomeScope.loadLevelOfSchool(
+    levels: ClassLevelRepository,
+    schoolId: SchoolId,
+    levelId: ClassLevelId,
+): ClassLevel {
     val level = levels.findById(levelId)
-    if (level == null || level.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (level == null || level.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return level
 }
 
@@ -42,11 +54,18 @@ internal fun OutcomeScope.loadClassOfSchool(
 }
 
 /** The school's rooms in the order planners know them, for choosing a home room. */
-internal fun roomsByIdentifier(rooms: RoomRepository, schoolId: SchoolId): List<Room> =
-    rooms.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
+internal fun roomsByIdentifier(
+    rooms: RoomRepository,
+    schoolId: SchoolId,
+): List<Room> = rooms.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
 
-internal fun OutcomeScope.requireVersion(storedVersion: Int, expectedVersion: Int) {
-    if (storedVersion != expectedVersion) fail(ApplicationError.VersionConflict)
+internal fun OutcomeScope.requireVersion(
+    storedVersion: Int,
+    expectedVersion: Int,
+) {
+    if (storedVersion != expectedVersion) {
+        fail(ApplicationError.VersionConflict)
+    }
 }
 
 internal fun OutcomeScope.failDuplicate(field: String): Nothing =

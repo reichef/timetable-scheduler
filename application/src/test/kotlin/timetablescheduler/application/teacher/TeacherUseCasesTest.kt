@@ -18,20 +18,20 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class TeacherUseCasesTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
     private val teachers get() = world.useCases.teachers
 
     /** Monday–Friday, 8 teaching periods, 7th and 8th excluded on Friday: 38 teaching slots per week. */
-    private val periods = run {
-        world.teachingDays(nord.id, *DayOfWeek.entries.filter { it <= FRIDAY }.toTypedArray())
-        val slots = (1..8).map { world.slot(nord.id, "$it. Stunde", "%02d:00".format(7 + it), "%02d:45".format(7 + it)) }
-        world.excludeOn(nord.id, slots[6], FRIDAY)
-        world.excludeOn(nord.id, slots[7], FRIDAY)
-        slots
-    }
+    private val periods =
+        run {
+            world.teachingDays(nord.id, *DayOfWeek.entries.filter { it <= FRIDAY }.toTypedArray())
+            val slots = (1..8).map { world.slot(nord.id, "$it. Stunde", "%02d:00".format(7 + it), "%02d:45".format(7 + it)) }
+            world.excludeOn(nord.id, slots[6], FRIDAY)
+            world.excludeOn(nord.id, slots[7], FRIDAY)
+            slots
+        }
 
     private fun <T> UseCaseResult<T>.value(): T = assertIs<UseCaseResult.Success<T>>(this).value
 
@@ -109,7 +109,9 @@ class TeacherUseCasesTest {
 
         assertEquals(
             ApplicationError.DeletionBlocked(listOf(Dependant(DependantType.TEACHER, "Anna Schmidt (SCHA)")), hiddenDependantCount = 0),
-            world.useCases.curriculum.deleteSubject.execute(admin.id, nord.id, mathe.id, mathe.version).error(),
+            world.useCases.curriculum.deleteSubject
+                .execute(admin.id, nord.id, mathe.id, mathe.version)
+                .error(),
         )
     }
 
@@ -122,8 +124,14 @@ class TeacherUseCasesTest {
         world.markUnavailable(max, Unavailability(DayOfWeek.MONDAY, sixth.id))
         val schoolVersion = world.schools.findById(nord.id)!!.version
 
-        val preview = world.timeGridUseCases.previewDeletion.execute(admin.id, nord.id, sixth.id).value()
-        val result = world.timeGridUseCases.deleteSlot.execute(admin.id, nord.id, sixth.id, schoolVersion).value()
+        val preview =
+            world.timeGridUseCases.previewDeletion
+                .execute(admin.id, nord.id, sixth.id)
+                .value()
+        val result =
+            world.timeGridUseCases.deleteSlot
+                .execute(admin.id, nord.id, sixth.id, schoolVersion)
+                .value()
 
         assertEquals(2, preview.unavailabilityCount)
         assertEquals(2, result.removedUnavailabilities)
@@ -141,7 +149,9 @@ class TeacherUseCasesTest {
 
         assertNull(world.teachers.findById(anna.id))
         assertEquals(0, world.timeSlotUsage.countUnavailabilities(periods[5].id))
-        world.useCases.curriculum.deleteSubject.execute(admin.id, nord.id, mathe.id, mathe.version).value()
+        world.useCases.curriculum.deleteSubject
+            .execute(admin.id, nord.id, mathe.id, mathe.version)
+            .value()
     }
 
     @Test

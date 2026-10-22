@@ -14,7 +14,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class RoomUseCasesTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)

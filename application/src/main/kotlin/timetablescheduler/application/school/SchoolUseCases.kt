@@ -14,9 +14,15 @@ import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.school.School
 
 /** Loads the school for a change and checks optimistic locking against [expectedVersion]. */
-internal fun OutcomeScope.loadSchoolForChange(schools: SchoolRepository, schoolId: SchoolId, expectedVersion: Int): School {
+internal fun OutcomeScope.loadSchoolForChange(
+    schools: SchoolRepository,
+    schoolId: SchoolId,
+    expectedVersion: Int,
+): School {
     val school = schools.findById(schoolId).orNotFound()
-    if (school.version != expectedVersion) fail(ApplicationError.VersionConflict)
+    if (school.version != expectedVersion) {
+        fail(ApplicationError.VersionConflict)
+    }
     return school
 }
 
@@ -26,7 +32,12 @@ class RenameSchool(
     private val access: SchoolAccessPolicy,
     private val schools: SchoolRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, newName: String, expectedVersion: Int): UseCaseResult<School> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        newName: String,
+        expectedVersion: Int,
+    ): UseCaseResult<School> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -52,7 +63,10 @@ class GetSchoolDashboard(
     private val rooms: RoomRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<SchoolDashboard> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): UseCaseResult<SchoolDashboard> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()

@@ -32,7 +32,9 @@ abstract class VersionedInMemoryStore<K, V : Any>(
 
     open fun update(entry: V): Boolean {
         val stored = entries[keyOf(entry)] ?: return false
-        if (versionOf(stored) != versionOf(entry)) return false
+        if (versionOf(stored) != versionOf(entry)) {
+            return false
+        }
         entries[keyOf(entry)] = withVersion(entry, versionOf(entry) + 1)
         return true
     }
@@ -42,17 +44,22 @@ abstract class VersionedInMemoryStore<K, V : Any>(
     fun all(): List<V> = entries.values.toList()
 }
 
-class InMemorySchoolRepository : VersionedInMemoryStore<SchoolId, School>(
-    keyOf = { it.id },
-    versionOf = { it.version },
-    withVersion = { school, version -> school.copy(version = version) },
-), SchoolRepository {
+class InMemorySchoolRepository :
+    VersionedInMemoryStore<SchoolId, School>(
+        keyOf = { it.id },
+        versionOf = { it.version },
+        withVersion = { school, version -> school.copy(version = version) },
+    ),
+    SchoolRepository {
     override fun insert(school: School) = super.insert(school)
+
     override fun update(school: School): Boolean = super.update(school)
+
     override fun findById(schoolId: SchoolId): School? = entries[schoolId]
+
     override fun findByIds(schoolIds: Set<SchoolId>): List<School> = schoolIds.mapNotNull { entries[it] }
-    override fun findByNameIgnoreCase(name: String): School? =
-        entries.values.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+
+    override fun findByNameIgnoreCase(name: String): School? = entries.values.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
 
     private val timeGrids = mutableMapOf<SchoolId, TimeGrid>()
 
@@ -60,37 +67,57 @@ class InMemorySchoolRepository : VersionedInMemoryStore<SchoolId, School>(
 
     override fun findTimeGrid(schoolId: SchoolId): TimeGrid = timeGrids[schoolId] ?: TimeGrid.empty()
 
-    override fun saveTimeGrid(schoolId: SchoolId, timeGrid: TimeGrid) {
+    override fun saveTimeGrid(
+        schoolId: SchoolId,
+        timeGrid: TimeGrid,
+    ) {
         timeGrids[schoolId] = timeGrid
     }
 }
 
-class InMemoryUserAccountRepository : VersionedInMemoryStore<AccountId, UserAccount>(
-    keyOf = { it.id },
-    versionOf = { it.version },
-    withVersion = { account, version -> account.copy(version = version) },
-), UserAccountRepository {
+class InMemoryUserAccountRepository :
+    VersionedInMemoryStore<AccountId, UserAccount>(
+        keyOf = { it.id },
+        versionOf = { it.version },
+        withVersion = { account, version -> account.copy(version = version) },
+    ),
+    UserAccountRepository {
     override fun insert(account: UserAccount) = super.insert(account)
+
     /** Like the database: `update` keeps the stored language, `updatePreferredLanguage` keeps the version. */
     override fun update(account: UserAccount): Boolean =
         super.update(account.copy(preferredLanguage = entries[account.id]?.preferredLanguage))
 
-    override fun updatePreferredLanguage(accountId: AccountId, language: InterfaceLanguage) {
+    override fun updatePreferredLanguage(
+        accountId: AccountId,
+        language: InterfaceLanguage,
+    ) {
         entries[accountId]?.let { entries[accountId] = it.withPreferredLanguage(language) }
     }
+
     override fun findById(accountId: AccountId): UserAccount? = entries[accountId]
+
     override fun findByUsernameIgnoreCase(username: String): UserAccount? =
         entries.values.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) }
+
     override fun existsAny(): Boolean = entries.isNotEmpty()
+
     override fun findActivePlannerIdsOfSchool(schoolId: SchoolId): Set<AccountId> =
-        entries.values.filter { it.isActivePlannerOf(schoolId) }.map { it.id }.toSet()
+        entries.values
+            .filter { it.isActivePlannerOf(schoolId) }
+            .map { it.id }
+            .toSet()
+
     override fun findBySchool(schoolId: SchoolId): List<UserAccount> = entries.values.filter { schoolId in it.schoolIds }
 }
 
 class InMemoryPasswordCredentialRepository : PasswordCredentialRepository {
     private val passwordHashes = mutableMapOf<AccountId, String>()
 
-    override fun save(accountId: AccountId, passwordHash: String) {
+    override fun save(
+        accountId: AccountId,
+        passwordHash: String,
+    ) {
         passwordHashes[accountId] = passwordHash
     }
 
@@ -100,5 +127,9 @@ class InMemoryPasswordCredentialRepository : PasswordCredentialRepository {
 /** Not secure — for tests only, keeps tests fast and deterministic. */
 class PlainTextTestPasswordHasher : PasswordHasher {
     override fun hash(plainPassword: String): String = "test-hash:$plainPassword"
-    override fun matches(plainPassword: String, passwordHash: String): Boolean = passwordHash == hash(plainPassword)
+
+    override fun matches(
+        plainPassword: String,
+        passwordHash: String,
+    ): Boolean = passwordHash == hash(plainPassword)
 }

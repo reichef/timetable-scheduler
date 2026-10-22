@@ -12,7 +12,10 @@ interface UserAccountRepository {
     fun update(account: UserAccount): Boolean
 
     /** Saves the owner's interface language without optimistic locking and without changing the version (R19). */
-    fun updatePreferredLanguage(accountId: AccountId, language: InterfaceLanguage)
+    fun updatePreferredLanguage(
+        accountId: AccountId,
+        language: InterfaceLanguage,
+    )
 
     fun findById(accountId: AccountId): UserAccount?
 
@@ -28,7 +31,10 @@ interface UserAccountRepository {
 
 /** Password credentials, kept apart from accounts so single sign-on can be added beside them (FR-035). */
 interface PasswordCredentialRepository {
-    fun save(accountId: AccountId, passwordHash: String)
+    fun save(
+        accountId: AccountId,
+        passwordHash: String,
+    )
 
     fun findPasswordHash(accountId: AccountId): String?
 }
@@ -36,10 +42,16 @@ interface PasswordCredentialRepository {
 interface PasswordHasher {
     fun hash(plainPassword: String): String
 
-    fun matches(plainPassword: String, passwordHash: String): Boolean
+    fun matches(
+        plainPassword: String,
+        passwordHash: String,
+    ): Boolean
 }
 
 /** Proves a user's identity; returns the account or null. A future SSO adapter implements it as well. */
 interface CredentialAuthenticator {
-    fun authenticate(username: String, plainPassword: String): AccountId?
+    fun authenticate(
+        username: String,
+        plainPassword: String,
+    ): AccountId?
 }

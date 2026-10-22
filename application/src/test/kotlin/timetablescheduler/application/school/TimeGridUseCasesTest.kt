@@ -15,7 +15,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class TimeGridUseCasesTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
@@ -25,7 +24,16 @@ class TimeGridUseCasesTest {
 
     @Test
     fun `adds slots and teaching days and bumps the school version`() {
-        val added = grid.addSlot.execute(admin.id, nord.id, "1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING, currentVersion())
+        val added =
+            grid.addSlot.execute(
+                admin.id,
+                nord.id,
+                "1. Stunde",
+                LocalTime.of(8, 0),
+                LocalTime.of(8, 45),
+                SlotKind.TEACHING,
+                currentVersion(),
+            )
         val days = grid.setTeachingDays.execute(admin.id, nord.id, setOf(MONDAY, FRIDAY), currentVersion())
 
         assertIs<UseCaseResult.Success<TimeGrid>>(added)
@@ -37,7 +45,16 @@ class TimeGridUseCasesTest {
     fun `overlapping slot is rejected`() {
         world.slot(nord.id, "1. Stunde", "08:00", "08:45")
 
-        val result = grid.addSlot.execute(admin.id, nord.id, "Extra", LocalTime.of(8, 30), LocalTime.of(9, 15), SlotKind.TEACHING, currentVersion())
+        val result =
+            grid.addSlot.execute(
+                admin.id,
+                nord.id,
+                "Extra",
+                LocalTime.of(8, 30),
+                LocalTime.of(9, 15),
+                SlotKind.TEACHING,
+                currentVersion(),
+            )
 
         val error = assertIs<ApplicationError.Invalid>(assertIs<UseCaseResult.Failure>(result).error)
         assertTrue(ValidationError.Overlap in error.errors)
@@ -49,7 +66,16 @@ class TimeGridUseCasesTest {
         world.slot(nord.id, "1. Stunde", "08:00", "08:45")
         world.bumpSchoolVersion(nord.id)
 
-        val result = grid.addSlot.execute(admin.id, nord.id, "2. Stunde", LocalTime.of(8, 50), LocalTime.of(9, 35), SlotKind.TEACHING, stale)
+        val result =
+            grid.addSlot.execute(
+                admin.id,
+                nord.id,
+                "2. Stunde",
+                LocalTime.of(8, 50),
+                LocalTime.of(9, 35),
+                SlotKind.TEACHING,
+                stale,
+            )
 
         assertEquals(UseCaseResult.Failure(ApplicationError.VersionConflict), result)
     }
@@ -65,13 +91,29 @@ class TimeGridUseCasesTest {
 
         assertEquals(1, preview.exclusionCount)
         assertIs<UseCaseResult.Success<SlotDeletionResult>>(deleted)
-        assertTrue(world.schools.findTimeGrid(nord.id).slots.isEmpty())
-        assertTrue(world.schools.findTimeGrid(nord.id).exclusions.isEmpty())
+        assertTrue(
+            world.schools
+                .findTimeGrid(nord.id)
+                .slots
+                .isEmpty(),
+        )
+        assertTrue(
+            world.schools
+                .findTimeGrid(nord.id)
+                .exclusions
+                .isEmpty(),
+        )
     }
 
     @Test
     fun `unknown slot is not found`() {
-        val result = grid.previewDeletion.execute(admin.id, nord.id, timetablescheduler.domain.common.TimeSlotId.new())
+        val result =
+            grid.previewDeletion.execute(
+                admin.id,
+                nord.id,
+                timetablescheduler.domain.common.TimeSlotId
+                    .new(),
+            )
 
         assertEquals(UseCaseResult.Failure(ApplicationError.NotFound), result)
     }

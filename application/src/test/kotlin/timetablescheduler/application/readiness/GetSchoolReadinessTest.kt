@@ -11,7 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class GetSchoolReadinessTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)

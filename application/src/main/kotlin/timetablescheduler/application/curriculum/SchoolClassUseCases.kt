@@ -4,10 +4,10 @@ import timetablescheduler.application.access.DependantSource
 import timetablescheduler.application.access.DependantVisibilityFilter
 import timetablescheduler.application.access.SchoolAccessPolicy
 import timetablescheduler.application.access.dependantsOf
+import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.OutcomeScope
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.error.outcome
-import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.port.ClassLevelRepository
 import timetablescheduler.application.port.RoomRepository
 import timetablescheduler.application.port.SchoolClassRepository
@@ -38,10 +38,17 @@ data class SchoolClassDetails(
 }
 
 /** Rejects a suffix another class of the same level already uses (FR-012, case-insensitive). */
-private fun OutcomeScope.requireUniqueSuffix(classes: SchoolClassRepository, schoolClass: SchoolClass) {
-    val taken = classes.findByLevel(schoolClass.classLevelId)
-        .any { it.id != schoolClass.id && it.suffix.equals(schoolClass.suffix, ignoreCase = true) }
-    if (taken) failDuplicate(SchoolClass.FIELD_SUFFIX)
+private fun OutcomeScope.requireUniqueSuffix(
+    classes: SchoolClassRepository,
+    schoolClass: SchoolClass,
+) {
+    val taken =
+        classes
+            .findByLevel(schoolClass.classLevelId)
+            .any { it.id != schoolClass.id && it.suffix.equals(schoolClass.suffix, ignoreCase = true) }
+    if (taken) {
+        failDuplicate(SchoolClass.FIELD_SUFFIX)
+    }
 }
 
 /**
@@ -112,7 +119,12 @@ class UpdateSchoolClass(
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val (schoolClass, _) = loadClassOfSchool(classes, levels, schoolId, classId)
-                val updated = schoolClass.copy(version = expectedVersion).update(suffix, priorityWeight).bind().withHomeRoom(homeRoomId)
+                val updated =
+                    schoolClass
+                        .copy(version = expectedVersion)
+                        .update(suffix, priorityWeight)
+                        .bind()
+                        .withHomeRoom(homeRoomId)
                 requireUniqueSuffix(classes, updated)
                 requireAvailableHomeRoom(rooms, classes, levels, schoolId, updated)
                 requireUpdated(classes.update(updated))
@@ -128,14 +140,21 @@ class DeleteSchoolClass(
     private val classes: SchoolClassRepository,
     private val dependantSources: List<DependantSource<SchoolClassId>>,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, classId: SchoolClassId, expectedVersion: Int): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        classId: SchoolClassId,
+        expectedVersion: Int,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 val (schoolClass, _) = loadClassOfSchool(classes, levels, schoolId, classId)
                 requireVersion(schoolClass.version, expectedVersion)
                 val dependants = dependantSources.dependantsOf(classId)
-                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                if (dependants.isNotEmpty()) {
+                    fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                }
                 classes.delete(classId)
             }
         }
@@ -149,7 +168,11 @@ class GetSchoolClass(
     private val subjects: SubjectRepository,
     private val rooms: RoomRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, classId: SchoolClassId): UseCaseResult<SchoolClassDetails> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        classId: SchoolClassId,
+    ): UseCaseResult<SchoolClassDetails> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()

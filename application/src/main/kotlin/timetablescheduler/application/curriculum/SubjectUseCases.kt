@@ -18,14 +18,25 @@ import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.curriculum.Subject
 import timetablescheduler.domain.room.RoomFeature
 
-data class SubjectOverview(val subjects: List<Subject>, val features: List<RoomFeature>)
+data class SubjectOverview(
+    val subjects: List<Subject>,
+    val features: List<RoomFeature>,
+)
 
-data class SubjectDetails(val subject: Subject, val features: List<RoomFeature>)
+data class SubjectDetails(
+    val subject: Subject,
+    val features: List<RoomFeature>,
+)
 
 /** Rejects a name another subject of the same school already uses (FR-008, case-insensitive). */
-private fun OutcomeScope.requireUniqueName(subjects: SubjectRepository, subject: Subject) {
+private fun OutcomeScope.requireUniqueName(
+    subjects: SubjectRepository,
+    subject: Subject,
+) {
     val existing = subjects.findByNameIgnoreCase(subject.schoolId, subject.name)
-    if (existing != null && existing.id != subject.id) failDuplicate(Subject.FIELD_NAME)
+    if (existing != null && existing.id != subject.id) {
+        failDuplicate(Subject.FIELD_NAME)
+    }
 }
 
 private fun RoomFeatureRepository.sortedFeaturesOf(schoolId: SchoolId): List<RoomFeature> =
@@ -37,7 +48,12 @@ class CreateSubject(
     private val subjects: SubjectRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, name: String, requiredFeatureIds: Set<RoomFeatureId>): UseCaseResult<Subject> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        name: String,
+        requiredFeatureIds: Set<RoomFeatureId>,
+    ): UseCaseResult<Subject> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -82,13 +98,20 @@ class DeleteSubject(
     private val subjects: SubjectRepository,
     private val dependantSources: List<DependantSource<SubjectId>>,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, subjectId: SubjectId, expectedVersion: Int): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        subjectId: SubjectId,
+        expectedVersion: Int,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 requireVersion(loadSubjectOfSchool(subjects, schoolId, subjectId).version, expectedVersion)
                 val dependants = dependantSources.dependantsOf(subjectId)
-                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                if (dependants.isNotEmpty()) {
+                    fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                }
                 subjects.delete(subjectId)
             }
         }
@@ -100,7 +123,10 @@ class ListSubjects(
     private val subjects: SubjectRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<SubjectOverview> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): UseCaseResult<SubjectOverview> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -115,7 +141,11 @@ class GetSubject(
     private val subjects: SubjectRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, subjectId: SubjectId): UseCaseResult<SubjectDetails> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        subjectId: SubjectId,
+    ): UseCaseResult<SubjectDetails> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()

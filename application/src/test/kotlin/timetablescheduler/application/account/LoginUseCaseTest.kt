@@ -17,17 +17,21 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class LoginUseCaseTest {
-
     private val accounts = InMemoryUserAccountRepository()
     private val credentials = InMemoryPasswordCredentialRepository()
     private val hasher = PlainTextTestPasswordHasher()
-    private val login = LoginUseCase(
-        InMemoryTransactionRunner(),
-        PasswordCredentialAuthenticator(accounts, credentials, hasher),
-        accounts,
-    )
+    private val login =
+        LoginUseCase(
+            InMemoryTransactionRunner(),
+            PasswordCredentialAuthenticator(accounts, credentials, hasher),
+            accounts,
+        )
 
-    private fun storedAccount(username: String, password: String, role: Role = Role.PLANNER): UserAccount {
+    private fun storedAccount(
+        username: String,
+        password: String,
+        role: Role = Role.PLANNER,
+    ): UserAccount {
         val account = (UserAccount.create(username, role, setOf(SchoolId.new())) as ValidationResult.Valid).value
         accounts.insert(account)
         credentials.save(account.id, hasher.hash(password))
@@ -83,7 +87,10 @@ class LoginUseCaseTest {
     fun `an active choice on the login page is saved for an account without language`() {
         val account = storedAccount("mueller", "geheim-genug-1")
 
-        val loggedIn = assertIs<UseCaseResult.Success<LoggedInUser>>(login.execute("mueller", "geheim-genug-1", InterfaceLanguage.ENGLISH)).value
+        val loggedIn =
+            assertIs<UseCaseResult.Success<LoggedInUser>>(
+                login.execute("mueller", "geheim-genug-1", InterfaceLanguage.ENGLISH),
+            ).value
 
         assertEquals(InterfaceLanguage.ENGLISH, loggedIn.language)
         assertEquals(InterfaceLanguage.ENGLISH, accounts.findById(account.id)!!.preferredLanguage)
@@ -95,7 +102,10 @@ class LoginUseCaseTest {
         val account = storedAccount("mueller", "geheim-genug-1")
         accounts.updatePreferredLanguage(account.id, InterfaceLanguage.GERMAN)
 
-        val loggedIn = assertIs<UseCaseResult.Success<LoggedInUser>>(login.execute("mueller", "geheim-genug-1", InterfaceLanguage.ENGLISH)).value
+        val loggedIn =
+            assertIs<UseCaseResult.Success<LoggedInUser>>(
+                login.execute("mueller", "geheim-genug-1", InterfaceLanguage.ENGLISH),
+            ).value
 
         assertEquals(InterfaceLanguage.GERMAN, loggedIn.language)
         assertEquals(InterfaceLanguage.GERMAN, accounts.findById(account.id)!!.preferredLanguage)

@@ -15,7 +15,6 @@ import kotlin.test.assertNull
 
 /** 002 FR-002a: optional home room per class, at most one class per room, rooms in use cannot be deleted. */
 class HomeRoomTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
@@ -27,8 +26,18 @@ class HomeRoomTest {
 
     private fun UseCaseResult<*>.error(): ApplicationError = assertIs<UseCaseResult.Failure>(this).error
 
-    private fun update(schoolClass: SchoolClass, homeRoom: RoomId?) =
-        curriculum.updateSchoolClass.execute(admin.id, nord.id, schoolClass.id, schoolClass.suffix, schoolClass.priorityWeight, schoolClass.version, homeRoom)
+    private fun update(
+        schoolClass: SchoolClass,
+        homeRoom: RoomId?,
+    ) = curriculum.updateSchoolClass.execute(
+        admin.id,
+        nord.id,
+        schoolClass.id,
+        schoolClass.suffix,
+        schoolClass.priorityWeight,
+        schoolClass.version,
+        homeRoom,
+    )
 
     @Test
     fun `a class is created with a home room`() {
@@ -74,7 +83,9 @@ class HomeRoomTest {
 
         assertEquals(
             ApplicationError.DeletionBlocked(listOf(Dependant(DependantType.SCHOOL_CLASS, "5a")), hiddenDependantCount = 0),
-            world.useCases.rooms.deleteRoom.execute(admin.id, nord.id, roomA.id, roomA.version).error(),
+            world.useCases.rooms.deleteRoom
+                .execute(admin.id, nord.id, roomA.id, roomA.version)
+                .error(),
         )
     }
 }

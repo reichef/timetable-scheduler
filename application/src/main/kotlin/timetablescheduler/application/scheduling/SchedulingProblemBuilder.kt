@@ -46,20 +46,34 @@ class SchedulingProblemBuilder(
     }
 
     private fun dayStructures(grid: TimeGrid): List<DayStructure> =
-        grid.teachingDays.sorted().map { day -> DayStructure(day, grid.slotsOn(day).sortedBy { it.startTime }.map { SlotRef(it.id, it.kind) }) }
+        grid.teachingDays.sorted().map { day ->
+            DayStructure(day, grid.slotsOn(day).sortedBy { it.startTime }.map { SlotRef(it.id, it.kind) })
+        }
 
     private fun problemClasses(schoolId: SchoolId): List<ProblemClass> {
         val levelsById = levels.findBySchool(schoolId).associateBy { it.id }
         return classes.findBySchool(schoolId).mapNotNull { schoolClass ->
             val level = levelsById[schoolClass.classLevelId] ?: return@mapNotNull null
-            ProblemClass(schoolClass.id, schoolClass.priorityWeight, schoolClass.homeRoomId, ClassCurriculumResolver.curriculumOf(schoolClass, level))
+            ProblemClass(
+                schoolClass.id,
+                schoolClass.priorityWeight,
+                schoolClass.homeRoomId,
+                ClassCurriculumResolver.curriculumOf(schoolClass, level),
+            )
         }
     }
 
-    private fun problemTeacher(teacher: Teacher, teachingDaySlots: Set<DaySlot>) = ProblemTeacher(
+    private fun problemTeacher(
+        teacher: Teacher,
+        teachingDaySlots: Set<DaySlot>,
+    ) = ProblemTeacher(
         id = teacher.id,
         weeklyLoad = teacher.weeklyLoad,
         qualifiedSubjectIds = teacher.qualifiedSubjectIds,
-        unavailable = teacher.unavailability.map { DaySlot(it.dayOfWeek, it.slotId) }.filter { it in teachingDaySlots }.toSet(),
+        unavailable =
+            teacher.unavailability
+                .map { DaySlot(it.dayOfWeek, it.slotId) }
+                .filter { it in teachingDaySlots }
+                .toSet(),
     )
 }

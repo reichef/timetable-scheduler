@@ -15,7 +15,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class AccountManagementUseCasesTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
@@ -28,8 +27,10 @@ class AccountManagementUseCasesTest {
 
     private fun stored(account: UserAccount): UserAccount = world.accounts.findById(account.id)!!
 
-    private fun canLogIn(username: String, password: String): Boolean =
-        world.useCases.login.execute(username, password) is UseCaseResult.Success
+    private fun canLogIn(
+        username: String,
+        password: String,
+    ): Boolean = world.useCases.login.execute(username, password) is UseCaseResult.Success
 
     @Test
     fun `created account is assigned to the school and can log in`() {
@@ -53,7 +54,10 @@ class AccountManagementUseCasesTest {
         world.planner("mueller", nord.id)
 
         assertEquals(
-            listOf(ValidationError.OutOfRange(UserAccount.FIELD_USERNAME, 3, 60), ValidationError.OutOfRange(PasswordPolicy.FIELD_PASSWORD, 10, null)),
+            listOf(
+                ValidationError.OutOfRange(UserAccount.FIELD_USERNAME, 3, 60),
+                ValidationError.OutOfRange(PasswordPolicy.FIELD_PASSWORD, 10, null),
+            ),
             accounts.create.execute(admin.id, "ab", Role.TEACHER, "kurz").validationErrors(),
         )
         assertEquals(
@@ -67,7 +71,13 @@ class AccountManagementUseCasesTest {
         world.account("lehrer1", Role.TEACHER, nord.id)
         world.planner("Bauer", nord.id)
 
-        assertEquals(listOf("admin", "Bauer", "lehrer1"), accounts.list.execute(admin.id).value().map { it.username })
+        assertEquals(
+            listOf("admin", "Bauer", "lehrer1"),
+            accounts.list
+                .execute(admin.id)
+                .value()
+                .map { it.username },
+        )
     }
 
     @Test
@@ -145,7 +155,10 @@ class AccountManagementUseCasesTest {
     @Test
     fun `unknown account is not found`() {
         assertEquals(UseCaseResult.Failure(ApplicationError.NotFound), accounts.get.execute(admin.id, AccountId.new()))
-        assertEquals(UseCaseResult.Failure(ApplicationError.NotFound), accounts.resetPassword.execute(admin.id, AccountId.new(), "neues-passwort-1"))
+        assertEquals(
+            UseCaseResult.Failure(ApplicationError.NotFound),
+            accounts.resetPassword.execute(admin.id, AccountId.new(), "neues-passwort-1"),
+        )
     }
 
     @Test

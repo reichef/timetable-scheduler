@@ -25,11 +25,17 @@ fun interface DependantSource<K> {
  * i.e. entries sharing at least one school with the planner; all others are only counted.
  */
 object DependantVisibilityFilter {
-
-    fun deletionBlocked(dependants: List<DependantRef>, actor: UserAccount): ApplicationError.DeletionBlocked {
+    fun deletionBlocked(
+        dependants: List<DependantRef>,
+        actor: UserAccount,
+    ): ApplicationError.DeletionBlocked {
         val (visible, hidden) = dependants.partition { dependant -> dependant.schoolIds.any { it in actor.schoolIds } }
         return ApplicationError.DeletionBlocked(
-            visibleDependants = visible.map { Dependant(it.type, it.displayName, it.constraintType) }.sortedWith(compareBy({ it.type }, { it.displayName })),
+            visibleDependants =
+                visible
+                    .map {
+                        Dependant(it.type, it.displayName, it.constraintType)
+                    }.sortedWith(compareBy({ it.type }, { it.displayName })),
             hiddenDependantCount = hidden.size,
         )
     }

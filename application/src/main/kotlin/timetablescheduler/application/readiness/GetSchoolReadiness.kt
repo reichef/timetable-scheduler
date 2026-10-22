@@ -41,10 +41,15 @@ data class ReadinessReport(
     private val fixations: Map<TeacherFixationId, TeacherFixation> = emptyMap(),
 ) {
     fun subjectName(subjectId: SubjectId): String = subjects[subjectId]?.name.orEmpty()
+
     fun levelIdentifier(levelId: ClassLevelId): String = levels[levelId]?.identifier.orEmpty()
+
     fun teacherName(teacherId: TeacherId): String = teachers[teacherId]?.displayName.orEmpty()
+
     fun featureName(featureId: RoomFeatureId): String = features[featureId]?.name.orEmpty()
+
     fun className(classId: SchoolClassId): String = classNames[classId].orEmpty()
+
     fun fixation(fixationId: TeacherFixationId): TeacherFixation? = fixations[fixationId]
 }
 
@@ -65,15 +70,16 @@ class ReadinessReportLoader(
         val schoolSubjects = subjects.findBySchool(schoolId).sortedBy { it.name.lowercase() }
         val schoolLevels = levels.findBySchool(schoolId).sortedBy { it.identifier.lowercase() }
         val schoolTeachers = teachers.findBySchool(schoolId).sortedWith(compareBy({ it.name.lowercase() }, { it.shortCode }))
-        val input = ReadinessInput(
-            teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek(),
-            rooms = rooms.findBySchool(schoolId),
-            subjects = schoolSubjects,
-            levels = schoolLevels,
-            classes = schoolClasses,
-            teachers = schoolTeachers,
-            fixations = schoolFixations,
-        )
+        val input =
+            ReadinessInput(
+                teachingSlotsPerWeek = schools.findTimeGrid(schoolId).teachingSlotsPerWeek(),
+                rooms = rooms.findBySchool(schoolId),
+                subjects = schoolSubjects,
+                levels = schoolLevels,
+                classes = schoolClasses,
+                teachers = schoolTeachers,
+                fixations = schoolFixations,
+            )
         val levelsById = schoolLevels.associateBy { it.id }
         return ReadinessReport(
             schoolId = schoolId,
@@ -82,7 +88,14 @@ class ReadinessReportLoader(
             levels = schoolLevels.associateBy { it.id },
             teachers = schoolTeachers.associateBy { it.id },
             features = roomFeatures.findBySchool(schoolId).associateBy { it.id },
-            classNames = schoolClasses.mapNotNull { schoolClass -> levelsById[schoolClass.classLevelId]?.let { schoolClass.id to schoolClass.displayName(it) } }.toMap(),
+            classNames =
+                schoolClasses
+                    .mapNotNull { schoolClass ->
+                        levelsById[schoolClass.classLevelId]?.let {
+                            schoolClass.id to
+                                schoolClass.displayName(it)
+                        }
+                    }.toMap(),
             fixations = schoolFixations.associateBy { it.id },
         )
     }
@@ -94,7 +107,10 @@ class GetSchoolReadiness(
     private val access: SchoolAccessPolicy,
     private val reports: ReadinessReportLoader,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<ReadinessReport> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): UseCaseResult<ReadinessReport> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()

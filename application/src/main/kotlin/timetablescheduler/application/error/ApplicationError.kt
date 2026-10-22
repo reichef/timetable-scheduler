@@ -16,17 +16,33 @@ import timetablescheduler.domain.validation.ValidationError
  */
 sealed interface ApplicationError {
     data object NotFound : ApplicationError
+
     data object AccessDenied : ApplicationError
+
     data object VersionConflict : ApplicationError
+
     data object AuthenticationFailed : ApplicationError
-    data class Invalid(val errors: List<ValidationError>) : ApplicationError
-    data class DeletionBlocked(val visibleDependants: List<Dependant>, val hiddenDependantCount: Int) : ApplicationError
+
+    data class Invalid(
+        val errors: List<ValidationError>,
+    ) : ApplicationError
+
+    data class DeletionBlocked(
+        val visibleDependants: List<Dependant>,
+        val hiddenDependantCount: Int,
+    ) : ApplicationError
 
     /** Readiness issues that must be fixed before scheduling (002 FR-010). */
-    data class GenerationBlocked(val blockingIssues: List<ReadinessIssue>, val names: ReadinessReport) : ApplicationError
+    data class GenerationBlocked(
+        val blockingIssues: List<ReadinessIssue>,
+        val names: ReadinessReport,
+    ) : ApplicationError
 
     /** Active hard constraints that can never be met together with the master data (002 FR-017). */
-    data class ContradictingConstraints(val constraints: List<SchedulingConstraint>, val names: TimetableNames) : ApplicationError
+    data class ContradictingConstraints(
+        val constraints: List<SchedulingConstraint>,
+        val names: TimetableNames,
+    ) : ApplicationError
 
     /** The alternative violates hard constraints under today's data and cannot be chosen (002 FR-021). */
     data class AlternativeConflicts(
@@ -36,7 +52,9 @@ sealed interface ApplicationError {
     ) : ApplicationError
 
     /** Another generation of the school is still running (002 FR-011). */
-    data class GenerationRunning(val generationId: GenerationId) : ApplicationError
+    data class GenerationRunning(
+        val generationId: GenerationId,
+    ) : ApplicationError
 }
 
 enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLASS, TIME_SLOT, TEACHER, SCHEDULING_CONSTRAINT, TEACHER_FIXATION, CHOSEN_TIMETABLE }
@@ -45,4 +63,8 @@ enum class DependantType { ROOM, ROOM_FEATURE, SUBJECT, CLASS_LEVEL, SCHOOL_CLAS
  * An entry that prevents a deletion (FR-023). For constraints [constraintType] says which catalogue entry it is, so the
  * web layer can name it in the user's language; [displayName] then names the entries the constraint refers to.
  */
-data class Dependant(val type: DependantType, val displayName: String, val constraintType: ConstraintType? = null)
+data class Dependant(
+    val type: DependantType,
+    val displayName: String,
+    val constraintType: ConstraintType? = null,
+)

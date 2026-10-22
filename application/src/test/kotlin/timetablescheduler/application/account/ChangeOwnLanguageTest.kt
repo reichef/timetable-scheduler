@@ -11,7 +11,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class ChangeOwnLanguageTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
@@ -43,7 +42,10 @@ class ChangeOwnLanguageTest {
         val mueller = world.planner("mueller", nord.id)
         accounts.deactivate.execute(admin.id, mueller.id, mueller.version)
 
-        assertEquals(UseCaseResult.Failure(ApplicationError.AccessDenied), accounts.changeOwnLanguage.execute(mueller.id, InterfaceLanguage.ENGLISH))
+        assertEquals(
+            UseCaseResult.Failure(ApplicationError.AccessDenied),
+            accounts.changeOwnLanguage.execute(mueller.id, InterfaceLanguage.ENGLISH),
+        )
         assertNull(stored("mueller").preferredLanguage)
     }
 

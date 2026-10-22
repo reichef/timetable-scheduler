@@ -20,17 +20,24 @@ class InMemoryRoomFeatureRepository : RoomFeatureRepository {
     }
 
     override fun findById(featureId: RoomFeatureId): RoomFeature? = features[featureId]
+
     override fun findBySchool(schoolId: SchoolId): List<RoomFeature> = features.values.filter { it.schoolId == schoolId }
-    override fun findByNameIgnoreCase(schoolId: SchoolId, name: String): RoomFeature? =
-        findBySchool(schoolId).firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+
+    override fun findByNameIgnoreCase(
+        schoolId: SchoolId,
+        name: String,
+    ): RoomFeature? = findBySchool(schoolId).firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
 }
 
-class InMemoryRoomRepository : VersionedInMemoryStore<RoomId, Room>(
-    keyOf = { it.id },
-    versionOf = { it.version },
-    withVersion = { room, version -> room.copy(version = version) },
-), RoomRepository {
+class InMemoryRoomRepository :
+    VersionedInMemoryStore<RoomId, Room>(
+        keyOf = { it.id },
+        versionOf = { it.version },
+        withVersion = { room, version -> room.copy(version = version) },
+    ),
+    RoomRepository {
     override fun insert(room: Room) = super.insert(room)
+
     override fun update(room: Room): Boolean = super.update(room)
 
     override fun delete(roomId: RoomId) {
@@ -38,8 +45,13 @@ class InMemoryRoomRepository : VersionedInMemoryStore<RoomId, Room>(
     }
 
     override fun findById(roomId: RoomId): Room? = entries[roomId]
+
     override fun findBySchool(schoolId: SchoolId): List<Room> = entries.values.filter { it.schoolId == schoolId }
-    override fun findByIdentifierIgnoreCase(schoolId: SchoolId, identifier: String): Room? =
-        findBySchool(schoolId).firstOrNull { it.identifier.equals(identifier.trim(), ignoreCase = true) }
+
+    override fun findByIdentifierIgnoreCase(
+        schoolId: SchoolId,
+        identifier: String,
+    ): Room? = findBySchool(schoolId).firstOrNull { it.identifier.equals(identifier.trim(), ignoreCase = true) }
+
     override fun findUsingFeature(featureId: RoomFeatureId): List<Room> = entries.values.filter { featureId in it.featureIds }
 }

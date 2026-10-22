@@ -18,13 +18,18 @@ interface SchedulingConstraintRepository {
     fun update(constraint: SchedulingConstraint): Boolean
 
     fun delete(constraintId: SchedulingConstraintId)
+
     fun findById(constraintId: SchedulingConstraintId): SchedulingConstraint?
+
     fun findBySchool(schoolId: SchoolId): List<SchedulingConstraint>
 
     /** Constraints referring to the entry; they block its deletion (002 FR-016). */
     fun findReferencingClass(classId: SchoolClassId): List<SchedulingConstraint>
+
     fun findReferencingTeacher(teacherId: TeacherId): List<SchedulingConstraint>
+
     fun findReferencingSubject(subjectId: SubjectId): List<SchedulingConstraint>
+
     fun findReferencingSlot(slotId: TimeSlotId): List<SchedulingConstraint>
 }
 
@@ -36,10 +41,19 @@ interface TeacherFixationRepository {
     fun update(fixation: TeacherFixation): Boolean
 
     fun delete(fixationId: TeacherFixationId)
+
     fun findById(fixationId: TeacherFixationId): TeacherFixation?
+
     fun findBySchool(schoolId: SchoolId): List<TeacherFixation>
-    fun findByCourse(classId: SchoolClassId, subjectId: SubjectId): TeacherFixation?
+
+    fun findByCourse(
+        classId: SchoolClassId,
+        subjectId: SubjectId,
+    ): TeacherFixation?
+
     fun findByClass(classId: SchoolClassId): List<TeacherFixation>
+
     fun findByTeacher(teacherId: TeacherId): List<TeacherFixation>
+
     fun findBySubject(subjectId: SubjectId): List<TeacherFixation>
 }

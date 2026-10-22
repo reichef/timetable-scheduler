@@ -20,7 +20,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ChooseAlternativeTest {
-
     private val test = SchedulingTestSchool()
     private val world = test.world
     private val choose get() = test.scheduling.choose
@@ -32,12 +31,19 @@ class ChooseAlternativeTest {
 
     private fun generationWith(vararg candidates: TimetableCandidate): Pair<Generation, List<Alternative>> {
         world.solver.candidates = { candidates.toList() }
-        val generation = test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1)).value()
+        val generation =
+            test.scheduling.start
+                .execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1))
+                .value()
         return generation to world.generations.findAlternatives(generation.id)
     }
 
-    private fun chooseOf(generation: Generation, alternative: Alternative, chosenVersion: Int? = null, confirmed: Boolean = false) =
-        choose.execute(test.admin.id, test.school.id, generation.id, alternative.id, chosenVersion, confirmed)
+    private fun chooseOf(
+        generation: Generation,
+        alternative: Alternative,
+        chosenVersion: Int? = null,
+        confirmed: Boolean = false,
+    ) = choose.execute(test.admin.id, test.school.id, generation.id, alternative.id, chosenVersion, confirmed)
 
     @Test
     fun `a complete alternative becomes the chosen timetable (US3 scenario 3)`() {
@@ -55,7 +61,10 @@ class ChooseAlternativeTest {
         chooseOf(firstGeneration, firstAlternatives.single()).value()
         val (secondGeneration, secondAlternatives) = generationWith(test.complete(test.mueller))
 
-        assertEquals(ApplicationError.VersionConflict, chooseOf(secondGeneration, secondAlternatives.single(), chosenVersion = null).error())
+        assertEquals(
+            ApplicationError.VersionConflict,
+            chooseOf(secondGeneration, secondAlternatives.single(), chosenVersion = null).error(),
+        )
         chooseOf(secondGeneration, secondAlternatives.single(), chosenVersion = 0).value()
 
         assertEquals(secondAlternatives.single().id, world.chosenTimetables.find(test.school.id)!!.alternativeId)
@@ -71,7 +80,14 @@ class ChooseAlternativeTest {
         assertNull(world.chosenTimetables.find(test.school.id))
 
         assertIs<ChooseOutcome.Chosen>(chooseOf(generation, alternatives.single(), confirmed = true).value())
-        assertEquals(mapOf(CourseKey(test.class5a.id, test.math.id) to 1), chosen.execute(test.admin.id, test.school.id).value().chosen!!.unplaced)
+        assertEquals(
+            mapOf(CourseKey(test.class5a.id, test.math.id) to 1),
+            chosen
+                .execute(test.admin.id, test.school.id)
+                .value()
+                .chosen!!
+                .unplaced,
+        )
     }
 
     @Test
@@ -95,7 +111,10 @@ class ChooseAlternativeTest {
 
         val details = chosen.execute(test.admin.id, test.school.id).value()
 
-        assertEquals(listOf(DaySlot(TUESDAY, test.first.id)), details.conflicts.flatMap { violation -> violation.lessons.map { it.daySlot } })
+        assertEquals(
+            listOf(DaySlot(TUESDAY, test.first.id)),
+            details.conflicts.flatMap { violation -> violation.lessons.map { it.daySlot } },
+        )
         assertEquals(mapOf(CourseKey(class6a.id, test.math.id) to 1), details.drift!!.notPlaced)
         assertTrue(!details.fitsCurrentData)
         assertEquals(alternatives.single().lessons.toSet(), details.chosen!!.lessons.toSet())
@@ -106,9 +125,12 @@ class ChooseAlternativeTest {
         val (generation, alternatives) = generationWith(test.complete())
         chooseOf(generation, alternatives.single()).value()
 
-        val blocked = assertIs<ApplicationError.DeletionBlocked>(
-            world.useCases.teachers.delete.execute(test.admin.id, test.school.id, test.schmidt.id, test.schmidt.version).error(),
-        )
+        val blocked =
+            assertIs<ApplicationError.DeletionBlocked>(
+                world.useCases.teachers.delete
+                    .execute(test.admin.id, test.school.id, test.schmidt.id, test.schmidt.version)
+                    .error(),
+            )
 
         assertEquals(listOf(Dependant(DependantType.CHOSEN_TIMETABLE, "")), blocked.visibleDependants)
     }
@@ -116,17 +138,38 @@ class ChooseAlternativeTest {
     @Test
     fun `a generation can start from the chosen timetable, keeping its reference (FR-006b)`() {
         assertEquals(
-            ApplicationError.Invalid(listOf(timetablescheduler.domain.validation.ValidationError.InvalidReference(StartRequest.FIELD_START_FROM_CHOSEN))),
-            test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(startFromChosen = true)).error(),
+            ApplicationError.Invalid(
+                listOf(
+                    timetablescheduler.domain.validation.ValidationError
+                        .InvalidReference(StartRequest.FIELD_START_FROM_CHOSEN),
+                ),
+            ),
+            test.scheduling.start
+                .execute(test.admin.id, test.school.id, StartRequest(startFromChosen = true))
+                .error(),
         )
         val (generation, alternatives) = generationWith(test.complete())
         chooseOf(generation, alternatives.single()).value()
         world.solver.candidates = { listOf(test.complete(test.mueller)) }
 
-        val next = test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(startFromChosen = true)).value()
+        val next =
+            test.scheduling.start
+                .execute(test.admin.id, test.school.id, StartRequest(startFromChosen = true))
+                .value()
 
         assertEquals(alternatives.single().id, next.referenceAlternativeId)
-        assertEquals(alternatives.single().lessons.toSet(), world.solver.lastProblem!!.reference!!.toSet())
-        assertEquals(2, world.generations.findAlternatives(next.id).single().changedLessons)
+        assertEquals(
+            alternatives.single().lessons.toSet(),
+            world.solver.lastProblem!!
+                .reference!!
+                .toSet(),
+        )
+        assertEquals(
+            2,
+            world.generations
+                .findAlternatives(next.id)
+                .single()
+                .changedLessons,
+        )
     }
 }

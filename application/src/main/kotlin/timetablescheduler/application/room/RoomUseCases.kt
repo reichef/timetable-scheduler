@@ -19,40 +19,62 @@ import timetablescheduler.domain.room.Room
 import timetablescheduler.domain.room.RoomFeature
 import timetablescheduler.domain.validation.ValidationError
 
-data class RoomOverview(val rooms: List<Room>, val features: List<RoomFeature>)
+data class RoomOverview(
+    val rooms: List<Room>,
+    val features: List<RoomFeature>,
+)
 
-data class RoomDetails(val room: Room, val features: List<RoomFeature>)
+data class RoomDetails(
+    val room: Room,
+    val features: List<RoomFeature>,
+)
 
 private fun duplicate(field: String) = ApplicationError.Invalid(listOf(ValidationError.DuplicateValue(field)))
 
 /** Rejects an identifier another room of the same school already uses (FR-002, case-insensitive). */
-private fun OutcomeScope.requireUniqueIdentifier(rooms: RoomRepository, room: Room) {
+private fun OutcomeScope.requireUniqueIdentifier(
+    rooms: RoomRepository,
+    room: Room,
+) {
     val existing = rooms.findByIdentifierIgnoreCase(room.schoolId, room.identifier)
-    if (existing != null && existing.id != room.id) fail(duplicate(Room.FIELD_IDENTIFIER))
+    if (existing != null && existing.id != room.id) {
+        fail(duplicate(Room.FIELD_IDENTIFIER))
+    }
 }
 
 /** Rooms are only reachable through their own school; others are "not found". */
-private fun OutcomeScope.loadRoomOfSchool(rooms: RoomRepository, schoolId: SchoolId, roomId: RoomId): Room {
+private fun OutcomeScope.loadRoomOfSchool(
+    rooms: RoomRepository,
+    schoolId: SchoolId,
+    roomId: RoomId,
+): Room {
     val room = rooms.findById(roomId)
-    if (room == null || room.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (room == null || room.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return room
 }
 
 /** The ids of all room features of [schoolId]; entities may only reference these (FR-003, FR-009). */
-internal fun RoomFeatureRepository.featureIdsOf(schoolId: SchoolId): Set<RoomFeatureId> =
-    findBySchool(schoolId).map { it.id }.toSet()
+internal fun RoomFeatureRepository.featureIdsOf(schoolId: SchoolId): Set<RoomFeatureId> = findBySchool(schoolId).map { it.id }.toSet()
 
 class CreateRoomFeature(
     private val transactions: TransactionRunner,
     private val access: SchoolAccessPolicy,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, name: String): UseCaseResult<RoomFeature> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        name: String,
+    ): UseCaseResult<RoomFeature> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val feature = RoomFeature.create(schoolId, name).bind()
-                if (roomFeatures.findByNameIgnoreCase(schoolId, feature.name) != null) fail(duplicate(RoomFeature.FIELD_NAME))
+                if (roomFeatures.findByNameIgnoreCase(schoolId, feature.name) != null) {
+                    fail(duplicate(RoomFeature.FIELD_NAME))
+                }
                 roomFeatures.insert(feature)
                 feature
             }
@@ -66,14 +88,22 @@ class DeleteRoomFeature(
     private val roomFeatures: RoomFeatureRepository,
     private val dependantSources: List<DependantSource<RoomFeatureId>>,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, featureId: RoomFeatureId): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        featureId: RoomFeatureId,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 val feature = roomFeatures.findById(featureId)
-                if (feature == null || feature.schoolId != schoolId) fail(ApplicationError.NotFound)
+                if (feature == null || feature.schoolId != schoolId) {
+                    fail(ApplicationError.NotFound)
+                }
                 val dependants = dependantSources.dependantsOf(featureId)
-                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                if (dependants.isNotEmpty()) {
+                    fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                }
                 roomFeatures.delete(featureId)
             }
         }
@@ -85,7 +115,12 @@ class CreateRoom(
     private val rooms: RoomRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, identifier: String, featureIds: Set<RoomFeatureId>): UseCaseResult<Room> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        identifier: String,
+        featureIds: Set<RoomFeatureId>,
+    ): UseCaseResult<Room> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -129,14 +164,23 @@ class DeleteRoom(
     private val rooms: RoomRepository,
     private val dependantSources: List<DependantSource<RoomId>>,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, roomId: RoomId, expectedVersion: Int): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        roomId: RoomId,
+        expectedVersion: Int,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 val room = loadRoomOfSchool(rooms, schoolId, roomId)
-                if (room.version != expectedVersion) fail(ApplicationError.VersionConflict)
+                if (room.version != expectedVersion) {
+                    fail(ApplicationError.VersionConflict)
+                }
                 val dependants = dependantSources.dependantsOf(roomId)
-                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                if (dependants.isNotEmpty()) {
+                    fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                }
                 rooms.delete(roomId)
             }
         }
@@ -148,7 +192,10 @@ class ListRooms(
     private val rooms: RoomRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<RoomOverview> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): UseCaseResult<RoomOverview> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -166,7 +213,11 @@ class GetRoom(
     private val rooms: RoomRepository,
     private val roomFeatures: RoomFeatureRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, roomId: RoomId): UseCaseResult<RoomDetails> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        roomId: RoomId,
+    ): UseCaseResult<RoomDetails> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()

@@ -2,8 +2,8 @@ package timetablescheduler.application.teacher
 
 import timetablescheduler.application.access.DependantSource
 import timetablescheduler.application.access.DependantVisibilityFilter
-import timetablescheduler.application.access.dependantsOf
 import timetablescheduler.application.access.SchoolAccessPolicy
+import timetablescheduler.application.access.dependantsOf
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.OutcomeScope
 import timetablescheduler.application.error.UseCaseResult
@@ -23,17 +23,30 @@ import timetablescheduler.domain.teacher.Unavailability
 import timetablescheduler.domain.validation.ValidationError
 
 /** A teacher with what the edit page offers: the school's subjects and its time grid. */
-data class TeacherDetails(val teacher: Teacher, val subjects: List<Subject>, val timeGrid: TimeGrid)
+data class TeacherDetails(
+    val teacher: Teacher,
+    val subjects: List<Subject>,
+    val timeGrid: TimeGrid,
+)
 
 /** Teachers are only reachable through their own school; others are "not found". */
-private fun OutcomeScope.loadTeacherOfSchool(teachers: TeacherRepository, schoolId: SchoolId, teacherId: TeacherId): Teacher {
+private fun OutcomeScope.loadTeacherOfSchool(
+    teachers: TeacherRepository,
+    schoolId: SchoolId,
+    teacherId: TeacherId,
+): Teacher {
     val teacher = teachers.findById(teacherId)
-    if (teacher == null || teacher.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (teacher == null || teacher.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return teacher
 }
 
 /** FR-016: the short code identifies a teacher across the installation (acceptance 3.2). */
-private fun OutcomeScope.requireUniqueShortCode(teachers: TeacherRepository, teacher: Teacher) {
+private fun OutcomeScope.requireUniqueShortCode(
+    teachers: TeacherRepository,
+    teacher: Teacher,
+) {
     val existing = teachers.findByShortCode(teacher.shortCode)
     if (existing != null && existing.id != teacher.id) {
         fail(ApplicationError.Invalid(listOf(ValidationError.DuplicateValue(Teacher.FIELD_SHORT_CODE))))
@@ -41,7 +54,10 @@ private fun OutcomeScope.requireUniqueShortCode(teachers: TeacherRepository, tea
 }
 
 /** Saves a changed teacher with optimistic locking and returns the stored state. */
-private fun OutcomeScope.saveTeacher(teachers: TeacherRepository, changed: Teacher): Teacher {
+private fun OutcomeScope.saveTeacher(
+    teachers: TeacherRepository,
+    changed: Teacher,
+): Teacher {
     requireUpdated(teachers.update(changed))
     return changed.copy(version = changed.version + 1)
 }
@@ -52,7 +68,13 @@ class CreateTeacher(
     private val schools: SchoolRepository,
     private val teachers: TeacherRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, name: String, shortCode: String, weeklyLoad: Int): UseCaseResult<Teacher> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        name: String,
+        shortCode: String,
+        weeklyLoad: Int,
+    ): UseCaseResult<Teacher> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -98,7 +120,13 @@ class UpdateQualifications(
     private val subjects: SubjectRepository,
     private val teachers: TeacherRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, teacherId: TeacherId, subjectIds: Set<SubjectId>, expectedVersion: Int): UseCaseResult<Teacher> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        teacherId: TeacherId,
+        subjectIds: Set<SubjectId>,
+        expectedVersion: Int,
+    ): UseCaseResult<Teacher> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -138,14 +166,23 @@ class DeleteTeacher(
     private val teachers: TeacherRepository,
     private val dependantSources: List<DependantSource<TeacherId>>,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, teacherId: TeacherId, expectedVersion: Int): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        teacherId: TeacherId,
+        expectedVersion: Int,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val planner = access.requireSchoolAccess(actor, schoolId).bind()
                 val teacher = loadTeacherOfSchool(teachers, schoolId, teacherId)
-                if (teacher.version != expectedVersion) fail(ApplicationError.VersionConflict)
+                if (teacher.version != expectedVersion) {
+                    fail(ApplicationError.VersionConflict)
+                }
                 val dependants = dependantSources.dependantsOf(teacherId)
-                if (dependants.isNotEmpty()) fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                if (dependants.isNotEmpty()) {
+                    fail(DependantVisibilityFilter.deletionBlocked(dependants, planner))
+                }
                 teachers.delete(teacherId)
             }
         }
@@ -156,7 +193,10 @@ class ListTeachers(
     private val access: SchoolAccessPolicy,
     private val teachers: TeacherRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<List<Teacher>> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): UseCaseResult<List<Teacher>> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -172,7 +212,11 @@ class GetTeacher(
     private val subjects: SubjectRepository,
     private val teachers: TeacherRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, teacherId: TeacherId): UseCaseResult<TeacherDetails> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        teacherId: TeacherId,
+    ): UseCaseResult<TeacherDetails> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()

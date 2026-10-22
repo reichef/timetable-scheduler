@@ -13,11 +13,16 @@ class ChangeOwnLanguage(
     private val transactions: TransactionRunner,
     private val accounts: UserAccountRepository,
 ) {
-    fun execute(actor: AccountId, language: InterfaceLanguage): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        language: InterfaceLanguage,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val account = accounts.findById(actor)
-                if (account == null || !account.active) fail(ApplicationError.AccessDenied)
+                if (account == null || !account.active) {
+                    fail(ApplicationError.AccessDenied)
+                }
                 accounts.updatePreferredLanguage(account.id, language)
             }
         }

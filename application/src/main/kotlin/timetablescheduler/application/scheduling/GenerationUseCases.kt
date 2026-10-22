@@ -15,10 +15,10 @@ import timetablescheduler.application.port.TransactionRunner
 import timetablescheduler.application.readiness.ReadinessReportLoader
 import timetablescheduler.domain.common.AccountId
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.generation.ChosenTimetable
 import timetablescheduler.domain.scheduling.generation.Generation
 import timetablescheduler.domain.scheduling.generation.GenerationGate
-import timetablescheduler.domain.scheduling.constraint.SchedulingConstraintId
 import timetablescheduler.domain.scheduling.generation.GenerationId
 import timetablescheduler.domain.scheduling.generation.InfeasibilityPreCheck
 import timetablescheduler.domain.scheduling.problem.SchedulingInputFingerprint
@@ -67,9 +67,15 @@ class GenerationControl {
 }
 
 /** A generation of the school, or not found — also for generations of other schools (001 R17). */
-internal fun OutcomeScope.loadGenerationOfSchool(generations: GenerationRepository, schoolId: SchoolId, generationId: GenerationId): Generation {
+internal fun OutcomeScope.loadGenerationOfSchool(
+    generations: GenerationRepository,
+    schoolId: SchoolId,
+    generationId: GenerationId,
+): Generation {
     val generation = generations.findById(generationId)
-    if (generation == null || generation.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (generation == null || generation.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return generation
 }
 
@@ -90,30 +96,45 @@ class StartGeneration(
     private val runner: GenerationRunner,
     private val clock: Clock,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, request: StartRequest): UseCaseResult<Generation> {
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        request: StartRequest,
+    ): UseCaseResult<Generation> {
         var problem: SchedulingProblem? = null
-        val result = transactions.inTransaction {
-            outcome {
-                access.requireSchoolAccess(actor, schoolId).bind()
-                generations.findRunning(schoolId)?.let { fail(ApplicationError.GenerationRunning(it.id)) }
-                requireReady(schoolId, request)
-                val stored = problems.load(schoolId)
-                requireValidSeparateObjectives(request, stored)
-                requireNoContradictions(schoolId, stored)
-                val reference = if (request.startFromChosen) requireChosen(schoolId) else null
-                val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds, reference = reference?.lessons)
-                val fingerprint = SchedulingInputFingerprint.of(schedulingProblem)
-                val generation = Generation.start(schoolId, actor, clock.instant(), request.timeLimitMinutes, fingerprint, request.minimumPlacedShare).bind().copy(
-                    separateObjectiveIds = request.separateObjectiveIds,
-                    constraintSnapshot = stored.constraints.filter { it.active },
-                    fixationSnapshot = stored.fixations,
-                    referenceAlternativeId = reference?.alternativeId,
-                )
-                generations.insert(generation)
-                problem = schedulingProblem
-                generation
+        val result =
+            transactions.inTransaction {
+                outcome {
+                    access.requireSchoolAccess(actor, schoolId).bind()
+                    generations.findRunning(schoolId)?.let { fail(ApplicationError.GenerationRunning(it.id)) }
+                    requireReady(schoolId, request)
+                    val stored = problems.load(schoolId)
+                    requireValidSeparateObjectives(request, stored)
+                    requireNoContradictions(schoolId, stored)
+                    val reference = if (request.startFromChosen) requireChosen(schoolId) else null
+                    val schedulingProblem = stored.copy(separateObjectiveIds = request.separateObjectiveIds, reference = reference?.lessons)
+                    val fingerprint = SchedulingInputFingerprint.of(schedulingProblem)
+                    val generation =
+                        Generation
+                            .start(
+                                schoolId,
+                                actor,
+                                clock.instant(),
+                                request.timeLimitMinutes,
+                                fingerprint,
+                                request.minimumPlacedShare,
+                            ).bind()
+                            .copy(
+                                separateObjectiveIds = request.separateObjectiveIds,
+                                constraintSnapshot = stored.constraints.filter { it.active },
+                                fixationSnapshot = stored.fixations,
+                                referenceAlternativeId = reference?.alternativeId,
+                            )
+                    generations.insert(generation)
+                    problem = schedulingProblem
+                    generation
+                }
             }
-        }
         if (result is UseCaseResult.Success) {
             val startedProblem = checkNotNull(problem)
             executor.submit { runner.run(result.value, startedProblem) }
@@ -123,20 +144,37 @@ class StartGeneration(
 
     /** FR-006b: starting from the chosen timetable needs one. */
     private fun OutcomeScope.requireChosen(schoolId: SchoolId): ChosenTimetable =
-        chosenTimetables.find(schoolId) ?: fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_START_FROM_CHOSEN))))
+        chosenTimetables.find(schoolId)
+            ?: fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_START_FROM_CHOSEN))))
 
     /** FR-006a: at most three active soft constraints of the school can be compared separately. */
-    private fun OutcomeScope.requireValidSeparateObjectives(request: StartRequest, problem: SchedulingProblem) {
+    private fun OutcomeScope.requireValidSeparateObjectives(
+        request: StartRequest,
+        problem: SchedulingProblem,
+    ) {
         val ids = request.separateObjectiveIds
         if (ids.size > StartRequest.MAX_SEPARATE_OBJECTIVES || ids.toSet().size != ids.size) {
-            fail(ApplicationError.Invalid(listOf(ValidationError.OutOfRange(StartRequest.FIELD_SEPARATE_OBJECTIVES, 0, StartRequest.MAX_SEPARATE_OBJECTIVES))))
+            fail(
+                ApplicationError.Invalid(
+                    listOf(ValidationError.OutOfRange(StartRequest.FIELD_SEPARATE_OBJECTIVES, 0, StartRequest.MAX_SEPARATE_OBJECTIVES)),
+                ),
+            )
         }
-        val activeSoft = problem.constraints.filter { it.active && !it.isHard }.map { it.id }.toSet()
-        if (!activeSoft.containsAll(ids)) fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_SEPARATE_OBJECTIVES))))
+        val activeSoft =
+            problem.constraints
+                .filter { it.active && !it.isHard }
+                .map { it.id }
+                .toSet()
+        if (!activeSoft.containsAll(ids)) {
+            fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_SEPARATE_OBJECTIVES))))
+        }
     }
 
     /** FR-017: hard constraints that can never be met with the master data refuse the start and are named. */
-    private fun OutcomeScope.requireNoContradictions(schoolId: SchoolId, problem: SchedulingProblem) {
+    private fun OutcomeScope.requireNoContradictions(
+        schoolId: SchoolId,
+        problem: SchedulingProblem,
+    ) {
         val contradicting = InfeasibilityPreCheck.contradictionsOf(problem).toSet()
         if (contradicting.isNotEmpty()) {
             fail(ApplicationError.ContradictingConstraints(problem.constraints.filter { it.id in contradicting }, names.load(schoolId)))
@@ -144,10 +182,15 @@ class StartGeneration(
     }
 
     /** Blocking issues refuse the start and are named; warnings need the planner's confirmation (FR-010). */
-    private fun OutcomeScope.requireReady(schoolId: SchoolId, request: StartRequest) {
+    private fun OutcomeScope.requireReady(
+        schoolId: SchoolId,
+        request: StartRequest,
+    ) {
         val report = readiness.load(schoolId)
         val gate = GenerationGate.classify(report.issues)
-        if (gate.blocking.isNotEmpty()) fail(ApplicationError.GenerationBlocked(gate.blocking, report))
+        if (gate.blocking.isNotEmpty()) {
+            fail(ApplicationError.GenerationBlocked(gate.blocking, report))
+        }
         if (gate.warnings.isNotEmpty() && !request.warningsConfirmed) {
             fail(ApplicationError.Invalid(listOf(ValidationError.ConfirmationMissing(StartRequest.FIELD_WARNINGS_CONFIRMED))))
         }
@@ -161,12 +204,18 @@ class StopGeneration(
     private val generations: GenerationRepository,
     private val control: GenerationControl,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        generationId: GenerationId,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
-                if (generation.isRunning) control.requestStop(generationId)
+                if (generation.isRunning) {
+                    control.requestStop(generationId)
+                }
             }
         }
 }
@@ -197,12 +246,18 @@ class DeleteGeneration(
     private val generations: GenerationRepository,
     private val chosenTimetables: ChosenTimetableRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, generationId: GenerationId): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        generationId: GenerationId,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val generation = loadGenerationOfSchool(generations, schoolId, generationId)
-                if (generation.isRunning) fail(ApplicationError.GenerationRunning(generationId))
+                if (generation.isRunning) {
+                    fail(ApplicationError.GenerationRunning(generationId))
+                }
                 if (chosenTimetables.find(schoolId)?.generationId == generationId) {
                     fail(ApplicationError.DeletionBlocked(listOf(Dependant(DependantType.CHOSEN_TIMETABLE, "")), hiddenDependantCount = 0))
                 }

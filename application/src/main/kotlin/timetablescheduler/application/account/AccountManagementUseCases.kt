@@ -18,9 +18,15 @@ import timetablescheduler.domain.validation.ValidationError
 import timetablescheduler.domain.validation.ValidationResult
 
 /** Loads the account for a change and checks optimistic locking against [expectedVersion] (FR-027). */
-private fun OutcomeScope.loadAccountForChange(accounts: UserAccountRepository, accountId: AccountId, expectedVersion: Int): UserAccount {
+private fun OutcomeScope.loadAccountForChange(
+    accounts: UserAccountRepository,
+    accountId: AccountId,
+    expectedVersion: Int,
+): UserAccount {
     val account = accounts.findById(accountId).orNotFound()
-    if (account.version != expectedVersion) fail(ApplicationError.VersionConflict)
+    if (account.version != expectedVersion) {
+        fail(ApplicationError.VersionConflict)
+    }
     return account
 }
 
@@ -28,7 +34,11 @@ private fun OutcomeScope.loadAccountForChange(accounts: UserAccountRepository, a
  * FR-033: rejects changing [before] into [after] when a school would be left without an active planner.
  * With one school this means the installation keeps at least one active planner.
  */
-private fun OutcomeScope.requireActivePlannerLeft(accounts: UserAccountRepository, before: UserAccount, after: UserAccount) {
+private fun OutcomeScope.requireActivePlannerLeft(
+    accounts: UserAccountRepository,
+    before: UserAccount,
+    after: UserAccount,
+) {
     val uncoveredSchools = PlannerCoverage.schoolsLeftWithoutActivePlanner(before, after, accounts::findActivePlannerIdsOfSchool)
     if (uncoveredSchools.isNotEmpty()) {
         fail(ApplicationError.Invalid(uncoveredSchools.map { ValidationError.NoActivePlannerLeft(it) }))
@@ -36,7 +46,11 @@ private fun OutcomeScope.requireActivePlannerLeft(accounts: UserAccountRepositor
 }
 
 /** Saves an account change after the FR-033 check and returns the stored state. */
-private fun OutcomeScope.saveAccountChange(accounts: UserAccountRepository, before: UserAccount, after: UserAccount): UserAccount {
+private fun OutcomeScope.saveAccountChange(
+    accounts: UserAccountRepository,
+    before: UserAccount,
+    after: UserAccount,
+): UserAccount {
     requireActivePlannerLeft(accounts, before, after)
     requireUpdated(accounts.update(after))
     return after.copy(version = after.version + 1)
@@ -56,7 +70,10 @@ class ListAccounts(
         transactions.inTransaction {
             outcome {
                 val planner = access.requirePlanner(actor).bind()
-                planner.schoolIds.flatMap(accounts::findBySchool).distinctBy { it.id }.sortedBy { it.username.lowercase() }
+                planner.schoolIds
+                    .flatMap(accounts::findBySchool)
+                    .distinctBy { it.id }
+                    .sortedBy { it.username.lowercase() }
             }
         }
 }
@@ -66,7 +83,10 @@ class GetAccount(
     private val access: SchoolAccessPolicy,
     private val accounts: UserAccountRepository,
 ) {
-    fun execute(actor: AccountId, accountId: AccountId): UseCaseResult<UserAccount> =
+    fun execute(
+        actor: AccountId,
+        accountId: AccountId,
+    ): UseCaseResult<UserAccount> =
         transactions.inTransaction {
             outcome {
                 access.requirePlanner(actor).bind()
@@ -83,14 +103,22 @@ class CreateAccount(
     private val credentials: PasswordCredentialRepository,
     private val hasher: PasswordHasher,
 ) {
-    fun execute(actor: AccountId, username: String, role: Role, initialPassword: String): UseCaseResult<UserAccount> =
+    fun execute(
+        actor: AccountId,
+        username: String,
+        role: Role,
+        initialPassword: String,
+    ): UseCaseResult<UserAccount> =
         transactions.inTransaction {
             outcome {
                 val planner = access.requirePlanner(actor).bind()
                 val created = UserAccount.create(username, role, planner.schoolIds)
-                val errors = validationErrorsOf(created) + duplicateUsernameErrors(username) +
-                    listOfNotNull(PasswordPolicy.validate(initialPassword))
-                if (errors.isNotEmpty()) fail(ApplicationError.Invalid(errors))
+                val errors =
+                    validationErrorsOf(created) + duplicateUsernameErrors(username) +
+                        listOfNotNull(PasswordPolicy.validate(initialPassword))
+                if (errors.isNotEmpty()) {
+                    fail(ApplicationError.Invalid(errors))
+                }
                 val account = created.bind()
                 accounts.insert(account)
                 credentials.save(account.id, hasher.hash(initialPassword))
@@ -103,8 +131,11 @@ class CreateAccount(
 
     /** FR-032: usernames are unique in the installation, case-insensitive. */
     private fun duplicateUsernameErrors(username: String): List<ValidationError> =
-        if (accounts.findByUsernameIgnoreCase(username) != null) listOf(ValidationError.DuplicateValue(UserAccount.FIELD_USERNAME))
-        else emptyList()
+        if (accounts.findByUsernameIgnoreCase(username) != null) {
+            listOf(ValidationError.DuplicateValue(UserAccount.FIELD_USERNAME))
+        } else {
+            emptyList()
+        }
 }
 
 class UpdateAccountRole(
@@ -112,7 +143,12 @@ class UpdateAccountRole(
     private val access: SchoolAccessPolicy,
     private val accounts: UserAccountRepository,
 ) {
-    fun execute(actor: AccountId, accountId: AccountId, newRole: Role, expectedVersion: Int): UseCaseResult<UserAccount> =
+    fun execute(
+        actor: AccountId,
+        accountId: AccountId,
+        newRole: Role,
+        expectedVersion: Int,
+    ): UseCaseResult<UserAccount> =
         transactions.inTransaction {
             outcome {
                 access.requirePlanner(actor).bind()
@@ -128,7 +164,11 @@ class DeactivateAccount(
     private val access: SchoolAccessPolicy,
     private val accounts: UserAccountRepository,
 ) {
-    fun execute(actor: AccountId, accountId: AccountId, expectedVersion: Int): UseCaseResult<UserAccount> =
+    fun execute(
+        actor: AccountId,
+        accountId: AccountId,
+        expectedVersion: Int,
+    ): UseCaseResult<UserAccount> =
         transactions.inTransaction {
             outcome {
                 access.requirePlanner(actor).bind()
@@ -143,7 +183,11 @@ class ActivateAccount(
     private val access: SchoolAccessPolicy,
     private val accounts: UserAccountRepository,
 ) {
-    fun execute(actor: AccountId, accountId: AccountId, expectedVersion: Int): UseCaseResult<UserAccount> =
+    fun execute(
+        actor: AccountId,
+        accountId: AccountId,
+        expectedVersion: Int,
+    ): UseCaseResult<UserAccount> =
         transactions.inTransaction {
             outcome {
                 access.requirePlanner(actor).bind()
@@ -161,7 +205,11 @@ class ResetPassword(
     private val credentials: PasswordCredentialRepository,
     private val hasher: PasswordHasher,
 ) {
-    fun execute(actor: AccountId, accountId: AccountId, newPassword: String): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        accountId: AccountId,
+        newPassword: String,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 access.requirePlanner(actor).bind()
@@ -179,11 +227,17 @@ class ChangeOwnPassword(
     private val credentials: PasswordCredentialRepository,
     private val hasher: PasswordHasher,
 ) {
-    fun execute(actor: AccountId, currentPassword: String, newPassword: String): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        currentPassword: String,
+        newPassword: String,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 val account = accounts.findById(actor)
-                if (account == null || !account.active) fail(ApplicationError.AccessDenied)
+                if (account == null || !account.active) {
+                    fail(ApplicationError.AccessDenied)
+                }
                 val storedHash = credentials.findPasswordHash(account.id)
                 if (storedHash == null || !hasher.matches(currentPassword, storedHash)) {
                     fail(ApplicationError.Invalid(listOf(ValidationError.IncorrectCurrentPassword)))
