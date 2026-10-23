@@ -21,6 +21,7 @@ import timetablescheduler.domain.scheduling.constraint.AppliedConstraint
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.constraint.RuleViolations
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
+import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import java.time.DayOfWeek
 
@@ -115,37 +116,14 @@ class AppliedRuleFact(
     /** Whether a placed lesson of [course] can count for this rule. */
     fun covers(course: CourseAssignment): Boolean =
         when (val rule = applied.rule) {
-            is ConstraintRule.TeacherMaxPeriodsPerDay -> {
-                course.teacher?.id == rule.teacherId
-            }
-
-            is ConstraintRule.TeacherMaxGapsPerDay -> {
-                course.teacher?.id == rule.teacherId
-            }
-
-            is ConstraintRule.TeacherExcludedSlots -> {
-                course.teacher?.id == rule.teacherId
-            }
-
-            is ConstraintRule.SubjectExcludedSlots -> {
-                course.subjectId == rule.subjectId && (rule.classId == null || course.classFact.id == rule.classId)
-            }
-
-            is ConstraintRule.SubjectDoublePeriodsInClass -> {
-                course.classFact.id == rule.classId && course.subjectId == rule.subjectId
-            }
-
-            is ConstraintRule.SubjectMaxPerDayInClass -> {
-                course.classFact.id == applied.classId && course.subjectId == applied.subjectId
-            }
-
-            is ConstraintRule.ClassExcludedSlots -> {
-                course.classFact.id == rule.classId
-            }
-
-            else -> {
-                course.classFact.id == applied.classId
-            }
+            is ConstraintRule.TeacherMaxPeriodsPerDay -> course.teacher?.id == rule.teacherId
+            is ConstraintRule.TeacherMaxGapsPerDay -> course.teacher?.id == rule.teacherId
+            is ConstraintRule.TeacherExcludedSlots -> course.teacher?.id == rule.teacherId
+            is ConstraintRule.SubjectExcludedSlots -> rule.appliesTo(CourseKey(course.classFact.id, course.subjectId))
+            is ConstraintRule.SubjectDoublePeriodsInClass -> course.classFact.id == rule.classId && course.subjectId == rule.subjectId
+            is ConstraintRule.SubjectMaxPerDayInClass -> course.classFact.id == applied.classId && course.subjectId == applied.subjectId
+            is ConstraintRule.ClassExcludedSlots -> course.classFact.id == rule.classId
+            else -> course.classFact.id == applied.classId
         }
 
     fun violations(lessons: List<LessonAssignment>): Int = RuleViolations.of(applied, problem, lessons).count

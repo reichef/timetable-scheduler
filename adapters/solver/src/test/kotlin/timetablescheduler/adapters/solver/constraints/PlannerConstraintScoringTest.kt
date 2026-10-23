@@ -13,6 +13,7 @@ import timetablescheduler.adapters.solver.model.LessonPlacement
 import timetablescheduler.adapters.solver.model.TimetablePlan
 import timetablescheduler.adapters.solver.neverStop
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintKind
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
@@ -26,6 +27,7 @@ import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import timetablescheduler.domain.scheduling.evaluation.HardConstraintChecker
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
+import java.time.DayOfWeek
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.Duration
@@ -56,24 +58,16 @@ class PlannerConstraintScoringTest {
     private fun constraint(
         rule: ConstraintRule,
         kind: ConstraintKind = ConstraintKind.HARD,
-    ) = SchedulingConstraint(
-        SchedulingConstraintId.new(),
-        SchoolId.new(),
-        kind,
-        if (kind == ConstraintKind.SOFT) {
-            SoftWeight.MEDIUM
-        } else {
-            null
-        },
-        true,
-        rule,
-        0,
-    )
+    ): SchedulingConstraint {
+        val weight = if (kind == ConstraintKind.SOFT) SoftWeight.MEDIUM else null
+
+        return SchedulingConstraint(SchedulingConstraintId.new(), SchoolId.new(), kind, weight, true, rule, 0)
+    }
 
     private fun lesson(
-        day: java.time.DayOfWeek,
+        day: DayOfWeek,
         slot: Int,
-        subject: timetablescheduler.domain.common.SubjectId = math,
+        subject: SubjectId = math,
     ) = LessonAssignment(class5a, subject, schmidt, room, school.slot(day, slot))
 
     /** The plan with exactly [lessons] placed, as the solver would represent them. */

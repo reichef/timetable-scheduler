@@ -29,25 +29,15 @@ object ProblemMapping {
 
         val rooms = problem.rooms.map { RoomFact(it.id, it.featureIds) }
         val teachers =
-            problem.teachers.map { teacher ->
-                TeacherFact(
-                    teacher.id,
-                    teacher.weeklyLoad,
-                    teacher.qualifiedSubjectIds,
-                    teacher.unavailable.mapNotNull { weekIndexByDaySlot[it] }.toSet(),
-                )
+            problem.teachers.map {
+                TeacherFact(it.id, it.weeklyLoad, it.qualifiedSubjectIds, it.unavailable.mapNotNull(weekIndexByDaySlot::get).toSet())
             }
         val classes = problem.classes.map { ClassFact(it.id, it.priorityWeight) }
 
         val courses = problem.classes.flatMap { schoolClass -> coursesOf(schoolClass, classes, teachers) }
         pinFixedTeachers(problem, courses, teachers)
 
-        var nextLessonId = 0
-        val lessons =
-            courses.flatMap { course ->
-                val suitable = suitableRooms(problem, course, rooms)
-                if (suitable.isEmpty()) emptyList() else List(course.requiredPeriods) { LessonPlacement(nextLessonId++, course, suitable) }
-            }
+        val lessons = lessonPlacementsOf(problem, courses, rooms)
         problem.reference?.let { startFromReference(it, timeslots, teachers, courses, lessons) }
 
         return TimetablePlan().apply {
@@ -58,15 +48,38 @@ object ProblemMapping {
             this.courses = courses
             this.lessons = lessons
             this.rules = ruleFactsOf(problem)
-            this.passWeights =
-                PassWeights(
-                    weights = List(objectiveCount(problem)) { 1.0 / objectiveCount(problem) },
-                    totalWeightedDemand = totalWeightedDemand(problem),
-                    totalTeacherLoad = teachers.sumOf { it.weeklyLoad }.coerceAtLeast(1),
-                    stabilityIndex = if (problem.reference != null) objectiveCount(problem) - 1 else -1,
-                    totalReferenceLessons = problem.reference?.size?.coerceAtLeast(1) ?: 1,
-                )
+            this.passWeights = equalPassWeights(problem, teachers)
         }
+    }
+
+    /** One placement per required period of a course; a course without any suitable room gets none (FR-005). */
+    private fun lessonPlacementsOf(
+        problem: SchedulingProblem,
+        courses: List<CourseAssignment>,
+        rooms: List<RoomFact>,
+    ): List<LessonPlacement> {
+        var nextLessonId = 0
+
+        return courses.flatMap { course ->
+            val suitable = suitableRooms(problem, course, rooms)
+            if (suitable.isEmpty()) emptyList() else List(course.requiredPeriods) { LessonPlacement(nextLessonId++, course, suitable) }
+        }
+    }
+
+    /** All objectives weighted equally, with the totals the score normalizes by; the solver passes vary the weights. */
+    private fun equalPassWeights(
+        problem: SchedulingProblem,
+        teachers: List<TeacherFact>,
+    ): PassWeights {
+        val objectiveCount = objectiveCount(problem)
+
+        return PassWeights(
+            weights = List(objectiveCount) { 1.0 / objectiveCount },
+            totalWeightedDemand = totalWeightedDemand(problem),
+            totalTeacherLoad = teachers.sumOf { it.weeklyLoad }.coerceAtLeast(1),
+            stabilityIndex = if (problem.reference != null) objectiveCount - 1 else -1,
+            totalReferenceLessons = problem.reference?.size?.coerceAtLeast(1) ?: 1,
+        )
     }
 
     /**
