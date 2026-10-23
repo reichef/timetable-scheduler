@@ -23,6 +23,11 @@ generated it. Maintainability has three parts, all of them binding.
   others, indentation, wrapping, maximum line length and trailing commas. Experimental rules are not used. A rule
   MAY only be disabled with a comment giving the reason, and only for a single statement, a single file or a defined
   group of files (e.g. all test sources in the formatter configuration) for which the same reason holds.
+- **Text shown to the user comes first**: in string templates and in text whose line breaks or spacing are part of
+  the output (newline-sensitive text such as raw strings `"""…"""`), a layout rule — in particular the maximum line
+  length — MAY be ignored where satisfying it would change the layout of text shown or printed to the user. The
+  rule is then disabled for that statement only, with a comment naming this reason, e.g.
+  `@Suppress("ktlint:standard:max-line-length") // line breaks of this text are shown to the user`.
 - **Examples** of the layout this aims for — they illustrate the intent and guide reviews and new code; the binding
   formatting rules are those of the formatting standard above:
   - Logically connected statements form a block, and blocks inside a function are separated by a single blank line
@@ -132,4 +137,4 @@ or redefinitions, MINOR for new principles or materially expanded guidance, PATC
 fixes. All pull requests and reviews MUST verify compliance with this constitution; unjustified complexity or
 deviation from a principle MUST be called out and either resolved or explicitly justified in the review.
 
-**Version**: 2.1.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-10-22
+**Version**: 2.1.1 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-10-23
