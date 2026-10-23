@@ -46,6 +46,40 @@ Log in at `http://localhost:8080/login` with the initial planner. Planners manag
 The end-to-end validation scenarios are listed in the quickstarts of
 [feature 001](specs/001-scheduling-master-data/quickstart.md) and [feature 002](specs/002-timetable-generation/quickstart.md).
 
+## Code layout check
+
+The layout of all Kotlin code (production, tests, test fixtures, Gradle scripts) is checked against the formatting
+standard of the constitution (principle I): **ktlint** with all non-experimental standard rules in its default code
+style (`ktlint_official`, line length 140, configured in [.editorconfig](.editorconfig)) plus two project rules from
+`tooling/layout-rules`:
+
+- `layout:control-flow-body` — the body of `if`/`else`/`for`/`while`/`do` is a block in braces starting on its own
+  line (a one-line value `if … else …`, `when` branches and Elvis exits such as `?: return` stay allowed);
+- `layout:blank-line-between-steps` — a function or lambda body has no run of more than 5 statements without a blank
+  line between steps (a body of assignments only, such as a column mapping, is one step).
+
+The browser script `language-switch.js` is checked for the same two rules by the test `BrowserScriptLayoutTest`.
+`./gradlew build` runs the check, so a violation fails the build locally and in CI.
+
+```sh
+./gradlew layoutCheck                          # report violations: <path>:<line>:<column>: <message> (<rule id>)
+./gradlew layoutFormat                         # apply all auto-fixes, then report what is left
+./gradlew layoutFormat -PlayoutPath=domain     # limit either task to one directory
+```
+
+Findings without auto-fix are fixed by hand without changing behaviour or displayed texts: for
+`standard:max-line-length` wrap the arguments or name a part of the expression (`val teacher = …`) instead of breaking
+a string template; for `layout:blank-line-between-steps` put blank lines where a real step ends (load, check, compute,
+store, answer). A rule that cannot be satisfied may be switched off only for one statement, one file or a defined group
+of files, always with the reason in a comment, e.g.
+
+```kotlin
+@Suppress("ktlint:standard:max-line-length") // the URL must stay unbroken to remain clickable
+```
+
+For a group of files use a section in `.editorconfig` (`ktlint_standard_<rule> = disabled`) with a comment giving
+the reason.
+
 ## Scheduling
 
 - **Home room** — a class can get a home room; its lessons without required room features then take place there.
@@ -110,6 +144,7 @@ Gradle modules along the clean-architecture circles; dependencies point inwards 
 | `adapters:solver` | Timefold model and constraint streams; weighted solver passes report candidates to the application |
 | `adapters:web` | Ktor, server-rendered HTML (`kotlinx.html`, the trade-off chart as inline SVG), sessions, CSRF |
 | `bootstrap` | Composition root, configuration, logging |
+| `tooling:layout-rules` | The project rules of the layout check (ktlint rule set, build tooling only) |
 
 ## CI/CD and security testing
 
