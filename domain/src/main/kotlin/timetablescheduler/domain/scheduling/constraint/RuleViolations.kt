@@ -226,6 +226,7 @@ private class WeekPositions(
         if (first.day != second.day || teachingIndex(second) != teachingIndex(first) + 1) {
             return false
         }
+
         val from = fullIndex[first] ?: return false
         val to = fullIndex[second] ?: return false
         val between = slotKinds[first.day].orEmpty().subList(from + 1, to)

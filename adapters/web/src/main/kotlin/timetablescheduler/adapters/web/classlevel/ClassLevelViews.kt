@@ -99,6 +99,7 @@ private fun FlowContent.gridWarning(
     if (warning == null) {
         return
     }
+
     div(classes = "warning") { +texts.classLevels.gridWarning(weeklyPeriods, teachingSlotsPerWeek, warning.excessPeriods) }
 }
 

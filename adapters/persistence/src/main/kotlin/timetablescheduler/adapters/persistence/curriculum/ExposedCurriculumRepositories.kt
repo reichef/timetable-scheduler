@@ -47,6 +47,7 @@ class ExposedSubjectRepository : SubjectRepository {
         if (updatedRows != 1) {
             return false
         }
+
         SubjectRequiresFeatureTable.deleteWhere { SubjectRequiresFeatureTable.subjectId eq subject.id.value }
         insertRequiredFeatures(subject)
         return true
@@ -83,6 +84,7 @@ class ExposedSubjectRepository : SubjectRepository {
         if (subjectIds.isEmpty()) {
             return emptyList()
         }
+
         return loadSubjects(SubjectTable.selectAll().where { SubjectTable.id inList subjectIds }.toList())
     }
 
@@ -98,6 +100,7 @@ class ExposedSubjectRepository : SubjectRepository {
         if (rows.isEmpty()) {
             return emptyList()
         }
+
         val featuresBySubject: Map<UUID, Set<RoomFeatureId>> =
             SubjectRequiresFeatureTable
                 .selectAll()
@@ -136,6 +139,7 @@ class ExposedClassLevelRepository : ClassLevelRepository {
         if (updatedRows != 1) {
             return false
         }
+
         CurriculumEntryTable.deleteWhere { CurriculumEntryTable.classLevelId eq level.id.value }
         insertCurriculum(level)
         return true
@@ -174,6 +178,7 @@ class ExposedClassLevelRepository : ClassLevelRepository {
         if (levelIds.isEmpty()) {
             return emptyList()
         }
+
         return loadLevels(ClassLevelTable.selectAll().where { ClassLevelTable.id inList levelIds }.toList())
     }
 
@@ -191,6 +196,7 @@ class ExposedClassLevelRepository : ClassLevelRepository {
         if (rows.isEmpty()) {
             return emptyList()
         }
+
         val curriculumByLevel: Map<UUID, List<CurriculumEntry>> =
             CurriculumEntryTable
                 .selectAll()

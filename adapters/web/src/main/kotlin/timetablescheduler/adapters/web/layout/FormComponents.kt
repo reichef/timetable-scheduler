@@ -33,6 +33,7 @@ fun FlowContent.validationErrors(
     if (errors.isEmpty()) {
         return
     }
+
     div(classes = "errors") {
         p { +texts.errors.invalidInput }
         ul { errors.forEach { li { +texts.errors.describe(it) } } }
@@ -65,6 +66,7 @@ fun FORM.featureCheckboxes(
     if (features.isEmpty()) {
         return
     }
+
     fieldSet {
         legend { +texts.common.roomFeatures }
         features.forEach { feature ->

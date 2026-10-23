@@ -55,6 +55,7 @@ class TimefoldTimetableSolver(
                 if (stopSignal.isStopRequested() || remaining <= Duration.ZERO) {
                     break
                 }
+
                 plan.passWeights = plan.passWeights.copy(weights = weights)
                 plan.score = null
                 val solver = buildPassSolver(passDuration(passIndex, weightVectors.size, timeLimit, remaining), listener)

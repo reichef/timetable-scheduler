@@ -84,6 +84,7 @@ fun ApplicationCall.currentPageForLanguageSwitch(): String {
     if (request.httpMethod == HttpMethod.Get) {
         return request.uri
     }
+
     val referer = request.headers[HttpHeaders.Referrer] ?: return "/"
     val uri = runCatching { URI(referer) }.getOrNull() ?: return "/"
     val path = uri.rawPath ?: return "/"

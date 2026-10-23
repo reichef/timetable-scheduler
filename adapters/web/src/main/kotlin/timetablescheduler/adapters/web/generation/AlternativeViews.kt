@@ -158,6 +158,7 @@ fun FlowContent.unplacedLessons(
     if (unplaced.none { it.value > 0 }) {
         return
     }
+
     h2 { +heading }
     unplacedList(unplaced, names, texts)
 }

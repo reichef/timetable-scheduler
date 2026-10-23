@@ -93,6 +93,7 @@ private fun FlowContent.droppedLessons(
     if (noLongerRequired.isEmpty()) {
         return
     }
+
     h2 { +texts.timetables.noLongerRequiredHeading }
     ul { noLongerRequired.map { lessonDescription(it, details.names, texts) }.sorted().forEach { li { +it } } }
 }
@@ -108,6 +109,7 @@ fun FlowContent.conflictList(
     if (violations.isEmpty()) {
         return
     }
+
     if (heading != null) {
         h2 { +heading }
     }

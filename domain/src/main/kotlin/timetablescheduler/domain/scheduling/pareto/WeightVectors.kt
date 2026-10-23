@@ -26,6 +26,7 @@ object WeightVectors {
         if (objectiveCount == 1) {
             return listOf(1.0)
         }
+
         val rest = (1 - EMPHASIS) / (objectiveCount - 1)
         return List(objectiveCount) { if (it == objective) EMPHASIS else rest }
     }

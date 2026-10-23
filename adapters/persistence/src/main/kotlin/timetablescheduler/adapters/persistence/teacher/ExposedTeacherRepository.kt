@@ -74,6 +74,7 @@ class ExposedTeacherRepository : TeacherRepository {
         if (updatedRows != 1) {
             return false
         }
+
         deleteDetails(teacher.id.value)
         insertDetails(teacher)
         return true
@@ -103,6 +104,7 @@ class ExposedTeacherRepository : TeacherRepository {
         if (teacherIds.isEmpty()) {
             return emptyList()
         }
+
         return loadTeachers(TeacherTable.selectAll().where { TeacherTable.id inList teacherIds }.toList())
     }
 

@@ -76,6 +76,24 @@ The remaining non-trivial functions are the findings F-101 – F-113 below.
 Kover is removed again (T038, research R6; Principle II): it was applied in the working tree only for the report and
 never committed; its version entries in `gradle/libs.versions.toml` (added in T002) are deleted. No finding is `open`.
 
+## Sample of 20 functions (T041, SC-006, 2026-10-23)
+
+20 of the 103 production functions with at least 10 lines, drawn at random (seed 3): 18 show their steps as
+blank-line separated blocks or consist of one step (a mapping, a `when` catalogue, a route list); 2 did not —
+`ExposedCurriculumRepositories.loadSubjects` (guard, query and result in one block) and
+`ExposedUserAccountRepository.insert` (row and school assignments). The guard pattern was searched in all production
+code: a blank line now follows every guard that ends a function or loop step early (35 places, F-129). After the fix
+20 of 20 meet SC-006.
+
+## Constitution review (T042, 2026-10-23)
+
+- Principle I: the formatting standard is enforced by `./gradlew build` (ktlint standard rules, the two project rules,
+  the browser-script test); clean-code findings F-114 – F-129 are fixed or justified; every new test was written
+  before its code (F-114, the browser-script check) or pins existing behaviour (missing tests F-101 – F-113).
+- Principle III: the branch adds no log or console output to production code (one existing log call was only
+  re-wrapped); the layout report names file, line and rule only.
+- Quality gates: build green with 588 tests (544 before the feature), both test-school scenarios pass.
+
 ## Findings
 
 | Id | Module | Location | Rule | Description | Resolution | Status |
@@ -111,3 +129,4 @@ never committed; its version entries in `gradle/libs.versions.toml` (added in T0
 | F-126 | web | `ConstraintViews.respondConstraintList` (52 lines) | clean-code | The page built its three sections inline | `constraintTable` and `fixationList` extracted like `sectionLinks` in `SchoolViews`; page output unchanged (route tests) | fixed |
 | F-127 | bootstrap | `Main.kt` `main` | missing-test | The composition root is not executed by a test | Justified: it only wires the modules and starts the server; every part it calls is tested (`AppConfigTest`, `EnsureInstalledTest`, `GenerationInfrastructureTest`, persistence ITs), and it runs at every start of the quickstarts 001 and 002 (T040) | justified |
 | F-128 | tooling | `ControlFlowBodyRule.wrapInBlock` (32 lines) | clean-code | Slightly longer than the guide of about 30 lines | Justified: one tree rewrite in three blank-line separated steps, explained by its comment and following ktlint's own `multiline-if-else` auto-correct; covered by `ControlFlowBodyRuleTest` | justified |
+| F-129 | all | 35 guards (`if (…) { return … }`) followed directly by the next step; `ExposedUserAccountRepository.insert` | layout (FR-002) | Guard and the following step were not separated | Blank line after each guard and between the two inserts; only blank lines added, build green | fixed |

@@ -190,6 +190,7 @@ private fun FlowContent.generationTable(
         p { +texts.generations.noGenerations }
         return
     }
+
     table {
         tr {
             th { +texts.generations.startedColumn }
@@ -293,6 +294,7 @@ private fun FlowContent.constraintsInEffect(
     if (generation.constraintSnapshot.isEmpty() && generation.fixationSnapshot.isEmpty()) {
         return
     }
+
     h2 { +texts.constraints.inEffectHeading }
     ul {
         generation.constraintSnapshot.forEach { li { +describe(it, names, texts) } }

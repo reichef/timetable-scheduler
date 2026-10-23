@@ -247,6 +247,7 @@ object ProblemMapping {
         if (required.isEmpty() && homeRoom != null) {
             return rooms.filter { it.id == homeRoom }
         }
+
         return rooms.filter { it.featureIds.containsAll(required) }
     }
 

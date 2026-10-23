@@ -30,6 +30,7 @@ class ExposedUserAccountRepository : UserAccountRepository {
             it[version] = account.version
             it[preferredLanguage] = account.preferredLanguage?.code
         }
+
         insertSchoolAssignments(account)
     }
 
@@ -45,6 +46,7 @@ class ExposedUserAccountRepository : UserAccountRepository {
         if (updatedRows != 1) {
             return false
         }
+
         AccountSchoolTable.deleteWhere { AccountSchoolTable.accountId eq account.id.value }
         insertSchoolAssignments(account)
         return true
@@ -95,6 +97,7 @@ class ExposedUserAccountRepository : UserAccountRepository {
         if (accountIds.isEmpty()) {
             return emptyList()
         }
+
         return UserAccountTable.selectAll().where { UserAccountTable.id inList accountIds }.map { it.toAccount() }
     }
 

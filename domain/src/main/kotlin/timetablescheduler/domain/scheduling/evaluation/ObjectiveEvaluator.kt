@@ -69,6 +69,7 @@ object ObjectiveEvaluator {
         if (possible == 0) {
             return 1.0
         }
+
         return 1.0 - totals.sumOf { it.weightFactor * it.violations }.toDouble() / possible
     }
 
@@ -108,6 +109,7 @@ object ObjectiveEvaluator {
         if (totalLoad == 0) {
             return 1.0
         }
+
         return teachersWithLoad.sumOf { minOf(it.weeklyLoad, assignedByTeacher[it.id] ?: 0) }.toDouble() / totalLoad
     }
 }

@@ -106,6 +106,7 @@ object ConstraintValidation {
             if (subjectId == null) {
                 return emptyList()
             }
+
             val known = problem.subject(subjectId) != null
             val inCurriculum =
                 scope !is ClassScope.SpecificClass ||
@@ -143,6 +144,7 @@ object ConstraintValidation {
             if (kind != ConstraintKind.HARD) {
                 return emptyList()
             }
+
             val hardMaximums =
                 problem.constraints
                     .filter { it.active && it.isHard }

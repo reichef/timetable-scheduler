@@ -97,6 +97,7 @@ class ParetoArchive<T>(
             if (range == 0.0) {
                 continue
             }
+
             for (position in 1 until order.size - 1) {
                 val gap = kept[order[position + 1]].objectives[objective] - kept[order[position - 1]].objectives[objective]
                 distances[order[position]] += gap / range

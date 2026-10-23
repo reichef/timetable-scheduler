@@ -239,6 +239,7 @@ class MasterDataUseCases(
         if (schoolId == null) {
             return emptyList()
         }
+
         val chosen = schedulingPorts.chosenTimetables.find(schoolId) ?: return emptyList()
         return if (chosen.lessons.any(uses)) listOf(DependantRef(DependantType.CHOSEN_TIMETABLE, "", setOf(schoolId))) else emptyList()
     }

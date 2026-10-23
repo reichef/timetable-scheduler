@@ -129,6 +129,7 @@ private fun FORM.unavailabilityGrid(
         p { +texts.teachers.noTeachingSlots }
         return
     }
+
     table {
         tr {
             th { +texts.teachers.slotColumn }

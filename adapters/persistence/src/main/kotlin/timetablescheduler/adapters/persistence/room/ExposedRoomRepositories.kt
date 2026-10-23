@@ -101,6 +101,7 @@ class ExposedRoomRepository : RoomRepository {
         if (updatedRows != 1) {
             return false
         }
+
         RoomHasFeatureTable.deleteWhere { RoomHasFeatureTable.roomId eq room.id.value }
         insertFeatures(room)
         return true
@@ -143,6 +144,7 @@ class ExposedRoomRepository : RoomRepository {
         if (roomIds.isEmpty()) {
             return emptyList()
         }
+
         return loadRooms(RoomTable.selectAll().where { RoomTable.id inList roomIds }.toList())
     }
 
@@ -158,6 +160,7 @@ class ExposedRoomRepository : RoomRepository {
         if (rows.isEmpty()) {
             return emptyList()
         }
+
         val featuresByRoom: Map<UUID, Set<RoomFeatureId>> =
             RoomHasFeatureTable
                 .selectAll()

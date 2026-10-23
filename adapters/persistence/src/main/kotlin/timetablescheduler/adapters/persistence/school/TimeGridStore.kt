@@ -97,6 +97,7 @@ internal object TimeGridStore {
         if (slotIds.isEmpty()) {
             return
         }
+
         SlotDayExclusionTable.deleteWhere { SlotDayExclusionTable.slotId inList slotIds }
         SlotDayExclusionTable.batchInsert(timeGrid.exclusions) { exclusion ->
             this[SlotDayExclusionTable.slotId] = exclusion.slotId.value

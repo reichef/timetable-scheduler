@@ -120,6 +120,7 @@ class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
         if (rows.isEmpty()) {
             return emptyList()
         }
+
         val slotsByConstraint =
             SchedulingConstraintSlotTable
                 .selectAll()
