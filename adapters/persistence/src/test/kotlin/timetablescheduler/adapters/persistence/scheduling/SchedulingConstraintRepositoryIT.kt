@@ -100,15 +100,9 @@ class SchedulingConstraintRepositoryIT : PostgresTestBase() {
             )
         val stored =
             rules.mapIndexed { index, rule ->
-                data.constraint(
-                    rule,
-                    if (index % 2 == 0) {
-                        ConstraintKind.HARD
-                    } else {
-                        ConstraintKind.SOFT
-                    },
-                    if (index % 2 == 0) null else SoftWeight.HIGH,
-                )
+                val hard = index % 2 == 0
+
+                data.constraint(rule, if (hard) ConstraintKind.HARD else ConstraintKind.SOFT, if (hard) null else SoftWeight.HIGH)
             }
 
         inTransaction { stored.forEach(constraints::insert) }
@@ -132,13 +126,12 @@ class SchedulingConstraintRepositoryIT : PostgresTestBase() {
         val data = Data()
         val forClass = data.constraint(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(data.class5a.id), 5))
         val forTeacher = data.constraint(ConstraintRule.TeacherExcludedSlots(data.schmidt.id, setOf(data.slots.first())))
-        inTransaction {
-            constraints.insert(forClass)
-            constraints.insert(forTeacher)
-        }
+        val forSubject = data.constraint(ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, data.math.id, 2))
+        inTransaction { listOf(forClass, forTeacher, forSubject).forEach(constraints::insert) }
 
         assertEquals(listOf(forClass.id), inTransaction { constraints.findReferencingClass(data.class5a.id) }.map { it.id })
         assertEquals(listOf(forTeacher.id), inTransaction { constraints.findReferencingTeacher(data.schmidt.id) }.map { it.id })
+        assertEquals(listOf(forSubject.id), inTransaction { constraints.findReferencingSubject(data.math.id) }.map { it.id })
         assertEquals(listOf(forTeacher.id), inTransaction { constraints.findReferencingSlot(data.slots.first().slotId) }.map { it.id })
         assertFailsWith<ExposedSQLException> { inTransaction { classes.delete(data.class5a.id) } }
     }
@@ -177,8 +170,24 @@ class SchedulingConstraintRepositoryIT : PostgresTestBase() {
 
         assertEquals(fixation, inTransaction { fixations.findByCourse(data.class5a.id, data.math.id) })
         assertEquals(listOf(fixation), inTransaction { fixations.findByTeacher(data.schmidt.id) })
+        assertEquals(listOf(fixation), inTransaction { fixations.findByClass(data.class5a.id) })
+        assertEquals(listOf(fixation), inTransaction { fixations.findBySubject(data.math.id) })
+
         assertFailsWith<ExposedSQLException> { inTransaction { fixations.insert(fixation.copy(id = TeacherFixationId.new())) } }
+
         assertEquals(true, inTransaction { fixations.update(fixation) })
         assertEquals(1, inTransaction { fixations.findById(fixation.id) }!!.version)
+    }
+
+    @Test
+    fun `a deleted teacher fixation is gone`() {
+        val data = Data()
+        val fixation = TeacherFixation(TeacherFixationId.new(), data.school.id, data.class5a.id, data.math.id, data.schmidt.id, 0)
+        inTransaction { fixations.insert(fixation) }
+
+        inTransaction { fixations.delete(fixation.id) }
+
+        assertNull(inTransaction { fixations.findById(fixation.id) })
+        assertEquals(emptyList(), inTransaction { fixations.findBySubject(data.math.id) })
     }
 }

@@ -40,6 +40,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.UUID
 
 class ExposedGenerationRepository : GenerationRepository {
     override fun insert(generation: Generation) {
@@ -207,27 +208,9 @@ class ExposedGenerationRepository : GenerationRepository {
         }
 
         val ids = rows.map { it[AlternativeTable.id] }
-        val lessons =
-            AlternativeLessonTable
-                .selectAll()
-                .where { AlternativeLessonTable.alternativeId inList ids }
-                .sortedBy { it[AlternativeLessonTable.position] }
-                .groupBy({ it[AlternativeLessonTable.alternativeId] }, { it.toLesson() })
-        val unplaced =
-            AlternativeUnplacedTable
-                .selectAll()
-                .where { AlternativeUnplacedTable.alternativeId inList ids }
-                .groupBy({ it[AlternativeUnplacedTable.alternativeId] }, {
-                    CourseKey(SchoolClassId(it[AlternativeUnplacedTable.classId]), SubjectId(it[AlternativeUnplacedTable.subjectId])) to
-                        it[AlternativeUnplacedTable.periods]
-                })
-        val softViolations =
-            AlternativeSoftViolationTable
-                .selectAll()
-                .where { AlternativeSoftViolationTable.alternativeId inList ids }
-                .groupBy({ it[AlternativeSoftViolationTable.alternativeId] }, {
-                    SchedulingConstraintId(it[AlternativeSoftViolationTable.constraintId]) to it[AlternativeSoftViolationTable.violations]
-                })
+        val lessons = lessonsOf(ids)
+        val unplaced = unplacedOf(ids)
+        val softViolations = softViolationsOf(ids)
 
         return rows.map { row ->
             val id = row[AlternativeTable.id]
@@ -242,6 +225,31 @@ class ExposedGenerationRepository : GenerationRepository {
             )
         }
     }
+
+    private fun lessonsOf(alternativeIds: List<UUID>): Map<UUID, List<LessonAssignment>> =
+        AlternativeLessonTable
+            .selectAll()
+            .where { AlternativeLessonTable.alternativeId inList alternativeIds }
+            .sortedBy { it[AlternativeLessonTable.position] }
+            .groupBy({ it[AlternativeLessonTable.alternativeId] }, { it.toLesson() })
+
+    private fun unplacedOf(alternativeIds: List<UUID>): Map<UUID, List<Pair<CourseKey, Int>>> =
+        AlternativeUnplacedTable
+            .selectAll()
+            .where { AlternativeUnplacedTable.alternativeId inList alternativeIds }
+            .groupBy({ it[AlternativeUnplacedTable.alternativeId] }, { it.toUnplacedCourse() to it[AlternativeUnplacedTable.periods] })
+
+    private fun ResultRow.toUnplacedCourse() =
+        CourseKey(SchoolClassId(this[AlternativeUnplacedTable.classId]), SubjectId(this[AlternativeUnplacedTable.subjectId]))
+
+    private fun softViolationsOf(alternativeIds: List<UUID>): Map<UUID, List<Pair<SchedulingConstraintId, Int>>> =
+        AlternativeSoftViolationTable
+            .selectAll()
+            .where { AlternativeSoftViolationTable.alternativeId inList alternativeIds }
+            .groupBy(
+                { it[AlternativeSoftViolationTable.alternativeId] },
+                { SchedulingConstraintId(it[AlternativeSoftViolationTable.constraintId]) to it[AlternativeSoftViolationTable.violations] },
+            )
 
     private fun ResultRow.toObjectiveValues() =
         ObjectiveValues(

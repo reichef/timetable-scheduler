@@ -77,6 +77,14 @@ class SchoolRepositoryIT : PostgresTestBase() {
     }
 
     @Test
+    fun `lists the ids of all schools`() {
+        val nord = storedSchool("Gymnasium Nord")
+        val sued = storedSchool("Realschule Süd")
+
+        assertEquals(setOf(nord.id, sued.id), inTransaction { schools.findAllIds() }.toSet())
+    }
+
+    @Test
     fun `update uses optimistic locking`() {
         val school = storedSchool("Gymnasium Nord")
 

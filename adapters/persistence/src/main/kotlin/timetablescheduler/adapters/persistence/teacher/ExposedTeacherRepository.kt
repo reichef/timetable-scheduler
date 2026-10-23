@@ -128,25 +128,11 @@ class ExposedTeacherRepository : TeacherRepository {
         if (rows.isEmpty()) {
             return emptyList()
         }
+
         val teacherIds = rows.map { it[TeacherTable.id] }
-        val qualifications =
-            TeacherQualificationTable
-                .selectAll()
-                .where { TeacherQualificationTable.teacherId inList teacherIds }
-                .groupBy({ it[TeacherQualificationTable.teacherId] }, { SubjectId(it[TeacherQualificationTable.subjectId]) })
-        val unavailability =
-            TeacherUnavailabilityTable
-                .selectAll()
-                .where { TeacherUnavailabilityTable.teacherId inList teacherIds }
-                .groupBy(
-                    { it[TeacherUnavailabilityTable.teacherId] },
-                    {
-                        Unavailability(
-                            DayOfWeek.valueOf(it[TeacherUnavailabilityTable.dayOfWeek]),
-                            TimeSlotId(it[TeacherUnavailabilityTable.slotId]),
-                        )
-                    },
-                )
+        val qualifications = qualificationsOf(teacherIds)
+        val unavailability = unavailabilityOf(teacherIds)
+
         return rows.map { row ->
             val teacherId = row[TeacherTable.id]
             Teacher(
@@ -161,6 +147,21 @@ class ExposedTeacherRepository : TeacherRepository {
             )
         }
     }
+
+    private fun qualificationsOf(teacherIds: List<UUID>): Map<UUID, List<SubjectId>> =
+        TeacherQualificationTable
+            .selectAll()
+            .where { TeacherQualificationTable.teacherId inList teacherIds }
+            .groupBy({ it[TeacherQualificationTable.teacherId] }, { SubjectId(it[TeacherQualificationTable.subjectId]) })
+
+    private fun unavailabilityOf(teacherIds: List<UUID>): Map<UUID, List<Unavailability>> =
+        TeacherUnavailabilityTable
+            .selectAll()
+            .where { TeacherUnavailabilityTable.teacherId inList teacherIds }
+            .groupBy({ it[TeacherUnavailabilityTable.teacherId] }, { it.toUnavailability() })
+
+    private fun ResultRow.toUnavailability() =
+        Unavailability(DayOfWeek.valueOf(this[TeacherUnavailabilityTable.dayOfWeek]), TimeSlotId(this[TeacherUnavailabilityTable.slotId]))
 }
 
 /** Teacher unavailabilities of a time slot, counted for the deletion confirmation and removed with the slot. */

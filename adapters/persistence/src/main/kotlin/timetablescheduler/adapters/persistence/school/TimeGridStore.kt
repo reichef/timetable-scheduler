@@ -26,34 +26,35 @@ internal object TimeGridStore {
                 .where { TeachingDayTable.schoolId eq schoolId.value }
                 .map { DayOfWeek.valueOf(it[TeachingDayTable.dayOfWeek]) }
                 .toSet()
-        val slots =
-            TimeSlotTable
-                .selectAll()
-                .where { TimeSlotTable.schoolId eq schoolId.value }
-                .map {
-                    TimeSlot(
-                        id = TimeSlotId(it[TimeSlotTable.id]),
-                        label = it[TimeSlotTable.label],
-                        startTime = it[TimeSlotTable.startTime],
-                        endTime = it[TimeSlotTable.endTime],
-                        kind = SlotKind.valueOf(it[TimeSlotTable.kind]),
-                    )
-                }.sortedBy { it.startTime }
-        val exclusions =
-            if (slots.isEmpty()) {
-                emptySet()
-            } else {
-                SlotDayExclusionTable
-                    .selectAll()
-                    .where { SlotDayExclusionTable.slotId inList slots.map { it.id.value } }
-                    .map {
-                        SlotDayExclusion(
-                            TimeSlotId(it[SlotDayExclusionTable.slotId]),
-                            DayOfWeek.valueOf(it[SlotDayExclusionTable.dayOfWeek]),
-                        )
-                    }.toSet()
-            }
-        return TimeGrid(teachingDays, slots, exclusions)
+        val slots = loadSlots(schoolId)
+
+        return TimeGrid(teachingDays, slots, loadExclusions(slots))
+    }
+
+    private fun loadSlots(schoolId: SchoolId): List<TimeSlot> =
+        TimeSlotTable
+            .selectAll()
+            .where { TimeSlotTable.schoolId eq schoolId.value }
+            .map {
+                TimeSlot(
+                    id = TimeSlotId(it[TimeSlotTable.id]),
+                    label = it[TimeSlotTable.label],
+                    startTime = it[TimeSlotTable.startTime],
+                    endTime = it[TimeSlotTable.endTime],
+                    kind = SlotKind.valueOf(it[TimeSlotTable.kind]),
+                )
+            }.sortedBy { it.startTime }
+
+    private fun loadExclusions(slots: List<TimeSlot>): Set<SlotDayExclusion> {
+        if (slots.isEmpty()) {
+            return emptySet()
+        }
+
+        return SlotDayExclusionTable
+            .selectAll()
+            .where { SlotDayExclusionTable.slotId inList slots.map { it.id.value } }
+            .map { SlotDayExclusion(TimeSlotId(it[SlotDayExclusionTable.slotId]), DayOfWeek.valueOf(it[SlotDayExclusionTable.dayOfWeek])) }
+            .toSet()
     }
 
     fun save(
