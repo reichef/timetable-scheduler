@@ -73,6 +73,9 @@ koverXmlReport`: 87 production methods without any executed line. Excluded group
 
 The remaining non-trivial functions are the findings F-101 – F-113 below.
 
+Kover is removed again (T038, research R6; Principle II): it was applied in the working tree only for the report and
+never committed; its version entries in `gradle/libs.versions.toml` (added in T002) are deleted. No finding is `open`.
+
 ## Findings
 
 | Id | Module | Location | Rule | Description | Resolution | Status |

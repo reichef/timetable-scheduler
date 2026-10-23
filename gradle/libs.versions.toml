@@ -11,7 +11,6 @@ logback = "1.6.5"
 testcontainers = "2.0.5"
 timefold = "2.7.1"
 ktlint = "1.8.0"
-kover = "0.9.11"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -43,4 +42,3 @@ ktlint-ruleset-standard = { module = "com.pinterest.ktlint:ktlint-ruleset-standa
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

@@ -135,7 +135,7 @@ every non-trivial function has a meaningful test (FR-007).
 
 ### Finding untested functions
 
-- [ ] T031 [US3] Apply Kover (version of T002) in the root `build.gradle.kts` for all application modules, generate the report with `./gradlew koverHtmlReport` (or JaCoCo per R6), and record in `FEATURE/review-findings.md` every non-trivial production function not executed by any test as a `missing-test` finding (module, file and function; trivial getters, data-class members and generated code excluded with a one-line reason per group)
+- [X] T031 [US3] Apply Kover (version of T002) in the root `build.gradle.kts` for all application modules, generate the report with `./gradlew koverHtmlReport` (or JaCoCo per R6), and record in `FEATURE/review-findings.md` every non-trivial production function not executed by any test as a `missing-test` finding (module, file and function; trivial getters, data-class members and generated code excluded with a one-line reason per group) (fd8a032) — done with Kover 0.9.11 applied in the working tree only: 87 never executed methods, grouped exclusions recorded, findings F-101 – F-113
 
 ### Review and fixes per module (findings recorded in `FEATURE/review-findings.md`)
 
@@ -150,13 +150,13 @@ tests of the function they came from (run them before and after the split); a no
 becomes public or is used from several places gets its own test written before the extraction (Constitution I,
 test-driven development). Behaviour and log content unchanged (FR-008, FR-009); `./gradlew build` green.
 
-- [ ] T032 [P] [US3] Domain: review, fixes and missing tests in `domain/`
-- [ ] T033 [P] [US3] Application: review, fixes and missing tests in `application/` (incl. `MasterDataUseCases.kt` wiring and the use-case classes)
-- [ ] T034 [P] [US3] Persistence: review, fixes and missing tests in `adapters/persistence/` (repository tests use the existing Testcontainers base)
-- [ ] T035 [P] [US3] Solver: review, fixes and missing tests in `adapters/solver/` (constraint provider and problem mapping keep their explanatory comments)
-- [ ] T036 [P] [US3] Web: review, fixes and missing tests in `adapters/web/` (route tests via the existing test support)
-- [ ] T037 [P] [US3] Bootstrap and tooling: review, fixes and missing tests in `bootstrap/` and `tooling/layout-rules/`
-- [ ] T038 [US3] Remove Kover from the build again (it was a finding aid, research R6; Principle II: as few dependencies as possible) and confirm in `FEATURE/review-findings.md` that no finding is `open`
+- [X] T032 [P] [US3] Domain: review, fixes and missing tests in `domain/` (fd8a032; F-112, F-114, F-115; domain 178 tests)
+- [X] T033 [P] [US3] Application: review, fixes and missing tests in `application/` (incl. `MasterDataUseCases.kt` wiring and the use-case classes) (c23e136; F-101, F-102, F-116, F-117; application 152 tests)
+- [X] T034 [P] [US3] Persistence: review, fixes and missing tests in `adapters/persistence/` (repository tests use the existing Testcontainers base) (0143086; F-103, F-118, F-119; persistence 57 tests)
+- [X] T035 [P] [US3] Solver: review, fixes and missing tests in `adapters/solver/` (constraint provider and problem mapping keep their explanatory comments) (d55e619; F-111, F-120 – F-122; solver 18 tests)
+- [X] T036 [P] [US3] Web: review, fixes and missing tests in `adapters/web/` (route tests via the existing test support) (fb81db9; F-104 – F-110, F-123 – F-126; web 136 tests)
+- [X] T037 [P] [US3] Bootstrap and tooling: review, fixes and missing tests in `bootstrap/` and `tooling/layout-rules/` (6af08e9; F-113, F-127, F-128; bootstrap 30 tests; no general-purpose names found in any module)
+- [X] T038 [US3] Remove Kover from the build again (it was a finding aid, research R6; Principle II: as few dependencies as possible) and confirm in `FEATURE/review-findings.md` that no finding is `open` — Kover was never committed; its catalogue entries from T002 are removed; no finding `open`
 
 **Checkpoint**: All three parts of Principle I hold for the existing code
 
