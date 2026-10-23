@@ -1,8 +1,16 @@
 package timetablescheduler.application.school
 
 import timetablescheduler.application.error.ApplicationError
+import timetablescheduler.application.error.Dependant
+import timetablescheduler.application.error.DependantType
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.fakes.MasterDataWorld
+import timetablescheduler.application.scheduling.ConstraintInput
+import timetablescheduler.domain.common.TimeSlotId
+import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.constraint.ConstraintKind
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.ConstraintType
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.school.TimeGrid
 import timetablescheduler.domain.validation.ValidationError
@@ -89,20 +97,55 @@ class TimeGridUseCasesTest {
         val preview = assertIs<UseCaseResult.Success<SlotDeletionPreview>>(grid.previewDeletion.execute(admin.id, nord.id, slot.id)).value
         val deleted = grid.deleteSlot.execute(admin.id, nord.id, slot.id, currentVersion())
 
+        val gridAfter = world.schools.findTimeGrid(nord.id)
+
         assertEquals(1, preview.exclusionCount)
         assertIs<UseCaseResult.Success<SlotDeletionResult>>(deleted)
-        assertTrue(
-            world.schools
-                .findTimeGrid(nord.id)
-                .slots
-                .isEmpty(),
+        assertTrue(gridAfter.slots.isEmpty())
+        assertTrue(gridAfter.exclusions.isEmpty())
+    }
+
+    @Test
+    fun `deleting a slot a constraint refers to is blocked and names the constraint by the slot label`() {
+        world.teachingDays(nord.id, MONDAY)
+        val slot = world.slot(nord.id, "8. Stunde", "14:00", "14:45")
+        val sport = world.subject(nord.id, "Sport")
+        val notLast = ConstraintRule.SubjectExcludedSlots(sport.id, null, setOf(DaySlot(MONDAY, slot.id)))
+        val created =
+            world.useCases.constraints.create
+                .execute(admin.id, nord.id, ConstraintInput(ConstraintKind.HARD, null, notLast))
+
+        val result = grid.deleteSlot.execute(admin.id, nord.id, slot.id, currentVersion())
+
+        assertIs<UseCaseResult.Success<*>>(created)
+        val blocked = assertIs<ApplicationError.DeletionBlocked>(assertIs<UseCaseResult.Failure>(result).error)
+        assertEquals(
+            listOf(Dependant(DependantType.SCHEDULING_CONSTRAINT, "8. Stunde", ConstraintType.SUBJECT_EXCLUDED_SLOTS)),
+            blocked.visibleDependants,
         )
-        assertTrue(
-            world.schools
-                .findTimeGrid(nord.id)
-                .exclusions
-                .isEmpty(),
-        )
+    }
+
+    @Test
+    fun `a changed time slot is saved and bumps the school version`() {
+        val slot = world.slot(nord.id, "1. Stunde", "08:00", "08:45")
+        val versionBefore = currentVersion()
+
+        val result =
+            grid.updateSlot.execute(
+                admin.id,
+                nord.id,
+                slot.id,
+                "Erste Stunde",
+                LocalTime.of(8, 5),
+                LocalTime.of(8, 50),
+                SlotKind.TEACHING,
+                versionBefore,
+            )
+
+        val changed = assertIs<UseCaseResult.Success<TimeGrid>>(result).value.slotById(slot.id)
+        assertEquals("Erste Stunde", changed?.label)
+        assertEquals(LocalTime.of(8, 5), changed?.startTime)
+        assertEquals(versionBefore + 1, currentVersion())
     }
 
     @Test
@@ -111,8 +154,7 @@ class TimeGridUseCasesTest {
             grid.previewDeletion.execute(
                 admin.id,
                 nord.id,
-                timetablescheduler.domain.common.TimeSlotId
-                    .new(),
+                TimeSlotId.new(),
             )
 
         assertEquals(UseCaseResult.Failure(ApplicationError.NotFound), result)

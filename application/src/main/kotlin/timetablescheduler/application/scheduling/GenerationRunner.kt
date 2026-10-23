@@ -26,9 +26,9 @@ import java.time.Duration
 /**
  * Runs one generation in the background (G2, G4, G6): every timetable the solver reports is checked against all
  * hard constraints by the domain, must reach the minimum share of placed lessons (FR-007a), is evaluated, and offered
- * to the Pareto archive; archive changes are stored at once,
- * so a stop or crash keeps what was found. The end status follows G4: `FAILED_INFEASIBLE` only when not a single
- * valid alternative was found while the solver reported infeasible passes.
+ * to the Pareto archive; archive changes are stored at once, so a stop or crash keeps what was found. The end status
+ * follows G4: `FAILED_INFEASIBLE` only when not a single valid alternative was found while the solver reported
+ * infeasible passes.
  */
 class GenerationRunner(
     private val transactions: TransactionRunner,
@@ -43,32 +43,9 @@ class GenerationRunner(
         problem: SchedulingProblem,
     ) {
         eventLog.started(generation.id)
-        val stopSignal = control.stopSignalOf(generation.id)
         val collector = AlternativeCollector(generation, problem)
-        val status =
-            try {
-                solver.solve(problem, Duration.ofMinutes(generation.timeLimitMinutes.toLong()), stopSignal, collector)
-                when {
-                    collector.keptCount() == 0 && collector.infeasiblePassSeen -> GenerationStatus.FAILED_INFEASIBLE
-                    stopSignal.isStopRequested() -> GenerationStatus.STOPPED
-                    else -> GenerationStatus.FINISHED
-                }
-            } catch (failure: Exception) {
-                eventLog.failed(generation.id, failure.javaClass.name)
-                GenerationStatus.FAILED
-            } finally {
-                control.release(generation.id)
-            }
-        val ended =
-            generation.endAs(status, clock.instant()).copy(
-                alternativesFound = collector.keptCount(),
-                infeasibleConstraintIds =
-                    if (status == GenerationStatus.FAILED_INFEASIBLE) {
-                        constraintsForcingViolations(problem)
-                    } else {
-                        emptyList()
-                    },
-            )
+        val status = solve(generation, problem, collector)
+        val ended = endedGeneration(generation, problem, status, collector.keptCount())
 
         inTransaction { generations.saveEnd(ended) }
         if (collector.discardedCount > 0) {
@@ -81,6 +58,51 @@ class GenerationRunner(
             collector.keptCount(),
             Duration.between(generation.startedAt, checkNotNull(ended.finishedAt)),
         )
+    }
+
+    /** Runs the solver until its time limit, a stop or a failure, and returns the end status (G4). */
+    private fun solve(
+        generation: Generation,
+        problem: SchedulingProblem,
+        collector: AlternativeCollector,
+    ): GenerationStatus {
+        val stopSignal = control.stopSignalOf(generation.id)
+
+        return try {
+            solver.solve(problem, Duration.ofMinutes(generation.timeLimitMinutes.toLong()), stopSignal, collector)
+            when {
+                collector.keptCount() == 0 && collector.infeasiblePassSeen -> GenerationStatus.FAILED_INFEASIBLE
+                stopSignal.isStopRequested() -> GenerationStatus.STOPPED
+                else -> GenerationStatus.FINISHED
+            }
+        } catch (failure: Exception) {
+            eventLog.failed(generation.id, failure.javaClass.name)
+            GenerationStatus.FAILED
+        } finally {
+            control.release(generation.id)
+        }
+    }
+
+    private fun endedGeneration(
+        generation: Generation,
+        problem: SchedulingProblem,
+        status: GenerationStatus,
+        keptCount: Int,
+    ): Generation {
+        val infeasibleConstraintIds =
+            if (status ==
+                GenerationStatus.FAILED_INFEASIBLE
+            ) {
+                constraintsForcingViolations(problem)
+            } else {
+                emptyList()
+            }
+
+        return generation
+            .endAs(
+                status,
+                clock.instant(),
+            ).copy(alternativesFound = keptCount, infeasibleConstraintIds = infeasibleConstraintIds)
     }
 
     /** G4: only daily minimums and exclusions can force hard violations; the active hard ones are named (FR-017). */
@@ -134,6 +156,7 @@ class GenerationRunner(
                     softViolations = evaluation.softViolations,
                     changedLessons = evaluation.changedLessons,
                 )
+
             // Only a kept alternative can be the best one; when it is, the others are measured against it again.
             val change = archive.offer(alternative, alternative.objectiveValues.asVector())
             val bestRose = change.admitted && placementShare.record(placed)
