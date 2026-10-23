@@ -133,4 +133,46 @@ class TimeGridRoutesTest {
             assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
             assertTrue("Beginn hat ein ungültiges Format." in response.bodyAsText())
         }
+
+    @Test
+    fun `a time slot is changed, a time that is no time shows the editor again`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val schoolId = system.firstSchoolId()
+            val slot = system.world.slot(schoolId, "1. Stunde", "08:00", "08:45")
+            val slotPath = "/schools/${schoolId.value}/time-grid/slots/${slot.id.value}"
+            val version = "${system.world.schools.findById(schoolId)!!.version}"
+
+            val client = startWith(system)
+            client.login()
+
+            val noTime =
+                client.submitChecked(
+                    slotPath,
+                    "label" to "1. Stunde",
+                    "startTime" to "acht",
+                    "endTime" to "08:45",
+                    "kind" to "TEACHING",
+                    "version" to version,
+                )
+            val changed =
+                client.submitChecked(
+                    slotPath,
+                    "label" to "Erste Stunde",
+                    "startTime" to "08:05",
+                    "endTime" to "08:50",
+                    "kind" to "TEACHING",
+                    "version" to version,
+                )
+
+            assertEquals(HttpStatusCode.UnprocessableEntity, noTime.status)
+            assertEquals(HttpStatusCode.SeeOther, changed.status)
+            assertEquals(
+                "Erste Stunde",
+                system.world.schools
+                    .findTimeGrid(schoolId)
+                    .slotById(slot.id)
+                    ?.label,
+            )
+        }
 }

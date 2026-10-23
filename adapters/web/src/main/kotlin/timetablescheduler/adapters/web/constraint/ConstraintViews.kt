@@ -25,6 +25,7 @@ import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
 import kotlinx.html.ul
+import timetablescheduler.adapters.web.auth.UserSession
 import timetablescheduler.adapters.web.i18n.UiTexts
 import timetablescheduler.adapters.web.i18n.texts
 import timetablescheduler.adapters.web.layout.csrfField
@@ -84,29 +85,7 @@ private val ConstraintType.needsSlots get() =
 suspend fun ApplicationCall.respondConstraintList(overview: ConstraintOverview) {
     val texts = texts
     respondPage(texts.constraints.title) { session ->
-        if (overview.constraints.isEmpty()) {
-            p { +texts.constraints.noConstraints }
-        }
-        table {
-            overview.constraints.forEach { constraint ->
-                tr {
-                    td {
-                        a(href = constraintPath(constraint)) { +describe(constraint, overview.names, texts) }
-                        if (!constraint.active) {
-                            span(classes = "muted") { +" (${texts.constraints.switchedOff})" }
-                        }
-                    }
-                    td {
-                        form(action = "${constraintPath(constraint)}/active", method = FormMethod.post, classes = "inline") {
-                            csrfField(session)
-                            hiddenField("version", "${constraint.version}")
-                            hiddenField("active", "${!constraint.active}")
-                            button { +if (constraint.active) texts.constraints.switchOff else texts.constraints.switchOn }
-                        }
-                    }
-                }
-            }
-        }
+        constraintTable(overview, session, texts)
 
         h2 { +texts.constraints.catalogueHeading }
         ul {
@@ -116,22 +95,61 @@ suspend fun ApplicationCall.respondConstraintList(overview: ConstraintOverview) 
         }
 
         h2 { +texts.constraints.fixationsHeading }
-        if (overview.fixations.isEmpty()) {
-            p { +texts.constraints.noFixations }
-        }
-        ul {
-            overview.fixations.forEach { fixation ->
-                li {
-                    a(href = "${fixationsPath(overview.schoolId)}/${fixation.id.value}") { +describe(fixation, overview.names, texts) }
-                    overview.invalidFixations[fixation.id]?.let { reason ->
-                        span(classes = "errors") { +" – ${texts.constraints.invalidMark}: ${texts.constraints.invalidityReason(reason)}" }
+        fixationList(overview, texts)
+        p { a(href = "${fixationsPath(overview.schoolId)}/new") { +texts.constraints.newFixation } }
+
+        p { a(href = "/schools/${overview.schoolId.value}") { +texts.common.toSchool } }
+    }
+}
+
+/** Every constraint with its description and a button to switch it off or on (FR-014). */
+private fun FlowContent.constraintTable(
+    overview: ConstraintOverview,
+    session: UserSession?,
+    texts: UiTexts,
+) {
+    if (overview.constraints.isEmpty()) {
+        p { +texts.constraints.noConstraints }
+    }
+    table {
+        overview.constraints.forEach { constraint ->
+            tr {
+                td {
+                    a(href = constraintPath(constraint)) { +describe(constraint, overview.names, texts) }
+                    if (!constraint.active) {
+                        span(classes = "muted") { +" (${texts.constraints.switchedOff})" }
+                    }
+                }
+                td {
+                    form(action = "${constraintPath(constraint)}/active", method = FormMethod.post, classes = "inline") {
+                        csrfField(session)
+                        hiddenField("version", "${constraint.version}")
+                        hiddenField("active", "${!constraint.active}")
+                        button { +if (constraint.active) texts.constraints.switchOff else texts.constraints.switchOn }
                     }
                 }
             }
         }
-        p { a(href = "${fixationsPath(overview.schoolId)}/new") { +texts.constraints.newFixation } }
+    }
+}
 
-        p { a(href = "/schools/${overview.schoolId.value}") { +texts.common.toSchool } }
+/** The teacher fixations; one that no longer fits the master data is marked with the reason (FR-013a). */
+private fun FlowContent.fixationList(
+    overview: ConstraintOverview,
+    texts: UiTexts,
+) {
+    if (overview.fixations.isEmpty()) {
+        p { +texts.constraints.noFixations }
+    }
+    ul {
+        overview.fixations.forEach { fixation ->
+            li {
+                a(href = "${fixationsPath(overview.schoolId)}/${fixation.id.value}") { +describe(fixation, overview.names, texts) }
+                overview.invalidFixations[fixation.id]?.let { reason ->
+                    span(classes = "errors") { +" – ${texts.constraints.invalidMark}: ${texts.constraints.invalidityReason(reason)}" }
+                }
+            }
+        }
     }
 }
 

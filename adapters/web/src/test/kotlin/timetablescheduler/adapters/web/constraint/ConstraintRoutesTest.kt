@@ -16,9 +16,12 @@ import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintKind
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.constraint.SoftWeight
+import timetablescheduler.domain.scheduling.constraint.TeacherFixation
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ConstraintRoutesTest {
@@ -268,5 +271,59 @@ class ConstraintRoutesTest {
 
             assertEquals(HttpStatusCode.Forbidden, teacher.get(data.constraintsPath()).status)
             assertFalse("Freistunden" in teacher.get(data.constraintsPath()).bodyAsText())
+        }
+
+    @Test
+    fun `the teacher of a fixation is changed and the fixation deleted, a missing teacher shows the form again (FR-013a)`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val data = GenerationTestData(system)
+            val meyer = data.world.teacher(data.schoolId, "Max Meyer", "MEY", weeklyLoad = 4, qualifiedSubjects = setOf(data.math.id))
+
+            val client = startWith(system)
+            client.login()
+            client.submitChecked(
+                "/schools/${data.schoolId.value}/teacher-fixations",
+                "classId" to "${data.class5a.id.value}",
+                "subjectId" to "${data.math.id.value}",
+                "teacherId" to "${data.schmidt.id.value}",
+            )
+
+            val fixation = system.world.fixations.findByCourse(data.class5a.id, data.math.id)!!
+            val fixationPath = "/schools/${data.schoolId.value}/teacher-fixations/${fixation.id.value}"
+
+            val noTeacher = client.submitChecked(fixationPath, "version" to "0")
+            val changed = client.submitChecked(fixationPath, "teacherId" to "${meyer.id.value}", "version" to "0")
+            val teacherAfterChange =
+                system.world.fixations
+                    .findById(fixation.id)
+                    ?.teacherId
+
+            val deleted = client.submitChecked("$fixationPath/delete", "version" to "1")
+
+            assertEquals(HttpStatusCode.UnprocessableEntity, noTeacher.status)
+            assertEquals(HttpStatusCode.SeeOther, changed.status)
+            assertEquals(meyer.id, teacherAfterChange)
+            assertEquals(HttpStatusCode.SeeOther, deleted.status)
+            assertNull(system.world.fixations.findById(fixation.id))
+        }
+
+    @Test
+    fun `a fixation that no longer fits is marked in the list and named on the readiness page (FR-013a)`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val data = GenerationTestData(system)
+            val meyer = data.world.teacher(data.schoolId, "Max Meyer", "MEY", weeklyLoad = 4, qualifiedSubjects = setOf(data.german.id))
+            data.world.fixations.insert(TeacherFixation(TeacherFixationId.new(), data.schoolId, data.class5a.id, data.math.id, meyer.id, 0))
+
+            val client = startWith(system)
+            client.login()
+
+            val list = client.get(data.constraintsPath()).bodyAsText()
+            val readiness = client.get("/schools/${data.schoolId.value}/readiness").bodyAsText()
+
+            assertTrue("ungültig: die Lehrkraft ist für das Fach nicht mehr qualifiziert" in list)
+            assertTrue("5a Mathematik: Max Meyer (MEY)" in readiness)
+            assertTrue("die Lehrkraft ist für das Fach nicht mehr qualifiziert" in readiness)
         }
 }

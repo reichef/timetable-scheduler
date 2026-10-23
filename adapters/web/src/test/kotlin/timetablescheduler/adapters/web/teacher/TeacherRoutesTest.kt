@@ -148,4 +148,42 @@ class TeacherRoutesTest {
 
             assertTrue(system.teachersPath() in client.get("/schools/${system.firstSchoolId().value}").bodyAsText())
         }
+
+    @Test
+    fun `the general data of a teacher is changed, a load that is no number shows the form again`() =
+        testApplication {
+            val system = TestSystem().installed().withGrid()
+            val anna = system.world.teacher(system.firstSchoolId(), "Anna Schmidt", "SCHA")
+            val path = "${system.teachersPath()}/${anna.id.value}"
+
+            val client = startWith(system)
+            client.login()
+
+            val noNumber =
+                client.submitChecked(
+                    path,
+                    "name" to "Anna Schmidt",
+                    "shortCode" to "SCHA",
+                    "weeklyLoad" to "viel",
+                    "version" to "0",
+                )
+            val changed =
+                client.submitChecked(
+                    path,
+                    "name" to "Anna Schmidt-Berg",
+                    "shortCode" to "SCHB",
+                    "weeklyLoad" to "4",
+                    "version" to "0",
+                )
+
+            assertEquals(HttpStatusCode.UnprocessableEntity, noNumber.status)
+            assertTrue("value=\"viel\"" in noNumber.bodyAsText())
+            assertEquals(HttpStatusCode.SeeOther, changed.status)
+            assertEquals(
+                "SCHB",
+                system.world.teachers
+                    .findById(anna.id)
+                    ?.shortCode,
+            )
+        }
 }

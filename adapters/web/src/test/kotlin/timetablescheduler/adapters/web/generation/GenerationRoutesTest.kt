@@ -10,7 +10,11 @@ import timetablescheduler.adapters.web.login
 import timetablescheduler.adapters.web.newClient
 import timetablescheduler.adapters.web.startWith
 import timetablescheduler.adapters.web.submitChecked
+import timetablescheduler.application.scheduling.ConstraintInput
 import timetablescheduler.domain.account.Role
+import timetablescheduler.domain.scheduling.constraint.ClassScope
+import timetablescheduler.domain.scheduling.constraint.ConstraintKind
+import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.generation.Alternative
 import timetablescheduler.domain.scheduling.generation.AlternativeId
 import timetablescheduler.domain.scheduling.generation.Generation
@@ -259,5 +263,27 @@ class GenerationRoutesTest {
             val result = client.get("${data.generationsPath}/${system.latestGeneration().id.value}").bodyAsText()
 
             assertTrue("Noch keine Alternative gefunden." in result)
+        }
+
+    @Test
+    fun `hard constraints that contradict the master data are named instead of starting (FR-017)`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val data = GenerationTestData(system)
+            val admin = data.world.accounts.findByUsernameIgnoreCase(TestSystem.ADMIN)!!
+            // 2 per day on both teaching days needs 4 periods, class 5a has 3
+            val twoPerDay = ConstraintRule.ClassMinPeriodsPerDay(ClassScope.AllClasses, 2)
+            data.world.useCases.constraints.create
+                .execute(admin.id, data.schoolId, ConstraintInput(ConstraintKind.HARD, null, twoPerDay))
+
+            val client = startWith(system)
+            client.login()
+
+            val response = client.submitChecked(data.generationsPath, "timeLimitMinutes" to "1", "warningsConfirmed" to "true")
+            val page = response.bodyAsText()
+
+            assertEquals(HttpStatusCode.Conflict, response.status)
+            assertTrue("Bedingungen widersprechen sich" in page)
+            assertTrue("mindestens 2" in page)
         }
 }

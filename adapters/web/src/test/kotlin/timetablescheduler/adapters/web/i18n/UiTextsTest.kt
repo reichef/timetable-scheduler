@@ -8,6 +8,9 @@ import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.domain.scheduling.constraint.FixationInvalidity
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
+import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek
@@ -43,6 +46,7 @@ class UiTextsTest {
             ReadinessIssue.TeacherWithoutQualification(TeacherId.new()),
             ReadinessIssue.TeacherZeroLoad(TeacherId.new()),
             ReadinessIssue.TeacherLoadExceedsGrid(TeacherId.new(), 1),
+            ReadinessIssue.InvalidTeacherFixation(TeacherFixationId.new(), FixationInvalidity.NOT_QUALIFIED),
         )
 
     /** Renders [text] in both catalogs and checks both are filled and differ. */
@@ -81,5 +85,11 @@ class UiTextsTest {
     fun `every readiness issue kind has a heading in both languages`() {
         readinessIssues.forEach { issue -> assertTranslated(issue::class.simpleName!!) { it.readiness.heading(issue) } }
         assertEquals(readinessIssues.size, readinessIssues.map { GermanTexts.readiness.heading(it) }.toSet().size)
+    }
+
+    @Test
+    fun `every hard rule and every reason why a fixation no longer fits is named in both languages`() {
+        HardRule.entries.forEach { rule -> assertTranslated("$rule") { it.generations.hardRuleName(rule) } }
+        FixationInvalidity.entries.forEach { reason -> assertTranslated("$reason") { it.constraints.invalidityReason(reason) } }
     }
 }

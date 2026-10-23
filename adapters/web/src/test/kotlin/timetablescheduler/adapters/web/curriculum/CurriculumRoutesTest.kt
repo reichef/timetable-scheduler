@@ -14,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CurriculumRoutesTest {
@@ -212,5 +213,104 @@ class CurriculumRoutesTest {
             )
             assertEquals(HttpStatusCode.UnprocessableEntity, duplicate.status)
             assertTrue("Der Raum ist bereits Klassenraum von 5a." in duplicate.bodyAsText())
+        }
+
+    @Test
+    fun `a subject is renamed, and an empty name shows the form again`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val schoolId = system.firstSchoolId()
+            val subject = system.world.subject(schoolId, "Mathematik")
+            val subjectPath = "${system.schoolPath()}/subjects/${subject.id.value}"
+
+            val client = startWith(system)
+            client.login()
+
+            val renamed = client.submitChecked(subjectPath, "name" to "Mathe", "version" to "0")
+            val empty = client.submitChecked(subjectPath, "name" to "", "version" to "1")
+
+            assertEquals(HttpStatusCode.SeeOther, renamed.status)
+            assertEquals(
+                "Mathe",
+                system.world.subjects
+                    .findById(subject.id)
+                    ?.name,
+            )
+            assertEquals(HttpStatusCode.UnprocessableEntity, empty.status)
+        }
+
+    @Test
+    fun `a class level's curriculum is changed and the level deleted, a period count that is no number shows the form again`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val schoolId = system.firstSchoolId()
+            val mathe = system.world.subject(schoolId, "Mathematik")
+            val level = system.world.classLevel(schoolId, "6", mathe to 3)
+            val levelPath = "${system.schoolPath()}/class-levels/${level.id.value}"
+
+            val client = startWith(system)
+            client.login()
+
+            val noNumber =
+                client.submitChecked(
+                    levelPath,
+                    "identifier" to "6",
+                    "subjectId" to "${mathe.id.value}",
+                    "periodsPerWeek" to "drei",
+                    "version" to "0",
+                )
+            val changed =
+                client.submitChecked(
+                    levelPath,
+                    "identifier" to "6",
+                    "subjectId" to "${mathe.id.value}",
+                    "periodsPerWeek" to "4",
+                    "version" to "0",
+                )
+            val periods =
+                system.world.classLevels
+                    .findById(level.id)
+                    ?.curriculum
+                    ?.single()
+                    ?.periodsPerWeek
+
+            val deleted = client.submitChecked("$levelPath/delete", "version" to "1")
+
+            assertEquals(HttpStatusCode.UnprocessableEntity, noNumber.status)
+            assertEquals(HttpStatusCode.SeeOther, changed.status)
+            assertEquals(4, periods)
+            assertEquals(HttpStatusCode.SeeOther, deleted.status)
+            assertNull(system.world.classLevels.findById(level.id))
+        }
+
+    @Test
+    fun `a school class is changed, a weight that is no number shows the form again`() =
+        testApplication {
+            val system = TestSystem().installed()
+            val schoolId = system.firstSchoolId()
+            val level = system.world.classLevel(schoolId, "6", system.world.subject(schoolId, "Mathematik") to 4)
+            val schoolClass = system.world.schoolClass(level, "a")
+            val classPath = "${system.schoolPath()}/classes/${schoolClass.id.value}"
+
+            val client = startWith(system)
+            client.login()
+
+            val noNumber = client.submitChecked(classPath, "suffix" to "a", "priorityWeight" to "viel", "version" to "0")
+            val changed = client.submitChecked(classPath, "suffix" to "b", "priorityWeight" to "20", "version" to "0")
+
+            assertEquals(HttpStatusCode.UnprocessableEntity, noNumber.status)
+            assertEquals(HttpStatusCode.SeeOther, changed.status)
+            assertEquals(
+                "b",
+                system.world.schoolClasses
+                    .findById(schoolClass.id)
+                    ?.suffix,
+            )
+            assertEquals(
+                20,
+                system.world.schoolClasses
+                    .findById(schoolClass.id)
+                    ?.priorityWeight,
+            )
         }
 }
