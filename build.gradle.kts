@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
+    base
     alias(libs.plugins.kotlin.jvm) apply false
 }
 
@@ -124,3 +125,8 @@ registerLayoutTask(
     taskDescription = "Applies all auto-fixes of the layout check, then reports the remaining violations.",
     formatFirst = true,
 )
+
+// Any layout violation fails `./gradlew build`, locally and in the CI workflow Build (spec 003 FR-005).
+tasks.named("check") {
+    dependsOn("layoutCheck")
+}
