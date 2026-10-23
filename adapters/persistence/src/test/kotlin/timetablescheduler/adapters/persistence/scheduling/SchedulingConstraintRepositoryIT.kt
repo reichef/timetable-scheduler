@@ -34,7 +34,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class SchedulingConstraintRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
     private val subjects = ExposedSubjectRepository()
     private val levels = ExposedClassLevelRepository()
@@ -48,41 +47,63 @@ class SchedulingConstraintRepositoryIT : PostgresTestBase() {
     /** A school with one class 5a (Mathematik 4), teacher SCHA and two teaching slots on Monday. */
     private inner class Data {
         val school = School.create("Gymnasium Nord").valid().also { inTransaction { schools.insert(it) } }
-        val grid = TimeGrid.empty().withTeachingDays(setOf(DayOfWeek.MONDAY))
-            .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING).valid()
-            .withSlotAdded("2. Stunde", LocalTime.of(8, 50), LocalTime.of(9, 35), SlotKind.TEACHING).valid()
-            .also { inTransaction { schools.saveTimeGrid(school.id, it) } }
+        val grid =
+            TimeGrid
+                .empty()
+                .withTeachingDays(setOf(DayOfWeek.MONDAY))
+                .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING)
+                .valid()
+                .withSlotAdded("2. Stunde", LocalTime.of(8, 50), LocalTime.of(9, 35), SlotKind.TEACHING)
+                .valid()
+                .also { inTransaction { schools.saveTimeGrid(school.id, it) } }
         val slots = inTransaction { schools.findTimeGrid(school.id) }.slots.map { DaySlot(DayOfWeek.MONDAY, it.id) }
         val math = Subject.create(school.id, "Mathematik", emptySet(), emptySet()).valid().also { inTransaction { subjects.insert(it) } }
-        val level = ClassLevel.create(school.id, "5").valid().update("5", listOf(CurriculumEntry(math.id, 4)), setOf(math.id)).valid()
-            .also { inTransaction { levels.insert(it) } }
+        val level =
+            ClassLevel
+                .create(school.id, "5")
+                .valid()
+                .update("5", listOf(CurriculumEntry(math.id, 4)), setOf(math.id))
+                .valid()
+                .also { inTransaction { levels.insert(it) } }
         val class5a = SchoolClass.create(level.id, "a").valid().also { inTransaction { classes.insert(it) } }
-        val schmidt = Teacher.create(school.id, "Anna Schmidt", "SCHA", 10, 40).valid().withQualifications(setOf(math.id), setOf(math.id)).valid()
-            .also { inTransaction { teachers.insert(it) } }
+        val schmidt =
+            Teacher
+                .create(school.id, "Anna Schmidt", "SCHA", 10, 40)
+                .valid()
+                .withQualifications(setOf(math.id), setOf(math.id))
+                .valid()
+                .also { inTransaction { teachers.insert(it) } }
 
-        fun constraint(rule: ConstraintRule, kind: ConstraintKind = ConstraintKind.HARD, weight: SoftWeight? = null) =
-            SchedulingConstraint(SchedulingConstraintId.new(), school.id, kind, weight, true, rule, 0)
+        fun constraint(
+            rule: ConstraintRule,
+            kind: ConstraintKind = ConstraintKind.HARD,
+            weight: SoftWeight? = null,
+        ) = SchedulingConstraint(SchedulingConstraintId.new(), school.id, kind, weight, true, rule, 0)
     }
 
     @Test
     fun `every catalogue type round-trips with slots and scope`() {
         val data = Data()
-        val rules = listOf(
-            ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(data.class5a.id), 5),
-            ConstraintRule.ClassMinPeriodsPerDay(ClassScope.AllClasses, 2),
-            ConstraintRule.ClassNoGaps(ClassScope.AllClasses),
-            ConstraintRule.TeacherMaxPeriodsPerDay(data.schmidt.id, 4),
-            ConstraintRule.TeacherMaxGapsPerDay(data.schmidt.id, 1),
-            ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, 2),
-            ConstraintRule.SubjectMaxPerDayInClass(ClassScope.SpecificClass(data.class5a.id), data.math.id, 1),
-            ConstraintRule.SubjectDoublePeriodsInClass(data.class5a.id, data.math.id, acrossBreaks = true),
-            ConstraintRule.ClassExcludedSlots(data.class5a.id, data.slots.toSet()),
-            ConstraintRule.TeacherExcludedSlots(data.schmidt.id, setOf(data.slots.first())),
-            ConstraintRule.SubjectExcludedSlots(data.math.id, null, setOf(data.slots.last())),
-        )
-        val stored = rules.mapIndexed { index, rule ->
-            data.constraint(rule, if (index % 2 == 0) ConstraintKind.HARD else ConstraintKind.SOFT, if (index % 2 == 0) null else SoftWeight.HIGH)
-        }
+        val rules =
+            listOf(
+                ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(data.class5a.id), 5),
+                ConstraintRule.ClassMinPeriodsPerDay(ClassScope.AllClasses, 2),
+                ConstraintRule.ClassNoGaps(ClassScope.AllClasses),
+                ConstraintRule.TeacherMaxPeriodsPerDay(data.schmidt.id, 4),
+                ConstraintRule.TeacherMaxGapsPerDay(data.schmidt.id, 1),
+                ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, 2),
+                ConstraintRule.SubjectMaxPerDayInClass(ClassScope.SpecificClass(data.class5a.id), data.math.id, 1),
+                ConstraintRule.SubjectDoublePeriodsInClass(data.class5a.id, data.math.id, acrossBreaks = true),
+                ConstraintRule.ClassExcludedSlots(data.class5a.id, data.slots.toSet()),
+                ConstraintRule.TeacherExcludedSlots(data.schmidt.id, setOf(data.slots.first())),
+                ConstraintRule.SubjectExcludedSlots(data.math.id, null, setOf(data.slots.last())),
+            )
+        val stored =
+            rules.mapIndexed { index, rule ->
+                val hard = index % 2 == 0
+
+                data.constraint(rule, if (hard) ConstraintKind.HARD else ConstraintKind.SOFT, if (hard) null else SoftWeight.HIGH)
+            }
 
         inTransaction { stored.forEach(constraints::insert) }
 
@@ -105,13 +126,12 @@ class SchedulingConstraintRepositoryIT : PostgresTestBase() {
         val data = Data()
         val forClass = data.constraint(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(data.class5a.id), 5))
         val forTeacher = data.constraint(ConstraintRule.TeacherExcludedSlots(data.schmidt.id, setOf(data.slots.first())))
-        inTransaction {
-            constraints.insert(forClass)
-            constraints.insert(forTeacher)
-        }
+        val forSubject = data.constraint(ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, data.math.id, 2))
+        inTransaction { listOf(forClass, forTeacher, forSubject).forEach(constraints::insert) }
 
         assertEquals(listOf(forClass.id), inTransaction { constraints.findReferencingClass(data.class5a.id) }.map { it.id })
         assertEquals(listOf(forTeacher.id), inTransaction { constraints.findReferencingTeacher(data.schmidt.id) }.map { it.id })
+        assertEquals(listOf(forSubject.id), inTransaction { constraints.findReferencingSubject(data.math.id) }.map { it.id })
         assertEquals(listOf(forTeacher.id), inTransaction { constraints.findReferencingSlot(data.slots.first().slotId) }.map { it.id })
         assertFailsWith<ExposedSQLException> { inTransaction { classes.delete(data.class5a.id) } }
     }
@@ -150,8 +170,24 @@ class SchedulingConstraintRepositoryIT : PostgresTestBase() {
 
         assertEquals(fixation, inTransaction { fixations.findByCourse(data.class5a.id, data.math.id) })
         assertEquals(listOf(fixation), inTransaction { fixations.findByTeacher(data.schmidt.id) })
+        assertEquals(listOf(fixation), inTransaction { fixations.findByClass(data.class5a.id) })
+        assertEquals(listOf(fixation), inTransaction { fixations.findBySubject(data.math.id) })
+
         assertFailsWith<ExposedSQLException> { inTransaction { fixations.insert(fixation.copy(id = TeacherFixationId.new())) } }
+
         assertEquals(true, inTransaction { fixations.update(fixation) })
         assertEquals(1, inTransaction { fixations.findById(fixation.id) }!!.version)
+    }
+
+    @Test
+    fun `a deleted teacher fixation is gone`() {
+        val data = Data()
+        val fixation = TeacherFixation(TeacherFixationId.new(), data.school.id, data.class5a.id, data.math.id, data.schmidt.id, 0)
+        inTransaction { fixations.insert(fixation) }
+
+        inTransaction { fixations.delete(fixation.id) }
+
+        assertNull(inTransaction { fixations.findById(fixation.id) })
+        assertEquals(emptyList(), inTransaction { fixations.findBySubject(data.math.id) })
     }
 }

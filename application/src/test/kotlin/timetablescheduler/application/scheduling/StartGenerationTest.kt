@@ -18,7 +18,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class StartGenerationTest {
-
     private val test = SchedulingTestSchool()
     private val world = test.world
 
@@ -26,8 +25,11 @@ class StartGenerationTest {
 
     private fun UseCaseResult<*>.error(): ApplicationError = assertIs<UseCaseResult.Failure>(this).error
 
-    private fun start(timeLimitMinutes: Int = 10, warningsConfirmed: Boolean = false, actor: timetablescheduler.domain.common.AccountId = test.admin.id) =
-        test.scheduling.start.execute(actor, test.school.id, StartRequest(timeLimitMinutes, warningsConfirmed))
+    private fun start(
+        timeLimitMinutes: Int = 10,
+        warningsConfirmed: Boolean = false,
+        actor: timetablescheduler.domain.common.AccountId = test.admin.id,
+    ) = test.scheduling.start.execute(actor, test.school.id, StartRequest(timeLimitMinutes, warningsConfirmed))
 
     @Test
     fun `a planner starts a generation for the current data`() {
@@ -100,16 +102,26 @@ class StartGenerationTest {
     }
 
     private fun soft(rule: ConstraintRule) =
-        world.useCases.constraints.create.execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.SOFT, null, rule)).value()
+        world.useCases.constraints.create
+            .execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.SOFT, null, rule))
+            .value()
 
     private fun hard(rule: ConstraintRule) =
-        world.useCases.constraints.create.execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.HARD, null, rule)).value()
+        world.useCases.constraints.create
+            .execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.HARD, null, rule))
+            .value()
 
     @Test
     fun `up to three active soft constraints are compared as separate objectives (FR-006a)`() {
         val noGaps = soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id)))
 
-        val generation = test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = listOf(noGaps.id))).value()
+        val generation =
+            test.scheduling.start
+                .execute(
+                    test.admin.id,
+                    test.school.id,
+                    StartRequest(separateObjectiveIds = listOf(noGaps.id)),
+                ).value()
 
         assertEquals(listOf(noGaps.id), generation.separateObjectiveIds)
         assertEquals(listOf(noGaps.id), world.solver.lastProblem!!.separateObjectiveIds)
@@ -117,21 +129,46 @@ class StartGenerationTest {
 
     @Test
     fun `more than three, hard or switched-off constraints cannot be separate objectives`() {
-        val four = (1..2).map { soft(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), it)) } +
-            soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id))) + soft(ConstraintRule.TeacherMaxPeriodsPerDay(test.schmidt.id, 2))
+        val four =
+            (1..2).map { soft(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), it)) } +
+                soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id))) +
+                soft(ConstraintRule.TeacherMaxPeriodsPerDay(test.schmidt.id, 2))
         val hardOne = hard(ConstraintRule.TeacherMaxPeriodsPerDay(test.mueller.id, 2))
         val tooMany = ApplicationError.Invalid(listOf(ValidationError.OutOfRange(StartRequest.FIELD_SEPARATE_OBJECTIVES, 0, 3)))
         val notSoft = ApplicationError.Invalid(listOf(ValidationError.InvalidReference(StartRequest.FIELD_SEPARATE_OBJECTIVES)))
 
-        assertEquals(tooMany, test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = four.map { it.id })).error())
-        assertEquals(notSoft, test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = listOf(hardOne.id))).error())
+        assertEquals(
+            tooMany,
+            test.scheduling.start
+                .execute(
+                    test.admin.id,
+                    test.school.id,
+                    StartRequest(
+                        separateObjectiveIds =
+                            four.map {
+                                it.id
+                            },
+                    ),
+                ).error(),
+        )
+        assertEquals(
+            notSoft,
+            test.scheduling.start
+                .execute(test.admin.id, test.school.id, StartRequest(separateObjectiveIds = listOf(hardOne.id)))
+                .error(),
+        )
     }
 
     @Test
     fun `contradicting hard constraints refuse the start and are named (FR-017)`() {
         val impossible = hard(ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), 2))
 
-        val error = assertIs<ApplicationError.ContradictingConstraints>(test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest()).error())
+        val error =
+            assertIs<ApplicationError.ContradictingConstraints>(
+                test.scheduling.start
+                    .execute(test.admin.id, test.school.id, StartRequest())
+                    .error(),
+            )
 
         assertEquals(listOf(impossible.id), error.constraints.map { it.id })
     }
@@ -140,10 +177,23 @@ class StartGenerationTest {
     fun `a started generation keeps a snapshot of the active constraints and fixations (FR-022)`() {
         val active = soft(ConstraintRule.ClassNoGaps(ClassScope.SpecificClass(test.class5a.id)))
         val off = soft(ConstraintRule.TeacherMaxPeriodsPerDay(test.schmidt.id, 1))
-        world.useCases.constraints.setActive.execute(test.admin.id, test.school.id, off.id, false, off.version).value()
-        val fixation = world.useCases.fixations.create.execute(test.admin.id, test.school.id, test.class5a.id, test.math.id, test.schmidt.id).value()
+        world.useCases.constraints.setActive
+            .execute(test.admin.id, test.school.id, off.id, false, off.version)
+            .value()
+        val fixation =
+            world.useCases.fixations.create
+                .execute(
+                    test.admin.id,
+                    test.school.id,
+                    test.class5a.id,
+                    test.math.id,
+                    test.schmidt.id,
+                ).value()
 
-        val generation = test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest()).value()
+        val generation =
+            test.scheduling.start
+                .execute(test.admin.id, test.school.id, StartRequest())
+                .value()
 
         assertEquals(listOf(active), generation.constraintSnapshot)
         assertEquals(listOf(fixation), generation.fixationSnapshot)
@@ -151,11 +201,16 @@ class StartGenerationTest {
 
     @Test
     fun `the minimum share of placed lessons is stored with the generation and must be between 50 and 100 (FR-007a)`() {
-        fun startWithShare(share: Int?) = test.scheduling.start.execute(
-            test.admin.id,
-            test.school.id,
-            if (share == null) StartRequest(warningsConfirmed = true) else StartRequest(warningsConfirmed = true, minimumPlacedShare = share),
-        )
+        fun startWithShare(share: Int?) =
+            test.scheduling.start.execute(
+                test.admin.id,
+                test.school.id,
+                if (share == null) {
+                    StartRequest(warningsConfirmed = true)
+                } else {
+                    StartRequest(warningsConfirmed = true, minimumPlacedShare = share)
+                },
+            )
         val outOfRange = ApplicationError.Invalid(listOf(ValidationError.OutOfRange(Generation.FIELD_MINIMUM_PLACED_SHARE, 50, 100)))
 
         assertEquals(outOfRange, startWithShare(49).error())

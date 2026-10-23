@@ -8,7 +8,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class SchoolTest {
-
     @Test
     fun `creates school with trimmed name`() {
         val result = School.create("  Gymnasium Nord  ")

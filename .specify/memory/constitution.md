@@ -18,25 +18,34 @@ generated it. Maintainability has three parts, all of them binding.
 
 **Readable code layout.** Code MUST be laid out for human reading, not for density.
 
-- Logically connected statements form a block; blocks inside a function MUST be separated by a single blank line
-  (e.g. loading the input, checking it, computing the result, storing or answering). A function body MUST NOT be
-  one continuous block of unrelated steps.
-- The body of a conditional or loop (`if`, `else`, `for`, `while`) MUST start on its own line, indented one level
-  deeper than the condition — never on the same line as the condition:
+- **Formatting standard**: all Kotlin code (production, test and build scripts) MUST pass **ktlint** with every
+  non-experimental rule of its standard rule set enabled, in ktlint's default code style. This includes, among
+  others, indentation, wrapping, maximum line length and trailing commas. Experimental rules are not used. A rule
+  MAY only be disabled with a comment giving the reason, and only for a single statement, a single file or a defined
+  group of files (e.g. all test sources in the formatter configuration) for which the same reason holds.
+- **Text shown to the user comes first**: in string templates and in text whose line breaks or spacing are part of
+  the output (newline-sensitive text such as raw strings `"""…"""`), a layout rule — in particular the maximum line
+  length — MAY be ignored where satisfying it would change the layout of text shown or printed to the user. The
+  rule is then disabled for that statement only, with a comment naming this reason, e.g.
+  `@Suppress("ktlint:standard:max-line-length") // line breaks of this text are shown to the user`.
+- **Examples** of the layout this aims for — they illustrate the intent and guide reviews and new code; the binding
+  formatting rules are those of the formatting standard above:
+  - Logically connected statements form a block, and blocks inside a function are separated by a single blank line
+    (e.g. loading the input, checking it, computing the result, storing or answering) instead of writing a function
+    as one continuous block of unrelated steps.
+  - The body of a conditional or loop starts on its own line, indented one level deeper than the condition and
+    enclosed in braces:
 
-  ```kotlin
-  if (generation.isRunning) {
-      control.requestStop(generationId)
-  }
-  ```
+    ```kotlin
+    if (generation.isRunning) {
+        control.requestStop(generationId)
+    }
+    ```
 
-  instead of `if (generation.isRunning) control.requestStop(generationId)`. Braces MUST be used whenever a body
-  spans more than one line and SHOULD be used for single-line bodies as well.
-- Exceptions, because they are expressions rather than actions: a short `if`/`else` used as a value
-  (`val label = if (dropped) droppedText else lessonText`), single-expression `when` branches
-  (`Role.PLANNER -> plannerHome`) and early exits with the Elvis operator (`?: return`) MAY stay on one line.
-- Indentation MUST be consistent (4 spaces per level, following the Kotlin coding conventions); long
-  expressions and parameter lists are wrapped with one item per line rather than continued far to the right.
+    instead of `if (generation.isRunning) control.requestStop(generationId)`. Expressions rather than actions —
+    a short `if`/`else` used as a value (`val label = if (dropped) droppedText else lessonText`), single-expression
+    `when` branches (`Role.PLANNER -> plannerHome`) and early exits with the Elvis operator (`?: return`) — may stay
+    on one line.
 
 **Test-driven development.** For every function, meaningful, non-trivial tests MUST be written before the
 implementation and MUST pass after it. We do not aim for a code-coverage figure but for tests that pin down the
@@ -87,7 +96,8 @@ trade-offs between Pareto-optimal alternatives rather than silently collapsing t
   build tool, package manager, transpiler or third-party library, MUST NOT contain business, validation, scheduling
   or access logic (these stay in Kotlin), MUST NOT process or store confidential data, and the application MUST
   remain usable when they are disabled (progressive enhancement). Each script stays small and single-purpose and is
-  checked in review like any other code, including principle I.
+  checked in review like any other code, including the layout examples of principle I (ktlint applies to Kotlin
+  only).
 - Clean architecture: We use the clean architecture for structuring the application. Thus, we have circles like
   entities (most inner circle), the application specific business rules, interface adapters and the frameworks &
   drivers (most outer circle). Dependencies point only from outer circles to inner ones.
@@ -102,10 +112,12 @@ trade-offs between Pareto-optimal alternatives rather than silently collapsing t
 
 ## Development Workflow & Quality Gates
 
+- The formatting standard of principle I (ktlint, all non-experimental standard rules) MUST be checked
+  automatically by the build; a violation MUST fail the build locally and in the CI pipeline.
 - Code review MUST verify principle I: descriptive naming, function size/single-purpose decomposition, explanatory
-  comments on complex-but-compact functions, the readable code layout (blank lines between logical blocks,
-  conditional and loop bodies on their own indented line, consistent indentation) and tests written for every new
-  or changed behaviour.
+  comments on complex-but-compact functions, a layout that reads like the examples of principle I (blank lines
+  between logical blocks, conditional and loop bodies on their own line) and tests written for every new or changed
+  behaviour.
 - Code review MUST verify the absence of confidential data in logs and in technical/unexpected error output
   (business error messages only with data the user is authorized to see, per Principle III).
 - Changes to scheduling constraints or weighting logic MUST include tests demonstrating hard constraints are never
@@ -125,4 +137,4 @@ or redefinitions, MINOR for new principles or materially expanded guidance, PATC
 fixes. All pull requests and reviews MUST verify compliance with this constitution; unjustified complexity or
 deviation from a principle MUST be called out and either resolved or explicitly justified in the review.
 
-**Version**: 2.0.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-10-17
+**Version**: 2.1.1 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-10-23

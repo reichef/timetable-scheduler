@@ -9,7 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class GenerationGateTest {
-
     private val teacherAboveGrid = ReadinessIssue.TeacherLoadExceedsGrid(TeacherId.new(), 2)
     private val levelAboveGrid = ReadinessIssue.LevelExceedsGrid(ClassLevelId.new(), 3)
     private val noTeacher = ReadinessIssue.SubjectNoQualifiedTeacher(SubjectId.new())
@@ -33,7 +32,12 @@ class GenerationGateTest {
 
     @Test
     fun `an invalid teacher fixation blocks the start (G11)`() {
-        val invalid = ReadinessIssue.InvalidTeacherFixation(timetablescheduler.domain.scheduling.constraint.TeacherFixationId.new(), timetablescheduler.domain.scheduling.constraint.FixationInvalidity.EXCEEDS_LOAD)
+        val invalid =
+            ReadinessIssue.InvalidTeacherFixation(
+                timetablescheduler.domain.scheduling.constraint.TeacherFixationId
+                    .new(),
+                timetablescheduler.domain.scheduling.constraint.FixationInvalidity.EXCEEDS_LOAD,
+            )
 
         assertEquals(listOf(invalid), GenerationGate.classify(listOf(invalid, zeroLoad)).blocking)
     }

@@ -24,11 +24,12 @@ class TestSystem {
     val settings = WebSettings(devMode = true, sessionSignKey = ByteArray(32) { it.toByte() })
 
     /** Installs the first school "Gymnasium Nord" with planner `admin` / `sehr-geheim-1`. */
-    fun installed(): TestSystem = apply {
-        with(world) {
-            installation().execute(InitialSetup("Gymnasium Nord", ADMIN, PASSWORD))
+    fun installed(): TestSystem =
+        apply {
+            with(world) {
+                installation().execute(InitialSetup("Gymnasium Nord", ADMIN, PASSWORD))
+            }
         }
-    }
 
     fun firstSchool(): School = world.schools.findByNameIgnoreCase("Gymnasium Nord")!!
 
@@ -36,8 +37,11 @@ class TestSystem {
 
     fun admin(): UserAccount = world.accounts.findByUsernameIgnoreCase(ADMIN)!!
 
-    fun addAccount(username: String, role: Role, schoolIds: Set<SchoolId>): UserAccount =
-        world.account(username, role, schoolIds, PASSWORD)
+    fun addAccount(
+        username: String,
+        role: Role,
+        schoolIds: Set<SchoolId>,
+    ): UserAccount = world.account(username, role, schoolIds, PASSWORD)
 
     companion object {
         const val ADMIN = "admin"
@@ -51,13 +55,16 @@ fun ApplicationTestBuilder.startWith(system: TestSystem): HttpClient {
 }
 
 /** A further browser with its own cookies, e.g. to log in a second user. */
-fun ApplicationTestBuilder.newClient(): HttpClient = createClient {
-    followRedirects = false
-    install(HttpCookies)
-}
+fun ApplicationTestBuilder.newClient(): HttpClient =
+    createClient {
+        followRedirects = false
+        install(HttpCookies)
+    }
 
-suspend fun HttpClient.login(username: String = TestSystem.ADMIN, password: String = TestSystem.PASSWORD): HttpResponse =
-    submitForm("/login", parametersOf("username" to listOf(username), "password" to listOf(password)))
+suspend fun HttpClient.login(
+    username: String = TestSystem.ADMIN,
+    password: String = TestSystem.PASSWORD,
+): HttpResponse = submitForm("/login", parametersOf("username" to listOf(username), "password" to listOf(password)))
 
 private val csrfFieldPattern = Regex("""name="_csrf" value="([^"]+)"""")
 
@@ -68,11 +75,15 @@ suspend fun HttpClient.csrfToken(pagePath: String = "/home"): String {
 }
 
 /** Submits a form like the browser does, including the CSRF token; repeated names become repeated fields. */
-suspend fun HttpClient.submitChecked(path: String, vararg fields: Pair<String, String>): HttpResponse {
+suspend fun HttpClient.submitChecked(
+    path: String,
+    vararg fields: Pair<String, String>,
+): HttpResponse {
     val token = csrfToken()
-    val parameters = Parameters.build {
-        append("_csrf", token)
-        fields.forEach { (name, value) -> append(name, value) }
-    }
+    val parameters =
+        Parameters.build {
+            append("_csrf", token)
+            fields.forEach { (name, value) -> append(name, value) }
+        }
     return submitForm(path, parameters)
 }

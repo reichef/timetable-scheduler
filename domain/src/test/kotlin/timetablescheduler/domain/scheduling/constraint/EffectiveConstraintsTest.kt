@@ -7,14 +7,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class EffectiveConstraintsTest {
-
     private val school = TestSchool()
     private val math = school.subject()
     private val german = school.subject()
     private val class5a = school.schoolClass(math to 4, german to 4)
     private val class6b = school.schoolClass(math to 4, german to 4)
 
-    private fun applied(vararg constraints: SchedulingConstraint) = EffectiveConstraints.resolve(school.problem().copy(constraints = constraints.toList()))
+    private fun applied(vararg constraints: SchedulingConstraint) =
+        EffectiveConstraints.resolve(school.problem().copy(constraints = constraints.toList()))
 
     @Test
     fun `a constraint for all classes applies to every class, including classes created later (FR-013b)`() {
@@ -47,8 +47,10 @@ class EffectiveConstraintsTest {
 
         assertEquals(
             setOf(
-                Triple(schoolWide.id, class5a, math), Triple(schoolWide.id, class5a, german),
-                Triple(mathIn6b.id, class6b, math), Triple(schoolWide.id, class6b, german),
+                Triple(schoolWide.id, class5a, math),
+                Triple(schoolWide.id, class5a, german),
+                Triple(mathIn6b.id, class6b, math),
+                Triple(schoolWide.id, class6b, german),
             ),
             result,
         )
@@ -66,9 +68,14 @@ class EffectiveConstraintsTest {
         val defaults = DefaultConstraints.forSchool(schoolId)
 
         assertEquals(
-            listOf(ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, 2), ConstraintRule.ClassNoGaps(ClassScope.AllClasses)),
+            listOf(
+                ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, 2),
+                ConstraintRule.ClassNoGaps(ClassScope.AllClasses),
+            ),
             defaults.map { it.rule },
         )
-        assertTrue(defaults.all { it.kind == ConstraintKind.SOFT && it.weight == SoftWeight.MEDIUM && it.active && it.schoolId == schoolId })
+        assertTrue(
+            defaults.all { it.kind == ConstraintKind.SOFT && it.weight == SoftWeight.MEDIUM && it.active && it.schoolId == schoolId },
+        )
     }
 }

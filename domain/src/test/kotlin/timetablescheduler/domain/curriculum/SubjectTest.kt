@@ -9,14 +9,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class SubjectTest {
-
     private val schoolId = SchoolId.new()
     private val chemieraum = RoomFeatureId.new()
     private val schoolFeatures = setOf(chemieraum)
 
     @Test
     fun `subject keeps trimmed name and required features`() {
-        val subject = assertIs<ValidationResult.Valid<Subject>>(Subject.create(schoolId, " Chemie ", setOf(chemieraum), schoolFeatures)).value
+        val subject =
+            assertIs<ValidationResult.Valid<Subject>>(
+                Subject.create(schoolId, " Chemie ", setOf(chemieraum), schoolFeatures),
+            ).value
 
         assertEquals("Chemie", subject.name)
         assertEquals(setOf(chemieraum), subject.requiredFeatureIds)

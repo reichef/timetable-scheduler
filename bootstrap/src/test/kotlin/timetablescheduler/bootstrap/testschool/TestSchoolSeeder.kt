@@ -20,7 +20,9 @@ import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.teacher.Unavailability
 
 /** Seeding was refused because the school already has master data; test data is never mixed into real data. */
-class TestSchoolSeedingRefused(message: String) : RuntimeException(message)
+class TestSchoolSeedingRefused(
+    message: String,
+) : RuntimeException(message)
 
 /** The ids of the seeded test school, by the names used in its [TestSchoolData]. */
 data class SeededTestSchool(
@@ -39,9 +41,14 @@ data class SeededTestSchool(
  * would in the user interface, so every validation of features 001 and 002 applies. Only counts are logged
  * (constitution III).
  */
-class TestSchoolSeeder(private val useCases: MasterDataUseCases, private val testSet: TestSchoolData = BwGymnasiumTestSet) {
-
-    fun seed(actor: AccountId, schoolId: SchoolId): SeededTestSchool {
+class TestSchoolSeeder(
+    private val useCases: MasterDataUseCases,
+    private val testSet: TestSchoolData = BwGymnasiumTestSet,
+) {
+    fun seed(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): SeededTestSchool {
         requireEmptySchool(actor, schoolId)
 
         renameSchool(actor, schoolId)
@@ -57,62 +64,143 @@ class TestSchoolSeeder(private val useCases: MasterDataUseCases, private val tes
         createConstraints(actor, seeded)
         createFixations(actor, seeded)
 
-        log.info("Test school seeded: {} rooms, {} subjects, {} classes, {} teachers", roomIds.size, subjectIds.size, classIds.size, teacherIds.size)
+        log.info(
+            "Test school seeded: {} rooms, {} subjects, {} classes, {} teachers",
+            roomIds.size,
+            subjectIds.size,
+            classIds.size,
+            teacherIds.size,
+        )
         return seeded
     }
 
-    private fun requireEmptySchool(actor: AccountId, schoolId: SchoolId) {
-        val hasRooms = useCases.rooms.listRooms.execute(actor, schoolId).required("list rooms").rooms.isNotEmpty()
-        val hasSubjects = useCases.curriculum.listSubjects.execute(actor, schoolId).required("list subjects").subjects.isNotEmpty()
-        val hasLevels = useCases.curriculum.listClassLevels.execute(actor, schoolId).required("list class levels").levels.isNotEmpty()
-        val hasTeachers = useCases.teachers.list.execute(actor, schoolId).required("list teachers").isNotEmpty()
+    private fun requireEmptySchool(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ) {
+        val hasRooms =
+            useCases.rooms.listRooms
+                .execute(actor, schoolId)
+                .required("list rooms")
+                .rooms
+                .isNotEmpty()
+        val hasSubjects =
+            useCases.curriculum.listSubjects
+                .execute(actor, schoolId)
+                .required("list subjects")
+                .subjects
+                .isNotEmpty()
+        val hasLevels =
+            useCases.curriculum.listClassLevels
+                .execute(actor, schoolId)
+                .required("list class levels")
+                .levels
+                .isNotEmpty()
+        val hasTeachers =
+            useCases.teachers.list
+                .execute(actor, schoolId)
+                .required("list teachers")
+                .isNotEmpty()
 
         if (hasRooms || hasSubjects || hasLevels || hasTeachers) {
             throw TestSchoolSeedingRefused("The school already has master data; the test school is only seeded into an empty school")
         }
     }
 
-    private fun renameSchool(actor: AccountId, schoolId: SchoolId) {
-        val school = useCases.timeGrid.getTimeGrid.execute(actor, schoolId).required("load school").school
+    private fun renameSchool(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ) {
+        val school =
+            useCases.timeGrid.getTimeGrid
+                .execute(actor, schoolId)
+                .required("load school")
+                .school
 
-        useCases.schools.rename.execute(actor, schoolId, testSet.schoolName, school.version).required("rename school")
+        useCases.schools.rename
+            .execute(actor, schoolId, testSet.schoolName, school.version)
+            .required("rename school")
     }
 
     /** Each time grid change raises the school's version, so the current version is read before every change. */
-    private fun createTimeGrid(actor: AccountId, schoolId: SchoolId): Map<String, TimeSlotId> {
+    private fun createTimeGrid(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): Map<String, TimeSlotId> {
         val timeGrid = useCases.timeGrid
 
-        timeGrid.setTeachingDays.execute(actor, schoolId, testSet.teachingDays, schoolVersion(actor, schoolId)).required("set teaching days")
+        timeGrid.setTeachingDays
+            .execute(
+                actor,
+                schoolId,
+                testSet.teachingDays,
+                schoolVersion(actor, schoolId),
+            ).required("set teaching days")
 
         testSet.slots.forEach { slot ->
-            timeGrid.addSlot.execute(actor, schoolId, slot.label, slot.start, slot.end, slot.kind, schoolVersion(actor, schoolId))
+            timeGrid.addSlot
+                .execute(actor, schoolId, slot.label, slot.start, slot.end, slot.kind, schoolVersion(actor, schoolId))
                 .required("add time slot")
         }
 
-        val slots = timeGrid.getTimeGrid.execute(actor, schoolId).required("load time grid").timeGrid.slots
+        val slots =
+            timeGrid.getTimeGrid
+                .execute(actor, schoolId)
+                .required("load time grid")
+                .timeGrid.slots
         return slots.associate { it.label to it.id }
     }
 
-    private fun schoolVersion(actor: AccountId, schoolId: SchoolId): Int =
-        useCases.timeGrid.getTimeGrid.execute(actor, schoolId).required("load school").school.version
+    private fun schoolVersion(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): Int =
+        useCases.timeGrid.getTimeGrid
+            .execute(actor, schoolId)
+            .required("load school")
+            .school.version
 
-    private fun createFeatures(actor: AccountId, schoolId: SchoolId): Map<String, RoomFeatureId> =
+    private fun createFeatures(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): Map<String, RoomFeatureId> =
         testSet.features.associateWith { feature ->
-            useCases.rooms.createFeature.execute(actor, schoolId, feature).required("create room feature").id
+            useCases.rooms.createFeature
+                .execute(actor, schoolId, feature)
+                .required("create room feature")
+                .id
         }
 
-    private fun createRooms(actor: AccountId, schoolId: SchoolId, featureIds: Map<String, RoomFeatureId>): Map<String, RoomId> =
+    private fun createRooms(
+        actor: AccountId,
+        schoolId: SchoolId,
+        featureIds: Map<String, RoomFeatureId>,
+    ): Map<String, RoomId> =
         testSet.rooms.associate { room ->
             val roomFeatures = setOfNotNull(room.feature?.let(featureIds::getValue))
-            val created = useCases.rooms.createRoom.execute(actor, schoolId, room.identifier, roomFeatures).required("create room")
+            val created =
+                useCases.rooms.createRoom
+                    .execute(actor, schoolId, room.identifier, roomFeatures)
+                    .required("create room")
 
             room.identifier to created.id
         }
 
-    private fun createSubjects(actor: AccountId, schoolId: SchoolId, featureIds: Map<String, RoomFeatureId>): Map<String, SubjectId> =
+    private fun createSubjects(
+        actor: AccountId,
+        schoolId: SchoolId,
+        featureIds: Map<String, RoomFeatureId>,
+    ): Map<String, SubjectId> =
         testSet.subjects.associate { subject ->
             val requiredFeatures = setOfNotNull(subject.requiredFeature?.let(featureIds::getValue))
-            val created = useCases.curriculum.createSubject.execute(actor, schoolId, subject.name, requiredFeatures).required("create subject")
+            val created =
+                useCases.curriculum.createSubject
+                    .execute(
+                        actor,
+                        schoolId,
+                        subject.name,
+                        requiredFeatures,
+                    ).required("create subject")
 
             subject.name to created.id
         }
@@ -126,22 +214,35 @@ class TestSchoolSeeder(private val useCases: MasterDataUseCases, private val tes
     ): Map<String, SchoolClassId> {
         val curriculum = useCases.curriculum
 
-        return testSet.grades.flatMap { grade ->
-            val identifier = "$grade"
-            val level = curriculum.createClassLevel.execute(actor, schoolId, identifier).required("create class level")
-            val entries = testSet.weeklyPeriods.getValue(grade).map { (subject, periods) -> CurriculumEntry(subjectIds.getValue(subject), periods) }
+        return testSet.grades
+            .flatMap { grade ->
+                val identifier = "$grade"
+                val level = curriculum.createClassLevel.execute(actor, schoolId, identifier).required("create class level")
+                val entries =
+                    testSet.weeklyPeriods.getValue(grade).map { (subject, periods) ->
+                        CurriculumEntry(subjectIds.getValue(subject), periods)
+                    }
 
-            curriculum.updateClassLevel.execute(actor, schoolId, level.id, identifier, entries, level.version).required("set curriculum")
+                curriculum.updateClassLevel
+                    .execute(
+                        actor,
+                        schoolId,
+                        level.id,
+                        identifier,
+                        entries,
+                        level.version,
+                    ).required("set curriculum")
 
-            testSet.classes.filter { it.grade == grade }.map { schoolClass ->
-                val homeRoom = roomIds.getValue(schoolClass.homeRoom)
-                val created = curriculum.createSchoolClass
-                    .execute(actor, schoolId, level.id, schoolClass.suffix, testSet.priorityWeight, homeRoom)
-                    .required("create class")
+                testSet.classes.filter { it.grade == grade }.map { schoolClass ->
+                    val homeRoom = roomIds.getValue(schoolClass.homeRoom)
+                    val created =
+                        curriculum.createSchoolClass
+                            .execute(actor, schoolId, level.id, schoolClass.suffix, testSet.priorityWeight, homeRoom)
+                            .required("create class")
 
-                schoolClass.name to created.id
-            }
-        }.toMap()
+                    schoolClass.name to created.id
+                }
+            }.toMap()
     }
 
     private fun createTeachers(
@@ -153,57 +254,98 @@ class TestSchoolSeeder(private val useCases: MasterDataUseCases, private val tes
         val teachers = useCases.teachers
 
         return testSet.teachers.associate { teacher ->
-            val created = teachers.create.execute(actor, schoolId, teacher.name, teacher.code, teacher.weeklyLoad).required("create teacher")
+            val created =
+                teachers.create
+                    .execute(
+                        actor,
+                        schoolId,
+                        teacher.name,
+                        teacher.code,
+                        teacher.weeklyLoad,
+                    ).required("create teacher")
             val qualifications = teacher.subjects.map(subjectIds::getValue).toSet()
-            var current = teachers.updateQualifications
-                .execute(actor, schoolId, created.id, qualifications, created.version)
-                .required("set qualifications")
+            var current =
+                teachers.updateQualifications
+                    .execute(actor, schoolId, created.id, qualifications, created.version)
+                    .required("set qualifications")
 
             if (teacher.unavailable.isNotEmpty()) {
                 val unavailability = teacher.unavailable.map { Unavailability(it.day, slotIds.getValue(it.slotLabel)) }.toSet()
 
-                current = teachers.updateUnavailability
-                    .execute(actor, schoolId, created.id, unavailability, current.version)
-                    .required("set unavailability")
+                current =
+                    teachers.updateUnavailability
+                        .execute(actor, schoolId, created.id, unavailability, current.version)
+                        .required("set unavailability")
             }
 
             teacher.code to current.id
         }
     }
 
-    private fun createConstraints(actor: AccountId, seeded: SeededTestSchool) {
+    private fun createConstraints(
+        actor: AccountId,
+        seeded: SeededTestSchool,
+    ) {
         testSet.constraints.forEach { constraint ->
             val input = ConstraintInput(constraint.kind, constraint.weight, ruleOf(constraint.rule, seeded))
 
-            useCases.constraints.create.execute(actor, seeded.schoolId, input).required("create constraint")
+            useCases.constraints.create
+                .execute(actor, seeded.schoolId, input)
+                .required("create constraint")
         }
     }
 
     /** Translates a rule given by names into the domain rule with the seeded ids. */
-    private fun ruleOf(rule: TestRule, seeded: SeededTestSchool): ConstraintRule = when (rule) {
-        is TestRule.AllClassesMaxPeriodsPerDay ->
-            ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.AllClasses, rule.limit)
-        is TestRule.ClassExcludedSlots ->
-            ConstraintRule.ClassExcludedSlots(seeded.classIds.getValue(rule.className), rule.slots.map(seeded::daySlot).toSet())
-        is TestRule.DoublePeriods ->
-            ConstraintRule.SubjectDoublePeriodsInClass(seeded.classIds.getValue(rule.className), seeded.subjectIds.getValue(rule.subject), acrossBreaks = false)
-        is TestRule.TeacherExcludedSlots ->
-            ConstraintRule.TeacherExcludedSlots(seeded.teacherIds.getValue(rule.teacherCode), rule.slots.map(seeded::daySlot).toSet())
-        is TestRule.TeacherMaxPeriodsPerDay ->
-            ConstraintRule.TeacherMaxPeriodsPerDay(seeded.teacherIds.getValue(rule.teacherCode), rule.limit)
-        is TestRule.TeacherMaxGapsPerDay ->
-            ConstraintRule.TeacherMaxGapsPerDay(seeded.teacherIds.getValue(rule.teacherCode), rule.limit)
-        is TestRule.SubjectExcludedSlots ->
-            ConstraintRule.SubjectExcludedSlots(seeded.subjectIds.getValue(rule.subject), null, rule.slots.map(seeded::daySlot).toSet())
-    }
+    private fun ruleOf(
+        rule: TestRule,
+        seeded: SeededTestSchool,
+    ): ConstraintRule =
+        when (rule) {
+            is TestRule.AllClassesMaxPeriodsPerDay -> {
+                ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.AllClasses, rule.limit)
+            }
 
-    private fun createFixations(actor: AccountId, seeded: SeededTestSchool) {
+            is TestRule.ClassExcludedSlots -> {
+                ConstraintRule.ClassExcludedSlots(seeded.classIds.getValue(rule.className), rule.slots.map(seeded::daySlot).toSet())
+            }
+
+            is TestRule.DoublePeriods -> {
+                ConstraintRule.SubjectDoublePeriodsInClass(
+                    seeded.classIds.getValue(rule.className),
+                    seeded.subjectIds.getValue(rule.subject),
+                    acrossBreaks = false,
+                )
+            }
+
+            is TestRule.TeacherExcludedSlots -> {
+                ConstraintRule.TeacherExcludedSlots(seeded.teacherIds.getValue(rule.teacherCode), rule.slots.map(seeded::daySlot).toSet())
+            }
+
+            is TestRule.TeacherMaxPeriodsPerDay -> {
+                ConstraintRule.TeacherMaxPeriodsPerDay(seeded.teacherIds.getValue(rule.teacherCode), rule.limit)
+            }
+
+            is TestRule.TeacherMaxGapsPerDay -> {
+                ConstraintRule.TeacherMaxGapsPerDay(seeded.teacherIds.getValue(rule.teacherCode), rule.limit)
+            }
+
+            is TestRule.SubjectExcludedSlots -> {
+                ConstraintRule.SubjectExcludedSlots(seeded.subjectIds.getValue(rule.subject), null, rule.slots.map(seeded::daySlot).toSet())
+            }
+        }
+
+    private fun createFixations(
+        actor: AccountId,
+        seeded: SeededTestSchool,
+    ) {
         testSet.fixations.forEach { fixation ->
             val classId = seeded.classIds.getValue(fixation.className)
             val subjectId = seeded.subjectIds.getValue(fixation.subject)
             val teacherId = seeded.teacherIds.getValue(fixation.teacherCode)
 
-            useCases.fixations.create.execute(actor, seeded.schoolId, classId, subjectId, teacherId).required("create teacher fixation")
+            useCases.fixations.create
+                .execute(actor, seeded.schoolId, classId, subjectId, teacherId)
+                .required("create teacher fixation")
         }
     }
 
@@ -213,11 +355,16 @@ class TestSchoolSeeder(private val useCases: MasterDataUseCases, private val tes
 }
 
 /** A failed step stops the seeding; the message names the step and the kind of error, never entered names. */
-internal fun <T> UseCaseResult<T>.required(step: String): T = when (this) {
-    is UseCaseResult.Success -> value
-    is UseCaseResult.Failure -> {
-        val details = (error as? ApplicationError.Invalid)?.errors?.joinToString { it.javaClass.simpleName } ?: error.javaClass.simpleName
+internal fun <T> UseCaseResult<T>.required(step: String): T =
+    when (this) {
+        is UseCaseResult.Success -> {
+            value
+        }
 
-        throw IllegalStateException("Seeding step '$step' failed: $details")
+        is UseCaseResult.Failure -> {
+            val details =
+                (error as? ApplicationError.Invalid)?.errors?.joinToString { it.javaClass.simpleName } ?: error.javaClass.simpleName
+
+            throw IllegalStateException("Seeding step '$step' failed: $details")
+        }
     }
-}

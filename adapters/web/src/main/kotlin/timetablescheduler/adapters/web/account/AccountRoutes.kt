@@ -33,7 +33,11 @@ private fun Parameters.role(): Role? = Role.entries.firstOrNull { it.name == thi
 private val invalidRole = UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidFormat(FIELD_ROLE))))
 
 /** Shows the account page again with the business errors of a rejected change (422). */
-private suspend fun ApplicationCall.showAccountAgain(accounts: AccountUseCases, accountId: AccountId, errors: List<ValidationError>) {
+private suspend fun ApplicationCall.showAccountAgain(
+    accounts: AccountUseCases,
+    accountId: AccountId,
+    errors: List<ValidationError>,
+) {
     respondResult(accounts.get.execute(actor, accountId)) { respondAccountDetails(it, errors, HttpStatusCode.UnprocessableEntity) }
 }
 
@@ -50,8 +54,12 @@ fun Route.accountRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val entered = AccountFormInput(form.text("username"), form.text(FIELD_ROLE))
             val role = form.role()
-            val result = if (role == null) invalidRole
-            else accounts.create.execute(call.actor, entered.username, role, form.text("initialPassword"))
+            val result =
+                if (role == null) {
+                    invalidRole
+                } else {
+                    accounts.create.execute(call.actor, entered.username, role, form.text("initialPassword"))
+                }
             call.respondFormResult(
                 result,
                 backLink = ACCOUNTS_PATH,

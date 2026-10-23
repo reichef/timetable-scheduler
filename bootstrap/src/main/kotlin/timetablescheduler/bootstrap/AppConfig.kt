@@ -4,7 +4,9 @@ import timetablescheduler.adapters.persistence.DatabaseSettings
 import timetablescheduler.application.account.InitialSetup
 
 /** Raised for missing or malformed configuration; the message names the variable, never its value. */
-class MissingConfiguration(message: String) : RuntimeException(message)
+class MissingConfiguration(
+    message: String,
+) : RuntimeException(message)
 
 /**
  * All configuration comes from `TTS_*` environment variables (constitution: secrets outside source control).
@@ -24,11 +26,12 @@ class AppConfig(
                 environment[name]?.takeIf { it.isNotBlank() } ?: throw MissingConfiguration("Missing environment variable $name")
 
             return AppConfig(
-                database = DatabaseSettings(
-                    jdbcUrl = required("TTS_DB_URL"),
-                    username = required("TTS_DB_USER"),
-                    password = required("TTS_DB_PASSWORD"),
-                ),
+                database =
+                    DatabaseSettings(
+                        jdbcUrl = required("TTS_DB_URL"),
+                        username = required("TTS_DB_USER"),
+                        password = required("TTS_DB_PASSWORD"),
+                    ),
                 sessionSignKey = parseHexKey(required("TTS_SESSION_SIGN_KEY")),
                 devMode = environment["TTS_DEV_MODE"] == "true",
                 initialSetup = readInitialSetup(environment),
@@ -48,7 +51,9 @@ class AppConfig(
 
         private fun parseHexKey(hexKey: String): ByteArray {
             val isHex = hexKey.length % 2 == 0 && hexKey.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
-            if (!isHex) throw MissingConfiguration("Environment variable TTS_SESSION_SIGN_KEY must be hexadecimal")
+            if (!isHex) {
+                throw MissingConfiguration("Environment variable TTS_SESSION_SIGN_KEY must be hexadecimal")
+            }
             return hexKey.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         }
     }

@@ -48,7 +48,13 @@ suspend fun ApplicationCall.respondPage(
             meta(charset = "utf-8")
             meta(name = "viewport", content = "width=device-width, initial-scale=1")
             // Pages of running work reload themselves without any script (002 G6).
-            if (refreshSeconds != null) meta { httpEquiv = "refresh"; this.content = "$refreshSeconds" }
+            if (refreshSeconds != null) {
+                meta {
+                    httpEquiv = "refresh"
+                    this.content = "$refreshSeconds"
+                }
+            }
+
             title("$pageTitle – ${texts.common.appTitle}")
             link(rel = "stylesheet", href = "/static/app.css")
             script(src = "/static/language-switch.js") { defer = true }
@@ -56,7 +62,9 @@ suspend fun ApplicationCall.respondPage(
         body {
             header {
                 a(href = "/home", classes = "brand") { +texts.common.appTitle }
-                if (session != null) navigation(session, texts)
+                if (session != null) {
+                    navigation(session, texts)
+                }
                 languageSwitch(session, texts, returnTo)
             }
             main {
@@ -67,7 +75,10 @@ suspend fun ApplicationCall.respondPage(
     }
 }
 
-private fun FlowContent.navigation(session: UserSession, texts: UiTexts) {
+private fun FlowContent.navigation(
+    session: UserSession,
+    texts: UiTexts,
+) {
     nav {
         a(href = "/schools") { +texts.common.navSchool }
         a(href = "/accounts") { +texts.common.navAccounts }
@@ -83,7 +94,11 @@ private fun FlowContent.navigation(session: UserSession, texts: UiTexts) {
  * One button per language (FR-038); the current one is marked. `data-unsaved-warning` is the text the static
  * script shows before unsaved form input would be lost.
  */
-private fun FlowContent.languageSwitch(session: UserSession?, texts: UiTexts, returnTo: String) {
+private fun FlowContent.languageSwitch(
+    session: UserSession?,
+    texts: UiTexts,
+    returnTo: String,
+) {
     form(action = "/language", method = FormMethod.post, classes = "language-switch") {
         attributes["aria-label"] = texts.languageSwitch.label
         attributes["data-unsaved-warning"] = texts.languageSwitch.unsavedWarning
@@ -92,7 +107,9 @@ private fun FlowContent.languageSwitch(session: UserSession?, texts: UiTexts, re
         InterfaceLanguage.entries.forEach { language ->
             button(name = "language", classes = if (language == texts.language) "current" else null) {
                 value = language.code
-                if (language == texts.language) attributes["aria-current"] = "true"
+                if (language == texts.language) {
+                    attributes["aria-current"] = "true"
+                }
                 +ownLanguageNames.getValue(language)
             }
         }

@@ -17,16 +17,28 @@ import timetablescheduler.domain.school.SlotKind
 import java.time.DayOfWeek
 
 /** A slot of a day in time order, teaching slot or break. */
-data class SlotRef(val slotId: TimeSlotId, val kind: SlotKind)
+data class SlotRef(
+    val slotId: TimeSlotId,
+    val kind: SlotKind,
+)
 
 /** The slots of one teaching day in time order, breaks included (needed for gaps and double periods). */
-data class DayStructure(val day: DayOfWeek, val slots: List<SlotRef>) {
+data class DayStructure(
+    val day: DayOfWeek,
+    val slots: List<SlotRef>,
+) {
     val teachingSlots: List<TimeSlotId> get() = slots.filter { it.kind == SlotKind.TEACHING }.map { it.slotId }
 }
 
-data class ProblemRoom(val id: RoomId, val featureIds: Set<RoomFeatureId>)
+data class ProblemRoom(
+    val id: RoomId,
+    val featureIds: Set<RoomFeatureId>,
+)
 
-data class ProblemSubject(val id: SubjectId, val requiredFeatureIds: Set<RoomFeatureId>)
+data class ProblemSubject(
+    val id: SubjectId,
+    val requiredFeatureIds: Set<RoomFeatureId>,
+)
 
 /** A class with its priority weight (FR-015), optional home room (FR-002a) and resolved curriculum. */
 data class ProblemClass(
@@ -65,14 +77,19 @@ data class SchedulingProblem(
     private val classesById = classes.associateBy { it.id }
     private val teachersById = teachers.associateBy { it.id }
     private val teachingDaySlots: List<DaySlot> = days.sortedBy { it.day }.flatMap { day -> day.teachingSlots.map { DaySlot(day.day, it) } }
-    private val weekPositions: Map<DaySlot, Int> = days.sortedBy { it.day }
-        .flatMap { day -> day.slots.map { DaySlot(day.day, it.slotId) } }
-        .withIndex()
-        .associate { (position, daySlot) -> daySlot to position }
+    private val weekPositions: Map<DaySlot, Int> =
+        days
+            .sortedBy { it.day }
+            .flatMap { day -> day.slots.map { DaySlot(day.day, it.slotId) } }
+            .withIndex()
+            .associate { (position, daySlot) -> daySlot to position }
 
     fun room(id: RoomId): ProblemRoom? = roomsById[id]
+
     fun subject(id: SubjectId): ProblemSubject? = subjectsById[id]
+
     fun schoolClass(id: SchoolClassId): ProblemClass? = classesById[id]
+
     fun teacher(id: TeacherId): ProblemTeacher? = teachersById[id]
 
     /** All teaching slots of the week in time order. */
@@ -87,7 +104,10 @@ data class SchedulingProblem(
 
     /** Every course to be taught with its weekly periods. */
     fun courses(): Map<CourseKey, Int> =
-        classes.flatMap { schoolClass -> schoolClass.curriculum.map { CourseKey(schoolClass.id, it.subjectId) to it.periodsPerWeek } }.toMap()
+        classes
+            .flatMap { schoolClass ->
+                schoolClass.curriculum.map { CourseKey(schoolClass.id, it.subjectId) to it.periodsPerWeek }
+            }.toMap()
 
     fun requiredPeriods(course: CourseKey): Int =
         classesById[course.classId]?.curriculum?.firstOrNull { it.subjectId == course.subjectId }?.periodsPerWeek ?: 0

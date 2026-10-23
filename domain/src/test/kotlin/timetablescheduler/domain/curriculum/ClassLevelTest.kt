@@ -9,7 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class ClassLevelTest {
-
     private val schoolId = SchoolId.new()
     private val mathe = SubjectId.new()
     private val deutsch = SubjectId.new()
@@ -25,7 +24,10 @@ class ClassLevelTest {
 
     @Test
     fun `identifier must have 1 to 10 characters`() {
-        assertEquals(ValidationResult.Invalid(listOf(ValidationError.BlankValue(ClassLevel.FIELD_IDENTIFIER))), ClassLevel.create(schoolId, ""))
+        assertEquals(
+            ValidationResult.Invalid(listOf(ValidationError.BlankValue(ClassLevel.FIELD_IDENTIFIER))),
+            ClassLevel.create(schoolId, ""),
+        )
         assertEquals(
             ValidationResult.Invalid(listOf(ValidationError.TooLong(ClassLevel.FIELD_IDENTIFIER, 10))),
             ClassLevel.create(schoolId, "Oberstufe-1"),

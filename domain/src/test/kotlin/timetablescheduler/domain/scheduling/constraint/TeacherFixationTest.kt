@@ -7,7 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TeacherFixationTest {
-
     private val school = TestSchool()
     private val math = school.subject()
     private val german = school.subject()
@@ -16,8 +15,10 @@ class TeacherFixationTest {
     private val class5a = school.schoolClass(math to 4, german to 3)
     private val class5b = school.schoolClass(math to 4)
 
-    private fun fixation(classId: timetablescheduler.domain.common.SchoolClassId, subject: timetablescheduler.domain.common.SubjectId) =
-        TeacherFixation(TeacherFixationId.new(), SchoolId.new(), classId, subject, schmidt, 0)
+    private fun fixation(
+        classId: timetablescheduler.domain.common.SchoolClassId,
+        subject: timetablescheduler.domain.common.SubjectId,
+    ) = TeacherFixation(TeacherFixationId.new(), SchoolId.new(), classId, subject, schmidt, 0)
 
     @Test
     fun `a qualified teacher with enough load can be fixed (FR-013a)`() {
@@ -35,7 +36,10 @@ class TeacherFixationTest {
 
     @Test
     fun `a subject outside the class's curriculum is rejected`() {
-        assertEquals(listOf(ValidationError.SubjectNotInCurriculum), TeacherFixationRules.validate(fixation(class5b, german), school.problem()))
+        assertEquals(
+            listOf(ValidationError.SubjectNotInCurriculum),
+            TeacherFixationRules.validate(fixation(class5b, german), school.problem()),
+        )
     }
 
     @Test
@@ -53,7 +57,18 @@ class TeacherFixationTest {
         val problem = school.problem().copy(fixations = listOf(stored))
         val withoutQualification = problem.copy(teachers = problem.teachers.map { it.copy(qualifiedSubjectIds = setOf(math)) })
         val loadReduced = problem.copy(teachers = problem.teachers.map { it.copy(weeklyLoad = 2) })
-        val subjectRemoved = problem.copy(classes = problem.classes.map { it.copy(curriculum = it.curriculum.filter { entry -> entry.subjectId == math }) })
+        val subjectRemoved =
+            problem.copy(
+                classes =
+                    problem.classes.map {
+                        it.copy(
+                            curriculum =
+                                it.curriculum.filter { entry ->
+                                    entry.subjectId == math
+                                },
+                        )
+                    },
+            )
 
         assertEquals(null, TeacherFixationRules.invalidityOf(stored, problem))
         assertEquals(FixationInvalidity.NOT_QUALIFIED, TeacherFixationRules.invalidityOf(stored, withoutQualification))

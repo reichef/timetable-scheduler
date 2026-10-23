@@ -6,16 +6,16 @@ import kotlin.test.assertTrue
 
 /** The test set matches specs/002-timetable-generation/test-set-bw-gymnasium.md and is recognizable as test data. */
 class BwGymnasiumTestSetTest {
-
     private val testSet = BwGymnasiumTestSet
 
     @Test
     fun `the test set has the size described in the specification`() {
         assertEquals(31, testSet.rooms.size)
+        assertEquals(10, testSet.slots.count { it.isTeaching })
         assertEquals(18, testSet.subjects.size)
+
         assertEquals(18, testSet.classes.size)
         assertEquals(32, testSet.teachers.size)
-        assertEquals(10, testSet.slots.count { it.isTeaching })
         assertEquals(18, testSet.constraints.size, "20 constraints minus the 2 defaults the installation creates")
         assertEquals(3, testSet.fixations.size)
     }
@@ -33,7 +33,10 @@ class BwGymnasiumTestSetTest {
     fun `every subject of every curriculum has a qualified teacher and refers to known names`() {
         val subjectNames = testSet.subjects.map { it.name }.toSet()
         val taughtSubjects = testSet.teachers.flatMap { it.subjects }.toSet()
-        val requiredSubjects = testSet.weeklyPeriods.values.flatMap { it.keys }.toSet()
+        val requiredSubjects =
+            testSet.weeklyPeriods.values
+                .flatMap { it.keys }
+                .toSet()
 
         assertTrue(subjectNames.containsAll(requiredSubjects), "curricula use unknown subjects")
         assertTrue(subjectNames.containsAll(taughtSubjects), "teachers use unknown subjects")
@@ -48,7 +51,12 @@ class BwGymnasiumTestSetTest {
 
         assertEquals(homeRooms.size, homeRooms.toSet().size)
         assertTrue(roomIdentifiers.containsAll(homeRooms))
-        assertTrue(testSet.rooms.mapNotNull { it.feature }.toSet().containsAll(requiredFeatures))
+        assertTrue(
+            testSet.rooms
+                .mapNotNull { it.feature }
+                .toSet()
+                .containsAll(requiredFeatures),
+        )
     }
 
     @Test

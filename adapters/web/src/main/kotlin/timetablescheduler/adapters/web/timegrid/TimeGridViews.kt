@@ -40,10 +40,19 @@ import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek
 
 fun timeGridPath(schoolId: SchoolId) = "/schools/${schoolId.value}/time-grid"
-fun slotPath(schoolId: SchoolId, slotId: TimeSlotId) = "${timeGridPath(schoolId)}/slots/${slotId.value}"
+
+fun slotPath(
+    schoolId: SchoolId,
+    slotId: TimeSlotId,
+) = "${timeGridPath(schoolId)}/slots/${slotId.value}"
 
 /** Entered values of a slot form, kept when the form is shown again after an error. */
-data class SlotFormInput(val label: String, val startTime: String, val endTime: String, val kind: String)
+data class SlotFormInput(
+    val label: String,
+    val startTime: String,
+    val endTime: String,
+    val kind: String,
+)
 
 private fun TimeSlot.toFormInput() = SlotFormInput(label, "$startTime", "$endTime", kind.name)
 
@@ -61,6 +70,7 @@ suspend fun ApplicationCall.respondTimeGrid(
         teachingDaysForm(session, schoolId, view.timeGrid.teachingDays, version, texts)
         weeklyGridTable(schoolId, view.timeGrid, texts)
         p { +texts.timeGrid.teachingSlotsPerWeek(view.timeGrid.teachingSlotsPerWeek()) }
+
         h2 { +texts.timeGrid.addSlot }
         form(action = "${timeGridPath(schoolId)}/slots", method = FormMethod.post) {
             csrfField(session)
@@ -68,11 +78,18 @@ suspend fun ApplicationCall.respondTimeGrid(
             slotFields(enteredSlot, texts)
             button { +texts.common.add }
         }
+
         p { a(href = "/schools/${schoolId.value}") { +texts.common.toSchool } }
     }
 }
 
-private fun FlowContent.teachingDaysForm(session: UserSession?, schoolId: SchoolId, teachingDays: Set<DayOfWeek>, version: Int, texts: UiTexts) {
+private fun FlowContent.teachingDaysForm(
+    session: UserSession?,
+    schoolId: SchoolId,
+    teachingDays: Set<DayOfWeek>,
+    version: Int,
+    texts: UiTexts,
+) {
     form(action = "${timeGridPath(schoolId)}/days", method = FormMethod.post) {
         csrfField(session)
         hiddenField("version", "$version")
@@ -82,7 +99,11 @@ private fun FlowContent.teachingDaysForm(session: UserSession?, schoolId: School
 }
 
 /** Days × slots overview; breaks are marked so planners can tell them apart at a glance (acceptance 1.4). */
-private fun FlowContent.weeklyGridTable(schoolId: SchoolId, timeGrid: TimeGrid, texts: UiTexts) {
+private fun FlowContent.weeklyGridTable(
+    schoolId: SchoolId,
+    timeGrid: TimeGrid,
+    texts: UiTexts,
+) {
     val days = timeGrid.teachingDays.sorted()
     table {
         tr {
@@ -108,7 +129,10 @@ private fun FlowContent.weeklyGridTable(schoolId: SchoolId, timeGrid: TimeGrid, 
     }
 }
 
-private fun FORM.slotFields(entered: SlotFormInput?, texts: UiTexts) {
+private fun FORM.slotFields(
+    entered: SlotFormInput?,
+    texts: UiTexts,
+) {
     textField("label", texts.timeGrid.label, entered?.label)
     label {
         +texts.timeGrid.start
@@ -133,7 +157,12 @@ private fun FORM.slotFields(entered: SlotFormInput?, texts: UiTexts) {
     }
 }
 
-private fun FORM.dayCheckboxes(title: String, days: List<DayOfWeek>, checkedDays: Set<DayOfWeek>, texts: UiTexts) {
+private fun FORM.dayCheckboxes(
+    title: String,
+    days: List<DayOfWeek>,
+    checkedDays: Set<DayOfWeek>,
+    texts: UiTexts,
+) {
     fieldSet {
         legend { +title }
         days.forEach { day ->
@@ -158,7 +187,11 @@ suspend fun ApplicationCall.respondSlotEditor(
     val texts = texts
     val schoolId = view.school.id
     val version = view.school.version
-    val excludedDays = view.timeGrid.exclusions.filter { it.slotId == slot.id }.map { it.dayOfWeek }.toSet()
+    val excludedDays =
+        view.timeGrid.exclusions
+            .filter { it.slotId == slot.id }
+            .map { it.dayOfWeek }
+            .toSet()
     respondPage(texts.timeGrid.slotTitle(slot.label), status) { session ->
         validationErrors(errors, texts)
         form(action = slotPath(schoolId, slot.id), method = FormMethod.post) {
@@ -175,11 +208,15 @@ suspend fun ApplicationCall.respondSlotEditor(
             button { +texts.common.save }
         }
         p { a(href = "${slotPath(schoolId, slot.id)}/delete") { +texts.timeGrid.deleteSlot } }
+
         p { a(href = timeGridPath(schoolId)) { +texts.timeGrid.toTimeGrid } }
     }
 }
 
-suspend fun ApplicationCall.respondSlotDeletionConfirmation(schoolId: SchoolId, preview: SlotDeletionPreview) {
+suspend fun ApplicationCall.respondSlotDeletionConfirmation(
+    schoolId: SchoolId,
+    preview: SlotDeletionPreview,
+) {
     val texts = texts
     val slot = preview.slot
     respondPage(texts.timeGrid.deleteSlotTitle) { session ->

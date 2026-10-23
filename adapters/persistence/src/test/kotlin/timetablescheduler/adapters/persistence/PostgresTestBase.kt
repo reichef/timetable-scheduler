@@ -7,18 +7,20 @@ import kotlin.test.BeforeTest
 
 /** Starts one PostgreSQL container per test JVM, migrates it and empties all tables before each test. */
 abstract class PostgresTestBase {
-
     protected val database: DatabaseFactory get() = sharedDatabase
     protected val transactions: ExposedTransactionRunner get() = sharedDatabase.transactionRunner
 
     @BeforeTest
     fun emptyAllTables() {
         transaction(sharedDatabase.database) {
-            val tableNames = exec(
-                "SELECT string_agg(quote_ident(tablename), ', ') FROM pg_tables " +
-                    "WHERE schemaname = 'public' AND tablename <> 'flyway_schema_history'",
-            ) { result -> if (result.next()) result.getString(1) else null }
-            if (!tableNames.isNullOrEmpty()) exec("TRUNCATE $tableNames CASCADE")
+            val tableNames =
+                exec(
+                    "SELECT string_agg(quote_ident(tablename), ', ') FROM pg_tables " +
+                        "WHERE schemaname = 'public' AND tablename <> 'flyway_schema_history'",
+                ) { result -> if (result.next()) result.getString(1) else null }
+            if (!tableNames.isNullOrEmpty()) {
+                exec("TRUNCATE $tableNames CASCADE")
+            }
         }
     }
 

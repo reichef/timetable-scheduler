@@ -19,12 +19,22 @@ import java.util.UUID
 
 /** Reads and writes the time grid of one school; slots are diffed so their ids (and references) survive. */
 internal object TimeGridStore {
-
     fun load(schoolId: SchoolId): TimeGrid {
-        val teachingDays = TeachingDayTable.selectAll().where { TeachingDayTable.schoolId eq schoolId.value }
-            .map { DayOfWeek.valueOf(it[TeachingDayTable.dayOfWeek]) }
-            .toSet()
-        val slots = TimeSlotTable.selectAll().where { TimeSlotTable.schoolId eq schoolId.value }
+        val teachingDays =
+            TeachingDayTable
+                .selectAll()
+                .where { TeachingDayTable.schoolId eq schoolId.value }
+                .map { DayOfWeek.valueOf(it[TeachingDayTable.dayOfWeek]) }
+                .toSet()
+        val slots = loadSlots(schoolId)
+
+        return TimeGrid(teachingDays, slots, loadExclusions(slots))
+    }
+
+    private fun loadSlots(schoolId: SchoolId): List<TimeSlot> =
+        TimeSlotTable
+            .selectAll()
+            .where { TimeSlotTable.schoolId eq schoolId.value }
             .map {
                 TimeSlot(
                     id = TimeSlotId(it[TimeSlotTable.id]),
@@ -33,23 +43,33 @@ internal object TimeGridStore {
                     endTime = it[TimeSlotTable.endTime],
                     kind = SlotKind.valueOf(it[TimeSlotTable.kind]),
                 )
-            }
-            .sortedBy { it.startTime }
-        val exclusions = if (slots.isEmpty()) emptySet() else {
-            SlotDayExclusionTable.selectAll().where { SlotDayExclusionTable.slotId inList slots.map { it.id.value } }
-                .map { SlotDayExclusion(TimeSlotId(it[SlotDayExclusionTable.slotId]), DayOfWeek.valueOf(it[SlotDayExclusionTable.dayOfWeek])) }
-                .toSet()
+            }.sortedBy { it.startTime }
+
+    private fun loadExclusions(slots: List<TimeSlot>): Set<SlotDayExclusion> {
+        if (slots.isEmpty()) {
+            return emptySet()
         }
-        return TimeGrid(teachingDays, slots, exclusions)
+
+        return SlotDayExclusionTable
+            .selectAll()
+            .where { SlotDayExclusionTable.slotId inList slots.map { it.id.value } }
+            .map { SlotDayExclusion(TimeSlotId(it[SlotDayExclusionTable.slotId]), DayOfWeek.valueOf(it[SlotDayExclusionTable.dayOfWeek])) }
+            .toSet()
     }
 
-    fun save(schoolId: SchoolId, timeGrid: TimeGrid) {
+    fun save(
+        schoolId: SchoolId,
+        timeGrid: TimeGrid,
+    ) {
         saveTeachingDays(schoolId, timeGrid.teachingDays)
         saveSlots(schoolId, timeGrid.slots)
         saveExclusions(timeGrid)
     }
 
-    private fun saveTeachingDays(schoolId: SchoolId, teachingDays: Set<DayOfWeek>) {
+    private fun saveTeachingDays(
+        schoolId: SchoolId,
+        teachingDays: Set<DayOfWeek>,
+    ) {
         TeachingDayTable.deleteWhere { TeachingDayTable.schoolId eq schoolId.value }
         TeachingDayTable.batchInsert(teachingDays) { day ->
             this[TeachingDayTable.schoolId] = schoolId.value
@@ -58,10 +78,15 @@ internal object TimeGridStore {
     }
 
     /** Deletes removed slots (their exclusions cascade), updates kept ones and inserts new ones. */
-    private fun saveSlots(schoolId: SchoolId, slots: List<TimeSlot>) {
+    private fun saveSlots(
+        schoolId: SchoolId,
+        slots: List<TimeSlot>,
+    ) {
         val existingIds = existingSlotIds(schoolId).toSet()
         val removedIds = existingIds - slots.map { it.id.value }.toSet()
-        if (removedIds.isNotEmpty()) TimeSlotTable.deleteWhere { TimeSlotTable.id inList removedIds }
+        if (removedIds.isNotEmpty()) {
+            TimeSlotTable.deleteWhere { TimeSlotTable.id inList removedIds }
+        }
         slots.forEach { slot ->
             if (slot.id.value in existingIds) updateSlot(slot) else insertSlot(schoolId, slot)
         }
@@ -69,7 +94,10 @@ internal object TimeGridStore {
 
     private fun saveExclusions(timeGrid: TimeGrid) {
         val slotIds = timeGrid.slots.map { it.id.value }
-        if (slotIds.isEmpty()) return
+        if (slotIds.isEmpty()) {
+            return
+        }
+
         SlotDayExclusionTable.deleteWhere { SlotDayExclusionTable.slotId inList slotIds }
         SlotDayExclusionTable.batchInsert(timeGrid.exclusions) { exclusion ->
             this[SlotDayExclusionTable.slotId] = exclusion.slotId.value
@@ -80,7 +108,10 @@ internal object TimeGridStore {
     private fun existingSlotIds(schoolId: SchoolId): List<UUID> =
         TimeSlotTable.select(TimeSlotTable.id).where { TimeSlotTable.schoolId eq schoolId.value }.map { it[TimeSlotTable.id] }
 
-    private fun insertSlot(schoolId: SchoolId, slot: TimeSlot) {
+    private fun insertSlot(
+        schoolId: SchoolId,
+        slot: TimeSlot,
+    ) {
         TimeSlotTable.insert {
             it[id] = slot.id.value
             it[TimeSlotTable.schoolId] = schoolId.value

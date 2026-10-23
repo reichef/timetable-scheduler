@@ -28,7 +28,6 @@ import timetablescheduler.domain.curriculum.Subject
 import java.util.UUID
 
 class ExposedSubjectRepository : SubjectRepository {
-
     override fun insert(subject: Subject) {
         SubjectTable.insert {
             it[id] = subject.id.value
@@ -40,11 +39,15 @@ class ExposedSubjectRepository : SubjectRepository {
     }
 
     override fun update(subject: Subject): Boolean {
-        val updatedRows = SubjectTable.update({ (SubjectTable.id eq subject.id.value) and (SubjectTable.version eq subject.version) }) {
-            it[name] = subject.name
-            it[version] = subject.version + 1
+        val updatedRows =
+            SubjectTable.update({ (SubjectTable.id eq subject.id.value) and (SubjectTable.version eq subject.version) }) {
+                it[name] = subject.name
+                it[version] = subject.version + 1
+            }
+        if (updatedRows != 1) {
+            return false
         }
-        if (updatedRows != 1) return false
+
         SubjectRequiresFeatureTable.deleteWhere { SubjectRequiresFeatureTable.subjectId eq subject.id.value }
         insertRequiredFeatures(subject)
         return true
@@ -61,18 +64,27 @@ class ExposedSubjectRepository : SubjectRepository {
     override fun findBySchool(schoolId: SchoolId): List<Subject> =
         loadSubjects(SubjectTable.selectAll().where { SubjectTable.schoolId eq schoolId.value }.toList())
 
-    override fun findByNameIgnoreCase(schoolId: SchoolId, name: String): Subject? =
+    override fun findByNameIgnoreCase(
+        schoolId: SchoolId,
+        name: String,
+    ): Subject? =
         loadSubjects(
-            SubjectTable.selectAll()
+            SubjectTable
+                .selectAll()
                 .where { (SubjectTable.schoolId eq schoolId.value) and (SubjectTable.name.lowerCase() eq name.trim().lowercase()) }
                 .toList(),
         ).singleOrNull()
 
     override fun findRequiringFeature(featureId: RoomFeatureId): List<Subject> {
-        val subjectIds = SubjectRequiresFeatureTable.select(SubjectRequiresFeatureTable.subjectId)
-            .where { SubjectRequiresFeatureTable.featureId eq featureId.value }
-            .map { it[SubjectRequiresFeatureTable.subjectId] }
-        if (subjectIds.isEmpty()) return emptyList()
+        val subjectIds =
+            SubjectRequiresFeatureTable
+                .select(SubjectRequiresFeatureTable.subjectId)
+                .where { SubjectRequiresFeatureTable.featureId eq featureId.value }
+                .map { it[SubjectRequiresFeatureTable.subjectId] }
+        if (subjectIds.isEmpty()) {
+            return emptyList()
+        }
+
         return loadSubjects(SubjectTable.selectAll().where { SubjectTable.id inList subjectIds }.toList())
     }
 
@@ -85,11 +97,16 @@ class ExposedSubjectRepository : SubjectRepository {
 
     /** Loads the required features of all [rows] with one query instead of one per subject. */
     private fun loadSubjects(rows: List<ResultRow>): List<Subject> {
-        if (rows.isEmpty()) return emptyList()
-        val featuresBySubject: Map<UUID, Set<RoomFeatureId>> = SubjectRequiresFeatureTable.selectAll()
-            .where { SubjectRequiresFeatureTable.subjectId inList rows.map { it[SubjectTable.id] } }
-            .groupBy({ it[SubjectRequiresFeatureTable.subjectId] }, { RoomFeatureId(it[SubjectRequiresFeatureTable.featureId]) })
-            .mapValues { it.value.toSet() }
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
+
+        val featuresBySubject: Map<UUID, Set<RoomFeatureId>> =
+            SubjectRequiresFeatureTable
+                .selectAll()
+                .where { SubjectRequiresFeatureTable.subjectId inList rows.map { it[SubjectTable.id] } }
+                .groupBy({ it[SubjectRequiresFeatureTable.subjectId] }, { RoomFeatureId(it[SubjectRequiresFeatureTable.featureId]) })
+                .mapValues { it.value.toSet() }
         return rows.map { row ->
             Subject(
                 id = SubjectId(row[SubjectTable.id]),
@@ -103,7 +120,6 @@ class ExposedSubjectRepository : SubjectRepository {
 }
 
 class ExposedClassLevelRepository : ClassLevelRepository {
-
     override fun insert(level: ClassLevel) {
         ClassLevelTable.insert {
             it[id] = level.id.value
@@ -115,11 +131,15 @@ class ExposedClassLevelRepository : ClassLevelRepository {
     }
 
     override fun update(level: ClassLevel): Boolean {
-        val updatedRows = ClassLevelTable.update({ (ClassLevelTable.id eq level.id.value) and (ClassLevelTable.version eq level.version) }) {
-            it[identifier] = level.identifier
-            it[version] = level.version + 1
+        val updatedRows =
+            ClassLevelTable.update({ (ClassLevelTable.id eq level.id.value) and (ClassLevelTable.version eq level.version) }) {
+                it[identifier] = level.identifier
+                it[version] = level.version + 1
+            }
+        if (updatedRows != 1) {
+            return false
         }
-        if (updatedRows != 1) return false
+
         CurriculumEntryTable.deleteWhere { CurriculumEntryTable.classLevelId eq level.id.value }
         insertCurriculum(level)
         return true
@@ -136,18 +156,29 @@ class ExposedClassLevelRepository : ClassLevelRepository {
     override fun findBySchool(schoolId: SchoolId): List<ClassLevel> =
         loadLevels(ClassLevelTable.selectAll().where { ClassLevelTable.schoolId eq schoolId.value }.toList())
 
-    override fun findByIdentifierIgnoreCase(schoolId: SchoolId, identifier: String): ClassLevel? =
+    override fun findByIdentifierIgnoreCase(
+        schoolId: SchoolId,
+        identifier: String,
+    ): ClassLevel? =
         loadLevels(
-            ClassLevelTable.selectAll()
-                .where { (ClassLevelTable.schoolId eq schoolId.value) and (ClassLevelTable.identifier.lowerCase() eq identifier.trim().lowercase()) }
-                .toList(),
+            ClassLevelTable
+                .selectAll()
+                .where {
+                    (ClassLevelTable.schoolId eq schoolId.value) and
+                        (ClassLevelTable.identifier.lowerCase() eq identifier.trim().lowercase())
+                }.toList(),
         ).singleOrNull()
 
     override fun findUsingSubject(subjectId: SubjectId): List<ClassLevel> {
-        val levelIds = CurriculumEntryTable.select(CurriculumEntryTable.classLevelId)
-            .where { CurriculumEntryTable.subjectId eq subjectId.value }
-            .map { it[CurriculumEntryTable.classLevelId] }
-        if (levelIds.isEmpty()) return emptyList()
+        val levelIds =
+            CurriculumEntryTable
+                .select(CurriculumEntryTable.classLevelId)
+                .where { CurriculumEntryTable.subjectId eq subjectId.value }
+                .map { it[CurriculumEntryTable.classLevelId] }
+        if (levelIds.isEmpty()) {
+            return emptyList()
+        }
+
         return loadLevels(ClassLevelTable.selectAll().where { ClassLevelTable.id inList levelIds }.toList())
     }
 
@@ -162,11 +193,18 @@ class ExposedClassLevelRepository : ClassLevelRepository {
 
     /** Loads the curricula of all [rows] with one query, keeping the entered order. */
     private fun loadLevels(rows: List<ResultRow>): List<ClassLevel> {
-        if (rows.isEmpty()) return emptyList()
-        val curriculumByLevel: Map<UUID, List<CurriculumEntry>> = CurriculumEntryTable.selectAll()
-            .where { CurriculumEntryTable.classLevelId inList rows.map { it[ClassLevelTable.id] } }
-            .sortedBy { it[CurriculumEntryTable.position] }
-            .groupBy({ it[CurriculumEntryTable.classLevelId] }, { CurriculumEntry(SubjectId(it[CurriculumEntryTable.subjectId]), it[CurriculumEntryTable.periodsPerWeek]) })
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
+
+        val curriculumByLevel: Map<UUID, List<CurriculumEntry>> =
+            CurriculumEntryTable
+                .selectAll()
+                .where { CurriculumEntryTable.classLevelId inList rows.map { it[ClassLevelTable.id] } }
+                .sortedBy { it[CurriculumEntryTable.position] }
+                .groupBy({
+                    it[CurriculumEntryTable.classLevelId]
+                }, { CurriculumEntry(SubjectId(it[CurriculumEntryTable.subjectId]), it[CurriculumEntryTable.periodsPerWeek]) })
         return rows.map { row ->
             ClassLevel(
                 id = ClassLevelId(row[ClassLevelTable.id]),
@@ -180,7 +218,6 @@ class ExposedClassLevelRepository : ClassLevelRepository {
 }
 
 class ExposedSchoolClassRepository : SchoolClassRepository {
-
     override fun insert(schoolClass: SchoolClass) {
         SchoolClassTable.insert {
             it[id] = schoolClass.id.value
@@ -205,7 +242,11 @@ class ExposedSchoolClassRepository : SchoolClassRepository {
     }
 
     override fun findById(classId: SchoolClassId): SchoolClass? =
-        SchoolClassTable.selectAll().where { SchoolClassTable.id eq classId.value }.singleOrNull()?.toSchoolClass()
+        SchoolClassTable
+            .selectAll()
+            .where { SchoolClassTable.id eq classId.value }
+            .singleOrNull()
+            ?.toSchoolClass()
 
     override fun findByLevel(levelId: ClassLevelId): List<SchoolClass> =
         SchoolClassTable.selectAll().where { SchoolClassTable.classLevelId eq levelId.value }.map { it.toSchoolClass() }
@@ -217,7 +258,11 @@ class ExposedSchoolClassRepository : SchoolClassRepository {
             .map { it.toSchoolClass() }
 
     override fun findByHomeRoom(roomId: RoomId): SchoolClass? =
-        SchoolClassTable.selectAll().where { SchoolClassTable.homeRoomId eq roomId.value }.singleOrNull()?.toSchoolClass()
+        SchoolClassTable
+            .selectAll()
+            .where { SchoolClassTable.homeRoomId eq roomId.value }
+            .singleOrNull()
+            ?.toSchoolClass()
 
     private fun ResultRow.toSchoolClass() =
         SchoolClass(

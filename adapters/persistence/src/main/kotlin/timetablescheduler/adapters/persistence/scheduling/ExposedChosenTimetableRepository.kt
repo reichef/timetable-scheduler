@@ -62,14 +62,22 @@ object ChosenUnplacedTable : Table("chosen_unplaced") {
 }
 
 class ExposedChosenTimetableRepository : ChosenTimetableRepository {
-
     override fun find(schoolId: SchoolId): ChosenTimetable? {
         val row = ChosenTimetableTable.selectAll().where { ChosenTimetableTable.schoolId eq schoolId.value }.singleOrNull() ?: return null
-        val lessons = ChosenLessonTable.selectAll().where { ChosenLessonTable.schoolId eq schoolId.value }
-            .sortedBy { it[ChosenLessonTable.position] }
-            .map { it.toLesson() }
-        val unplaced = ChosenUnplacedTable.selectAll().where { ChosenUnplacedTable.schoolId eq schoolId.value }
-            .associate { CourseKey(SchoolClassId(it[ChosenUnplacedTable.classId]), SubjectId(it[ChosenUnplacedTable.subjectId])) to it[ChosenUnplacedTable.periods] }
+        val lessons =
+            ChosenLessonTable
+                .selectAll()
+                .where { ChosenLessonTable.schoolId eq schoolId.value }
+                .sortedBy { it[ChosenLessonTable.position] }
+                .map { it.toLesson() }
+        val unplaced =
+            ChosenUnplacedTable
+                .selectAll()
+                .where { ChosenUnplacedTable.schoolId eq schoolId.value }
+                .associate {
+                    CourseKey(SchoolClassId(it[ChosenUnplacedTable.classId]), SubjectId(it[ChosenUnplacedTable.subjectId])) to
+                        it[ChosenUnplacedTable.periods]
+                }
         return ChosenTimetable(
             schoolId = schoolId,
             alternativeId = AlternativeId(row[ChosenTimetableTable.alternativeId]),
@@ -83,27 +91,37 @@ class ExposedChosenTimetableRepository : ChosenTimetableRepository {
     }
 
     /** Inserts the first choice or replaces the current one when its version is still [expectedVersion] (FR-028). */
-    override fun save(chosen: ChosenTimetable, expectedVersion: Int?): Boolean {
+    override fun save(
+        chosen: ChosenTimetable,
+        expectedVersion: Int?,
+    ): Boolean {
         val schoolId = chosen.schoolId.value
-        val saved = if (expectedVersion == null) {
-            ChosenTimetableTable.insertIgnore {
-                it[ChosenTimetableTable.schoolId] = schoolId
-                it[alternativeId] = chosen.alternativeId.value
-                it[generationId] = chosen.generationId.value
-                it[chosenBy] = chosen.chosenBy.value
-                it[chosenAt] = chosen.chosenAt.atOffset(ZoneOffset.UTC)
-                it[version] = chosen.version
-            }.insertedCount > 0
-        } else {
-            ChosenTimetableTable.update({ (ChosenTimetableTable.schoolId eq schoolId) and (ChosenTimetableTable.version eq expectedVersion) }) {
-                it[alternativeId] = chosen.alternativeId.value
-                it[generationId] = chosen.generationId.value
-                it[chosenBy] = chosen.chosenBy.value
-                it[chosenAt] = chosen.chosenAt.atOffset(ZoneOffset.UTC)
-                it[version] = chosen.version
-            } > 0
+        val saved =
+            if (expectedVersion == null) {
+                ChosenTimetableTable
+                    .insertIgnore {
+                        it[ChosenTimetableTable.schoolId] = schoolId
+                        it[alternativeId] = chosen.alternativeId.value
+                        it[generationId] = chosen.generationId.value
+                        it[chosenBy] = chosen.chosenBy.value
+                        it[chosenAt] = chosen.chosenAt.atOffset(ZoneOffset.UTC)
+                        it[version] = chosen.version
+                    }.insertedCount > 0
+            } else {
+                ChosenTimetableTable.update(
+                    { (ChosenTimetableTable.schoolId eq schoolId) and (ChosenTimetableTable.version eq expectedVersion) },
+                ) {
+                    it[alternativeId] = chosen.alternativeId.value
+                    it[generationId] = chosen.generationId.value
+                    it[chosenBy] = chosen.chosenBy.value
+                    it[chosenAt] = chosen.chosenAt.atOffset(ZoneOffset.UTC)
+                    it[version] = chosen.version
+                } > 0
+            }
+        if (!saved) {
+            return false
         }
-        if (!saved) return false
+
         ChosenLessonTable.deleteWhere { ChosenLessonTable.schoolId eq schoolId }
         ChosenUnplacedTable.deleteWhere { ChosenUnplacedTable.schoolId eq schoolId }
         ChosenLessonTable.batchInsert(chosen.lessons.withIndex()) { (position, lesson) ->
@@ -122,14 +140,16 @@ class ExposedChosenTimetableRepository : ChosenTimetableRepository {
             this[ChosenUnplacedTable.subjectId] = course.subjectId.value
             this[ChosenUnplacedTable.periods] = periods
         }
+
         return true
     }
 
-    private fun ResultRow.toLesson() = LessonAssignment(
-        classId = SchoolClassId(this[ChosenLessonTable.classId]),
-        subjectId = SubjectId(this[ChosenLessonTable.subjectId]),
-        teacherId = TeacherId(this[ChosenLessonTable.teacherId]),
-        roomId = RoomId(this[ChosenLessonTable.roomId]),
-        daySlot = DaySlot(DayOfWeek.valueOf(this[ChosenLessonTable.dayOfWeek]), TimeSlotId(this[ChosenLessonTable.timeSlotId])),
-    )
+    private fun ResultRow.toLesson() =
+        LessonAssignment(
+            classId = SchoolClassId(this[ChosenLessonTable.classId]),
+            subjectId = SubjectId(this[ChosenLessonTable.subjectId]),
+            teacherId = TeacherId(this[ChosenLessonTable.teacherId]),
+            roomId = RoomId(this[ChosenLessonTable.roomId]),
+            daySlot = DaySlot(DayOfWeek.valueOf(this[ChosenLessonTable.dayOfWeek]), TimeSlotId(this[ChosenLessonTable.timeSlotId])),
+        )
 }

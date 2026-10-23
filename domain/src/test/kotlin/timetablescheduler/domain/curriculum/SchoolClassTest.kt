@@ -10,7 +10,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class SchoolClassTest {
-
     private val level6 = (ClassLevel.create(SchoolId.new(), "6") as ValidationResult.Valid).value
 
     @Test
@@ -31,7 +30,10 @@ class SchoolClassTest {
 
     @Test
     fun `suffix must have 1 to 5 characters`() {
-        assertEquals(ValidationResult.Invalid(listOf(ValidationError.BlankValue(SchoolClass.FIELD_SUFFIX))), SchoolClass.create(level6.id, ""))
+        assertEquals(
+            ValidationResult.Invalid(listOf(ValidationError.BlankValue(SchoolClass.FIELD_SUFFIX))),
+            SchoolClass.create(level6.id, ""),
+        )
         assertEquals(
             ValidationResult.Invalid(listOf(ValidationError.TooLong(SchoolClass.FIELD_SUFFIX, 5))),
             SchoolClass.create(level6.id, "abcdef"),

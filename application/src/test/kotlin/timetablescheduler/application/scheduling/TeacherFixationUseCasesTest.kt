@@ -10,7 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class TeacherFixationUseCasesTest {
-
     private val test = SchedulingTestSchool()
     private val world = test.world
     private val fixations get() = world.useCases.fixations
@@ -39,7 +38,14 @@ class TeacherFixationUseCasesTest {
     @Test
     fun `a teacher not qualified or without load left is rejected`() {
         val art = world.subject(test.school.id, "Kunst")
-        world.classLevels.update(world.classLevels.findById(test.level5.id)!!.let { it.copy(curriculum = it.curriculum + timetablescheduler.domain.curriculum.CurriculumEntry(art.id, 2)) })
+        world.classLevels.update(
+            world.classLevels.findById(test.level5.id)!!.let {
+                it.copy(
+                    curriculum =
+                        it.curriculum + timetablescheduler.domain.curriculum.CurriculumEntry(art.id, 2),
+                )
+            },
+        )
 
         assertEquals(
             ApplicationError.Invalid(listOf(ValidationError.TeacherNotQualified)),
@@ -63,11 +69,19 @@ class TeacherFixationUseCasesTest {
         val fixation = fixations.create.execute(test.admin.id, test.school.id, test.class5a.id, test.math.id, test.schmidt.id).value()
         world.teachers.update(world.teachers.findById(test.schmidt.id)!!.copy(qualifiedSubjectIds = emptySet()))
 
-        val report = world.useCases.readiness.execute(test.admin.id, test.school.id).value()
+        val report =
+            world.useCases.readiness
+                .execute(test.admin.id, test.school.id)
+                .value()
 
-        assertEquals(listOf(ReadinessIssue.InvalidTeacherFixation(fixation.id, FixationInvalidity.NOT_QUALIFIED)), report.issues.filterIsInstance<ReadinessIssue.InvalidTeacherFixation>())
+        assertEquals(
+            listOf(ReadinessIssue.InvalidTeacherFixation(fixation.id, FixationInvalidity.NOT_QUALIFIED)),
+            report.issues.filterIsInstance<ReadinessIssue.InvalidTeacherFixation>(),
+        )
         assertIs<ApplicationError.GenerationBlocked>(
-            test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(warningsConfirmed = true)).let { assertIs<UseCaseResult.Failure>(it).error },
+            test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(warningsConfirmed = true)).let {
+                assertIs<UseCaseResult.Failure>(it).error
+            },
         )
     }
 }

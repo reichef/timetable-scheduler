@@ -9,7 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class SchedulingInputFingerprintTest {
-
     private val school = TestSchool()
     private val lab = RoomFeatureId.new()
     private val room = school.room(setOf(lab))
@@ -34,11 +33,12 @@ class SchedulingInputFingerprintTest {
 
     @Test
     fun `the order of entries does not matter`() {
-        val reordered = problem.copy(
-            rooms = problem.rooms.reversed(),
-            subjects = problem.subjects.reversed(),
-            classes = problem.classes.map { it.copy(curriculum = it.curriculum.reversed()) },
-        )
+        val reordered =
+            problem.copy(
+                rooms = problem.rooms.reversed(),
+                subjects = problem.subjects.reversed(),
+                classes = problem.classes.map { it.copy(curriculum = it.curriculum.reversed()) },
+            )
 
         assertEquals(original, SchedulingInputFingerprint.of(reordered))
     }
@@ -48,11 +48,14 @@ class SchedulingInputFingerprintTest {
         assertChanges(problem.mapTeacher { it.copy(unavailable = setOf(school.slot(MONDAY, 0))) })
         assertChanges(problem.mapTeacher { it.copy(weeklyLoad = 9) })
         assertChanges(problem.mapTeacher { it.copy(qualifiedSubjectIds = setOf(math)) })
+
         assertChanges(problem.mapClass { it.copy(curriculum = listOf(CurriculumEntry(math, 3), CurriculumEntry(chemistry, 2))) })
         assertChanges(problem.mapClass { it.copy(priorityWeight = 11) })
         assertChanges(problem.mapClass { it.copy(homeRoomId = room) })
+
         assertChanges(problem.copy(rooms = problem.rooms.map { it.copy(featureIds = emptySet()) }))
         assertChanges(problem.copy(days = problem.days.map { it.copy(slots = it.slots.drop(1)) }))
+
         assertEquals(teacher, problem.teachers.single().id)
         assertEquals(schoolClass, problem.classes.single().id)
     }

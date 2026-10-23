@@ -8,8 +8,8 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import timetablescheduler.adapters.web.WebDependencies
-import timetablescheduler.adapters.web.auth.actor
 import timetablescheduler.adapters.web.auth.SESSION_AUTH
+import timetablescheduler.adapters.web.auth.actor
 import timetablescheduler.adapters.web.layout.FormInput
 import timetablescheduler.adapters.web.layout.daysOfWeek
 import timetablescheduler.adapters.web.layout.idParameter
@@ -42,7 +42,10 @@ private fun Parameters.parseSlot(
     val startTime = input.time("startTime")
     val endTime = input.time("endTime")
     val kind = input.enum<SlotKind>("kind")
-    if (startTime == null || endTime == null || kind == null) return UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
+    if (startTime == null || endTime == null || kind == null) {
+        return UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
+    }
+
     return save(text("label"), startTime, endTime, kind)
 }
 
@@ -80,9 +83,10 @@ fun Route.timeGridRoutes(dependencies: WebDependencies) {
         post("/schools/{schoolId}/time-grid/slots") {
             val schoolId = call.schoolIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
-            val result = form.parseSlot { label, start, end, kind ->
-                timeGrid.addSlot.execute(call.actor, schoolId, label, start, end, kind, form.version())
-            }
+            val result =
+                form.parseSlot { label, start, end, kind ->
+                    timeGrid.addSlot.execute(call.actor, schoolId, label, start, end, kind, form.version())
+                }
             call.respondFormResult(
                 result,
                 backLink = timeGridPath(schoolId),
@@ -94,8 +98,9 @@ fun Route.timeGridRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@get
             val slotId = call.slotIdParameter() ?: return@get
             call.respondResult(timeGrid.getTimeGrid.execute(call.actor, schoolId)) { view ->
-                val slot = view.timeGrid.slotById(slotId)
-                    ?: return@respondResult call.respondResult(UseCaseResult.Failure(ApplicationError.NotFound)) {}
+                val slot =
+                    view.timeGrid.slotById(slotId)
+                        ?: return@respondResult call.respondResult(UseCaseResult.Failure(ApplicationError.NotFound)) {}
                 call.respondSlotEditor(view, slot)
             }
         }
@@ -104,16 +109,18 @@ fun Route.timeGridRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@post
             val slotId = call.slotIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
-            val result = form.parseSlot { label, start, end, kind ->
-                timeGrid.updateSlot.execute(call.actor, schoolId, slotId, label, start, end, kind, form.version())
-            }
+            val result =
+                form.parseSlot { label, start, end, kind ->
+                    timeGrid.updateSlot.execute(call.actor, schoolId, slotId, label, start, end, kind, form.version())
+                }
             call.respondFormResult(
                 result,
                 backLink = slotPath(schoolId, slotId),
                 onInvalid = { errors ->
                     call.respondResult(timeGrid.getTimeGrid.execute(call.actor, schoolId)) { view ->
-                        val slot = view.timeGrid.slotById(slotId)
-                            ?: return@respondResult call.respondResult(UseCaseResult.Failure(ApplicationError.NotFound)) {}
+                        val slot =
+                            view.timeGrid.slotById(slotId)
+                                ?: return@respondResult call.respondResult(UseCaseResult.Failure(ApplicationError.NotFound)) {}
                         call.respondSlotEditor(view, slot, errors, form.slotInput(), HttpStatusCode.UnprocessableEntity)
                     }
                 },

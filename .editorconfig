@@ -1,0 +1,10 @@
+# Formatting standard of Constitution I: ktlint with all non-experimental standard rules in the default code style.
+root = true
+
+[*.{kt,kts}]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+ktlint_code_style = ktlint_official
+ktlint_experimental = disabled

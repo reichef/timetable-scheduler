@@ -18,7 +18,6 @@ import kotlin.test.assertTrue
 
 /** Outdated marks, conflicts of outdated alternatives and deleting generations (002 US4, FR-023, FR-024, G8). */
 class GenerationHistoryTest {
-
     private val test = SchedulingTestSchool()
     private val world = test.world
     private val scheduling get() = test.scheduling
@@ -33,25 +32,45 @@ class GenerationHistoryTest {
     }
 
     private fun listed(generation: Generation) =
-        scheduling.list.execute(test.admin.id, test.school.id).value().generations.single { it.generation.id == generation.id }
+        scheduling.list
+            .execute(test.admin.id, test.school.id)
+            .value()
+            .generations
+            .single { it.generation.id == generation.id }
 
     @Test
     fun `a generation is outdated once master data or constraints change (G8)`() {
         val generation = generationWith(test.complete())
         assertFalse(listed(generation).outdated)
-        assertFalse(scheduling.get.execute(test.admin.id, test.school.id, generation.id).value().summary.outdated)
+        assertFalse(
+            scheduling.get
+                .execute(test.admin.id, test.school.id, generation.id)
+                .value()
+                .summary.outdated,
+        )
 
         world.markUnavailable(world.teachers.findById(test.schmidt.id)!!, Unavailability(MONDAY, test.first.id))
 
         assertTrue(listed(generation).outdated)
-        assertTrue(scheduling.get.execute(test.admin.id, test.school.id, generation.id).value().summary.outdated)
+        assertTrue(
+            scheduling.get
+                .execute(test.admin.id, test.school.id, generation.id)
+                .value()
+                .summary.outdated,
+        )
     }
 
     @Test
     fun `an outdated alternative names the lessons that now violate a hard constraint (FR-023)`() {
         val generation = generationWith(test.complete())
         val alternative = world.generations.findAlternatives(generation.id).single()
-        assertEquals(emptyList(), scheduling.getAlternative.execute(test.admin.id, test.school.id, generation.id, alternative.id).value().conflicts)
+        assertEquals(
+            emptyList(),
+            scheduling.getAlternative
+                .execute(test.admin.id, test.school.id, generation.id, alternative.id)
+                .value()
+                .conflicts,
+        )
 
         world.markUnavailable(world.teachers.findById(test.schmidt.id)!!, Unavailability(MONDAY, test.first.id))
         val details = scheduling.getAlternative.execute(test.admin.id, test.school.id, generation.id, alternative.id).value()
@@ -91,7 +110,10 @@ class GenerationHistoryTest {
     fun `a teacher account cannot delete generations`() {
         val generation = generationWith(test.complete())
 
-        assertEquals(ApplicationError.AccessDenied, scheduling.delete.execute(test.teacherAccount.id, test.school.id, generation.id).error())
+        assertEquals(
+            ApplicationError.AccessDenied,
+            scheduling.delete.execute(test.teacherAccount.id, test.school.id, generation.id).error(),
+        )
         assertTrue(world.generations.findById(generation.id) != null)
     }
 }

@@ -2,6 +2,7 @@ package timetablescheduler.domain.scheduling.constraint
 
 import timetablescheduler.domain.scheduling.DaySlot
 import timetablescheduler.domain.scheduling.TestSchool
+import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.SATURDAY
@@ -10,7 +11,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ExcludedSlotsRulesTest {
-
     private val school = TestSchool(teachingSlotsPerDay = 4, breakAfterSlot = 2)
     private val room = school.room()
     private val math = school.subject()
@@ -22,17 +22,43 @@ class ExcludedSlotsRulesTest {
     private val mondayFirst = school.slot(MONDAY, 0)
 
     @Test
+    fun `a subject exclusion applies to the subject in every class, or only in the class it names`() {
+        val everyClass = ConstraintRule.SubjectExcludedSlots(math, null, setOf(mondayFirst))
+        val onlyClass5b = ConstraintRule.SubjectExcludedSlots(math, class5b, setOf(mondayFirst))
+        val courses = listOf(CourseKey(class5a, math), CourseKey(class5b, math), CourseKey(class5a, art))
+
+        assertEquals(listOf(true, true, false), courses.map(everyClass::appliesTo))
+        assertEquals(listOf(false, true, false), courses.map(onlyClass5b::appliesTo))
+    }
+
+    @Test
     fun `a class lesson in an excluded slot counts once`() {
         val excluded = soft(ConstraintRule.ClassExcludedSlots(class5a, setOf(mondayFirst)))
 
-        assertEquals(1, school.violationsOf(excluded, listOf(school.lesson(class5a, math, schmidt, room, MONDAY, 0), school.lesson(class5b, math, mueller, room, MONDAY, 0))))
+        assertEquals(
+            1,
+            school.violationsOf(
+                excluded,
+                listOf(school.lesson(class5a, math, schmidt, room, MONDAY, 0), school.lesson(class5b, math, mueller, room, MONDAY, 0)),
+            ),
+        )
     }
 
     @Test
     fun `a teacher lesson in an excluded slot counts once (preferred free slots when soft)`() {
         val freeMonday = soft(ConstraintRule.TeacherExcludedSlots(schmidt, setOf(mondayFirst, school.slot(MONDAY, 1))))
 
-        assertEquals(2, school.violationsOf(freeMonday, listOf(school.lesson(class5a, math, schmidt, room, MONDAY, 0), school.lesson(class5b, math, schmidt, room, MONDAY, 1), school.lesson(class5a, art, mueller, room, MONDAY, 1))))
+        assertEquals(
+            2,
+            school.violationsOf(
+                freeMonday,
+                listOf(
+                    school.lesson(class5a, math, schmidt, room, MONDAY, 0),
+                    school.lesson(class5b, math, schmidt, room, MONDAY, 1),
+                    school.lesson(class5a, art, mueller, room, MONDAY, 1),
+                ),
+            ),
+        )
     }
 
     @Test
@@ -53,15 +79,27 @@ class ExcludedSlotsRulesTest {
         )
         assertEquals(
             listOf(ValidationError.InvalidReference(ConstraintValidation.FIELD_SLOT)),
-            ConstraintValidation.validate(ConstraintRule.ClassExcludedSlots(class5a, setOf(DaySlot(TUESDAY, school.breakSlot!!))), ConstraintKind.HARD, problem),
+            ConstraintValidation.validate(
+                ConstraintRule.ClassExcludedSlots(class5a, setOf(DaySlot(TUESDAY, school.breakSlot!!))),
+                ConstraintKind.HARD,
+                problem,
+            ),
         )
         assertEquals(
             listOf(ValidationError.InvalidReference(ConstraintValidation.FIELD_SLOT)),
-            ConstraintValidation.validate(ConstraintRule.TeacherExcludedSlots(schmidt, setOf(school.slot(SATURDAY, 0))), ConstraintKind.HARD, problem),
+            ConstraintValidation.validate(
+                ConstraintRule.TeacherExcludedSlots(schmidt, setOf(school.slot(SATURDAY, 0))),
+                ConstraintKind.HARD,
+                problem,
+            ),
         )
         assertEquals(
             listOf(ValidationError.InvalidReference(ConstraintValidation.FIELD_SUBJECT)),
-            ConstraintValidation.validate(ConstraintRule.SubjectExcludedSlots(art, class5b, setOf(mondayFirst)), ConstraintKind.HARD, problem),
+            ConstraintValidation.validate(
+                ConstraintRule.SubjectExcludedSlots(art, class5b, setOf(mondayFirst)),
+                ConstraintKind.HARD,
+                problem,
+            ),
         )
     }
 }

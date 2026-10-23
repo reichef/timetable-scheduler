@@ -4,7 +4,9 @@ import timetablescheduler.domain.common.SchoolId
 import java.util.UUID
 
 @JvmInline
-value class SchedulingConstraintId(val value: UUID) {
+value class SchedulingConstraintId(
+    val value: UUID,
+) {
     companion object {
         fun new() = SchedulingConstraintId(UUID.randomUUID())
     }
@@ -14,7 +16,9 @@ value class SchedulingConstraintId(val value: UUID) {
 enum class ConstraintKind { HARD, SOFT }
 
 /** Importance of a soft constraint (FR-014); violations count [factor] times (G3: 1 / 3 / 9). */
-enum class SoftWeight(val factor: Int) {
+enum class SoftWeight(
+    val factor: Int,
+) {
     LOW(1),
     MEDIUM(3),
     HIGH(9),

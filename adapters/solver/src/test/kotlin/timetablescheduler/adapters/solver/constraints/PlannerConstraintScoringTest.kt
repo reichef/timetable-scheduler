@@ -13,6 +13,7 @@ import timetablescheduler.adapters.solver.model.LessonPlacement
 import timetablescheduler.adapters.solver.model.TimetablePlan
 import timetablescheduler.adapters.solver.neverStop
 import timetablescheduler.domain.common.SchoolId
+import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintKind
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
@@ -26,6 +27,7 @@ import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import timetablescheduler.domain.scheduling.evaluation.HardConstraintChecker
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
+import java.time.DayOfWeek
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.Duration
@@ -35,15 +37,15 @@ import kotlin.test.assertTrue
 
 /** The solver penalizes planner constraints exactly as the domain counts them (G5, constitution gate on constraints). */
 class PlannerConstraintScoringTest {
-
-    private val solutionManager: SolutionManager<TimetablePlan, HardSoftScore> = SolutionManager.create(
-        SolverFactory.create<TimetablePlan>(
-            SolverConfig()
-                .withSolutionClass(TimetablePlan::class.java)
-                .withEntityClasses(CourseAssignment::class.java, LessonPlacement::class.java)
-                .withConstraintProviderClass(TimetableConstraintProvider::class.java),
-        ),
-    )
+    private val solutionManager: SolutionManager<TimetablePlan, HardSoftScore> =
+        SolutionManager.create(
+            SolverFactory.create<TimetablePlan>(
+                SolverConfig()
+                    .withSolutionClass(TimetablePlan::class.java)
+                    .withEntityClasses(CourseAssignment::class.java, LessonPlacement::class.java)
+                    .withConstraintProviderClass(TimetableConstraintProvider::class.java),
+            ),
+        )
 
     private val school = SeededSchool(days = 2, teachingSlotsPerDay = 6, breakAfterSlot = 3)
     private val room = school.room()
@@ -53,14 +55,26 @@ class PlannerConstraintScoringTest {
     private val mueller = school.teacher(20, setOf(math, art))
     private val class5a = school.schoolClass(listOf(math to 6, art to 2), homeRoom = room)
 
-    private fun constraint(rule: ConstraintRule, kind: ConstraintKind = ConstraintKind.HARD) =
-        SchedulingConstraint(SchedulingConstraintId.new(), SchoolId.new(), kind, if (kind == ConstraintKind.SOFT) SoftWeight.MEDIUM else null, true, rule, 0)
+    private fun constraint(
+        rule: ConstraintRule,
+        kind: ConstraintKind = ConstraintKind.HARD,
+    ): SchedulingConstraint {
+        val weight = if (kind == ConstraintKind.SOFT) SoftWeight.MEDIUM else null
 
-    private fun lesson(day: java.time.DayOfWeek, slot: Int, subject: timetablescheduler.domain.common.SubjectId = math) =
-        LessonAssignment(class5a, subject, schmidt, room, school.slot(day, slot))
+        return SchedulingConstraint(SchedulingConstraintId.new(), SchoolId.new(), kind, weight, true, rule, 0)
+    }
+
+    private fun lesson(
+        day: DayOfWeek,
+        slot: Int,
+        subject: SubjectId = math,
+    ) = LessonAssignment(class5a, subject, schmidt, room, school.slot(day, slot))
 
     /** The plan with exactly [lessons] placed, as the solver would represent them. */
-    private fun scoreOf(problem: SchedulingProblem, lessons: List<LessonAssignment>): HardSoftScore {
+    private fun scoreOf(
+        problem: SchedulingProblem,
+        lessons: List<LessonAssignment>,
+    ): HardSoftScore {
         val plan = ProblemMapping.toPlan(problem)
         lessons.groupBy { it.course }.forEach { (course, courseLessons) ->
             val assignment = plan.courses.single { it.classFact.id == course.classId && it.subjectId == course.subjectId }
@@ -76,10 +90,15 @@ class PlannerConstraintScoringTest {
         return checkNotNull(solutionManager.update(plan))
     }
 
-    private fun domainHardCount(problem: SchedulingProblem, lessons: List<LessonAssignment>) =
-        EffectiveConstraints.resolve(problem).filter { it.constraint.isHard }.sumOf { RuleViolations.of(it, problem, lessons).count }
+    private fun domainHardCount(
+        problem: SchedulingProblem,
+        lessons: List<LessonAssignment>,
+    ) = EffectiveConstraints.resolve(problem).filter { it.constraint.isHard }.sumOf { RuleViolations.of(it, problem, lessons).count }
 
-    private fun assertSameHardPenalty(rule: ConstraintRule, lessons: List<LessonAssignment>) {
+    private fun assertSameHardPenalty(
+        rule: ConstraintRule,
+        lessons: List<LessonAssignment>,
+    ) {
         val problem = school.problem().copy(constraints = listOf(constraint(rule)))
 
         val expected = domainHardCount(problem, lessons)
@@ -102,15 +121,24 @@ class PlannerConstraintScoringTest {
 
     @Test
     fun `subject daily limit for every subject`() =
-        assertSameHardPenalty(ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, 1), listOf(lesson(MONDAY, 0), lesson(MONDAY, 1), lesson(TUESDAY, 0)))
+        assertSameHardPenalty(
+            ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, 1),
+            listOf(lesson(MONDAY, 0), lesson(MONDAY, 1), lesson(TUESDAY, 0)),
+        )
 
     @Test
     fun `double periods`() =
-        assertSameHardPenalty(ConstraintRule.SubjectDoublePeriodsInClass(class5a, math, acrossBreaks = false), listOf(lesson(MONDAY, 0), lesson(MONDAY, 2), lesson(TUESDAY, 2), lesson(TUESDAY, 3)))
+        assertSameHardPenalty(
+            ConstraintRule.SubjectDoublePeriodsInClass(class5a, math, acrossBreaks = false),
+            listOf(lesson(MONDAY, 0), lesson(MONDAY, 2), lesson(TUESDAY, 2), lesson(TUESDAY, 3)),
+        )
 
     @Test
     fun `subject excluded in a slot for every class`() =
-        assertSameHardPenalty(ConstraintRule.SubjectExcludedSlots(math, null, setOf(school.slot(MONDAY, 0))), listOf(lesson(MONDAY, 0), lesson(TUESDAY, 0)))
+        assertSameHardPenalty(
+            ConstraintRule.SubjectExcludedSlots(math, null, setOf(school.slot(MONDAY, 0))),
+            listOf(lesson(MONDAY, 0), lesson(TUESDAY, 0)),
+        )
 
     @Test
     fun `teacher excluded slots`() =
@@ -120,7 +148,13 @@ class PlannerConstraintScoringTest {
     fun `a violated soft constraint lowers only the soft score`() {
         val lessons = (0..3).map { lesson(MONDAY, it) }
         val without = scoreOf(school.problem(), lessons)
-        val withSoft = scoreOf(school.problem().copy(constraints = listOf(constraint(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.AllClasses, 2), ConstraintKind.SOFT))), lessons)
+        val withSoft =
+            scoreOf(
+                school.problem().copy(
+                    constraints = listOf(constraint(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.AllClasses, 2), ConstraintKind.SOFT)),
+                ),
+                lessons,
+            )
 
         assertEquals(without.hardScore(), withSoft.hardScore())
         assertTrue(withSoft.softScore() < without.softScore())
@@ -129,10 +163,11 @@ class PlannerConstraintScoringTest {
     @Test
     fun `solving respects a hard daily maximum and a teacher fixation (US2 scenarios 3, 10)`() {
         val fixation = TeacherFixation(TeacherFixationId.new(), SchoolId.new(), class5a, math, mueller, 0)
-        val problem = school.problem().copy(
-            constraints = listOf(constraint(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(class5a), 3))),
-            fixations = listOf(fixation),
-        )
+        val problem =
+            school.problem().copy(
+                constraints = listOf(constraint(ConstraintRule.ClassMaxPeriodsPerDay(ClassScope.SpecificClass(class5a), 3))),
+                fixations = listOf(fixation),
+            )
         val listener = CollectingListener()
 
         TimefoldTimetableSolver(minimumFirstPass = Duration.ofSeconds(2)).solve(problem, Duration.ofSeconds(8), neverStop, listener)
@@ -143,6 +178,11 @@ class PlannerConstraintScoringTest {
             assertTrue(candidate.lessons.filter { it.subjectId == math }.all { it.teacherId == mueller })
         }
         // At most 3 lessons per day on 2 days.
-        assertEquals(6, listener.candidates.last().lessons.size)
+        assertEquals(
+            6,
+            listener.candidates
+                .last()
+                .lessons.size,
+        )
     }
 }

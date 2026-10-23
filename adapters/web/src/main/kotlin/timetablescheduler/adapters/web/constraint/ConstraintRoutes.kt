@@ -33,7 +33,8 @@ import timetablescheduler.domain.scheduling.constraint.type
 import timetablescheduler.domain.validation.ValidationError
 import java.util.UUID
 
-private suspend fun ApplicationCall.constraintIdParameter(): SchedulingConstraintId? = idParameter("constraintId")?.let(::SchedulingConstraintId)
+private suspend fun ApplicationCall.constraintIdParameter(): SchedulingConstraintId? =
+    idParameter("constraintId")?.let(::SchedulingConstraintId)
 
 private suspend fun ApplicationCall.fixationIdParameter(): TeacherFixationId? = idParameter("fixationId")?.let(::TeacherFixationId)
 
@@ -75,11 +76,16 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
             val form = call.receiveCheckedForm()
             val type = ConstraintForm.typeOf(form["type"]) ?: return@post call.respondBusinessFailure(ApplicationError.NotFound)
             val grid = useCases.timeGrid.getTimeGrid.execute(call.actor, schoolId)
-            if (grid !is UseCaseResult.Success) return@post call.respondResult(grid) {}
-            val result = when (val parsed = ConstraintForm.parse(form, type, grid.value.timeGrid)) {
-                is ParsedConstraint.Invalid -> UseCaseResult.Failure(ApplicationError.Invalid(parsed.errors))
-                is ParsedConstraint.Valid -> constraints.create.execute(call.actor, schoolId, parsed.input)
+            if (grid !is UseCaseResult.Success) {
+                return@post call.respondResult(grid) {}
             }
+
+            val result =
+                when (val parsed = ConstraintForm.parse(form, type, grid.value.timeGrid)) {
+                    is ParsedConstraint.Invalid -> UseCaseResult.Failure(ApplicationError.Invalid(parsed.errors))
+                    is ParsedConstraint.Valid -> constraints.create.execute(call.actor, schoolId, parsed.input)
+                }
+
             call.respondFormResult(
                 result,
                 constraintsPath(schoolId),
@@ -91,7 +97,9 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@get
             val constraintId = call.constraintIdParameter() ?: return@get
             call.respondResult(constraints.get.execute(call.actor, schoolId, constraintId)) { constraint ->
-                call.respondResult(constraints.list.execute(call.actor, schoolId)) { call.respondConstraintForm(it, constraint.rule.type, constraint) }
+                call.respondResult(
+                    constraints.list.execute(call.actor, schoolId),
+                ) { call.respondConstraintForm(it, constraint.rule.type, constraint) }
             }
         }
 
@@ -99,15 +107,35 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@post
             val constraintId = call.constraintIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
+
             val existing = constraints.get.execute(call.actor, schoolId, constraintId)
-            if (existing !is UseCaseResult.Success) return@post call.respondResult(existing) {}
+            if (existing !is UseCaseResult.Success) {
+                return@post call.respondResult(existing) {}
+            }
+
             val type = existing.value.rule.type
             val grid = useCases.timeGrid.getTimeGrid.execute(call.actor, schoolId)
-            if (grid !is UseCaseResult.Success) return@post call.respondResult(grid) {}
-            val result = when (val parsed = ConstraintForm.parse(form, type, grid.value.timeGrid)) {
-                is ParsedConstraint.Invalid -> UseCaseResult.Failure(ApplicationError.Invalid(parsed.errors))
-                is ParsedConstraint.Valid -> constraints.update.execute(call.actor, schoolId, constraintId, parsed.input, form.version())
+            if (grid !is UseCaseResult.Success) {
+                return@post call.respondResult(grid) {}
             }
+
+            val result =
+                when (val parsed = ConstraintForm.parse(form, type, grid.value.timeGrid)) {
+                    is ParsedConstraint.Invalid -> {
+                        UseCaseResult.Failure(ApplicationError.Invalid(parsed.errors))
+                    }
+
+                    is ParsedConstraint.Valid -> {
+                        constraints.update.execute(
+                            call.actor,
+                            schoolId,
+                            constraintId,
+                            parsed.input,
+                            form.version(),
+                        )
+                    }
+                }
+
             call.respondFormResult(
                 result,
                 constraintPath(existing.value),
@@ -119,7 +147,10 @@ fun Route.constraintRoutes(dependencies: WebDependencies) {
             val schoolId = call.schoolIdParameter() ?: return@post
             val constraintId = call.constraintIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
-            call.respondResult(constraints.setActive.execute(call.actor, schoolId, constraintId, form["active"] == "true", form.version()), constraintsPath(schoolId)) {
+            call.respondResult(
+                constraints.setActive.execute(call.actor, schoolId, constraintId, form["active"] == "true", form.version()),
+                constraintsPath(schoolId),
+            ) {
                 call.seeOther(constraintsPath(schoolId))
             }
         }
@@ -151,11 +182,14 @@ private fun Route.fixationRoutes(useCases: MasterDataUseCases) {
         val classId = form.uuid("classId")
         val subjectId = form.uuid("subjectId")
         val teacherId = form.uuid("teacherId")
-        val result = if (classId == null || subjectId == null || teacherId == null) {
-            UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference("course"))))
-        } else {
-            fixations.create.execute(call.actor, schoolId, SchoolClassId(classId), SubjectId(subjectId), TeacherId(teacherId))
-        }
+
+        val result =
+            if (classId == null || subjectId == null || teacherId == null) {
+                UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference("course"))))
+            } else {
+                fixations.create.execute(call.actor, schoolId, SchoolClassId(classId), SubjectId(subjectId), TeacherId(teacherId))
+            }
+
         call.respondFormResult(
             result,
             constraintsPath(schoolId),
@@ -171,7 +205,9 @@ private fun Route.fixationRoutes(useCases: MasterDataUseCases) {
         val schoolId = call.schoolIdParameter() ?: return@get
         val fixationId = call.fixationIdParameter() ?: return@get
         call.respondResult(useCases.constraints.list.execute(call.actor, schoolId)) { overview ->
-            val fixation = overview.fixations.firstOrNull { it.id == fixationId } ?: return@respondResult call.respondBusinessFailure(ApplicationError.NotFound)
+            val fixation =
+                overview.fixations.firstOrNull { it.id == fixationId }
+                    ?: return@respondResult call.respondBusinessFailure(ApplicationError.NotFound)
             call.respondFixationForm(overview, fixation)
         }
     }
@@ -181,14 +217,25 @@ private fun Route.fixationRoutes(useCases: MasterDataUseCases) {
         val fixationId = call.fixationIdParameter() ?: return@post
         val form = call.receiveCheckedForm()
         val teacherId = form.uuid("teacherId")
-        val result = if (teacherId == null) UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference("teacherId"))))
-        else fixations.update.execute(call.actor, schoolId, fixationId, TeacherId(teacherId), form.version())
+        val result =
+            if (teacherId == null) {
+                UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference("teacherId"))))
+            } else {
+                fixations.update.execute(call.actor, schoolId, fixationId, TeacherId(teacherId), form.version())
+            }
+
         call.respondFormResult(
             result,
             constraintsPath(schoolId),
             onInvalid = { errors ->
                 call.respondResult(useCases.constraints.list.execute(call.actor, schoolId)) { overview ->
-                    call.respondFixationForm(overview, overview.fixations.firstOrNull { it.id == fixationId }, form, errors, HttpStatusCode.UnprocessableEntity)
+                    call.respondFixationForm(
+                        overview,
+                        overview.fixations.firstOrNull { it.id == fixationId },
+                        form,
+                        errors,
+                        HttpStatusCode.UnprocessableEntity,
+                    )
                 }
             },
         ) { call.seeOther(constraintsPath(schoolId)) }

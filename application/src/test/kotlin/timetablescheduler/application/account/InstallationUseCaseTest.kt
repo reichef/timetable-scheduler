@@ -3,8 +3,8 @@ package timetablescheduler.application.account
 import timetablescheduler.application.error.ApplicationError
 import timetablescheduler.application.error.UseCaseResult
 import timetablescheduler.application.fakes.InMemoryPasswordCredentialRepository
-import timetablescheduler.application.fakes.InMemorySchoolRepository
 import timetablescheduler.application.fakes.InMemorySchedulingConstraintRepository
+import timetablescheduler.application.fakes.InMemorySchoolRepository
 import timetablescheduler.application.fakes.InMemoryTransactionRunner
 import timetablescheduler.application.fakes.InMemoryUserAccountRepository
 import timetablescheduler.application.fakes.PlainTextTestPasswordHasher
@@ -18,18 +18,19 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class InstallationUseCaseTest {
-
     private val schools = InMemorySchoolRepository()
     private val accounts = InMemoryUserAccountRepository()
     private val credentials = InMemoryPasswordCredentialRepository()
     private val hasher = PlainTextTestPasswordHasher()
-    private val installation = InstallationUseCase(InMemoryTransactionRunner(), schools, accounts, credentials, hasher, InMemorySchedulingConstraintRepository())
+    private val installation =
+        InstallationUseCase(InMemoryTransactionRunner(), schools, accounts, credentials, hasher, InMemorySchedulingConstraintRepository())
 
-    private val initialSetup = InitialSetup(
-        schoolName = "Gymnasium Nord",
-        plannerUsername = "admin",
-        plannerPassword = "sehr-geheim-1",
-    )
+    private val initialSetup =
+        InitialSetup(
+            schoolName = "Gymnasium Nord",
+            plannerUsername = "admin",
+            plannerPassword = "sehr-geheim-1",
+        )
 
     @Test
     fun `empty installation creates first school and initial planner assigned to it`() {
@@ -38,9 +39,11 @@ class InstallationUseCaseTest {
         assertEquals(InstallationOutcome.INSTALLED, assertIs<UseCaseResult.Success<InstallationOutcome>>(result).value)
         val school = assertNotNull(schools.findByNameIgnoreCase("Gymnasium Nord"))
         val planner = assertNotNull(accounts.findByUsernameIgnoreCase("admin"))
+
         assertEquals(Role.PLANNER, planner.role)
         assertTrue(planner.active)
         assertEquals(setOf(school.id), planner.schoolIds)
+
         assertTrue(hasher.matches("sehr-geheim-1", assertNotNull(credentials.findPasswordHash(planner.id))))
     }
 

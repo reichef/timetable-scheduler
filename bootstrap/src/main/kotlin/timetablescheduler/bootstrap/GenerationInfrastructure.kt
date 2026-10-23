@@ -16,9 +16,10 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class SingleThreadGenerationExecutor : GenerationExecutor {
     private val threadNumber = AtomicInteger()
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "generation-${threadNumber.incrementAndGet()}")
-    }
+    private val executor: ExecutorService =
+        Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "generation-${threadNumber.incrementAndGet()}")
+        }
 
     override fun submit(task: () -> Unit) {
         executor.execute {
@@ -47,15 +48,32 @@ class Slf4jGenerationEventLog : GenerationEventLog {
         log.info("Generation started id={}", generationId.value)
     }
 
-    override fun discarded(generationId: GenerationId, candidates: Int) {
+    override fun discarded(
+        generationId: GenerationId,
+        candidates: Int,
+    ) {
         log.warn("Generation discarded candidates violating hard constraints id={} count={}", generationId.value, candidates)
     }
 
-    override fun finished(generationId: GenerationId, status: GenerationStatus, alternatives: Int, duration: Duration) {
-        log.info("Generation ended id={} status={} alternatives={} durationSeconds={}", generationId.value, status, alternatives, duration.seconds)
+    override fun finished(
+        generationId: GenerationId,
+        status: GenerationStatus,
+        alternatives: Int,
+        duration: Duration,
+    ) {
+        log.info(
+            "Generation ended id={} status={} alternatives={} durationSeconds={}",
+            generationId.value,
+            status,
+            alternatives,
+            duration.seconds,
+        )
     }
 
-    override fun failed(generationId: GenerationId, exceptionClass: String) {
+    override fun failed(
+        generationId: GenerationId,
+        exceptionClass: String,
+    ) {
         log.error("Generation failed id={} exception={}", generationId.value, exceptionClass)
     }
 

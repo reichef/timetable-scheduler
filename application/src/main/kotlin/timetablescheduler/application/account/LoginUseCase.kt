@@ -11,7 +11,11 @@ import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.common.AccountId
 
 /** [language]: the account's saved language, else the language chosen on the login page; null = use the browser's. */
-data class LoggedInUser(val accountId: AccountId, val role: Role, val language: InterfaceLanguage?)
+data class LoggedInUser(
+    val accountId: AccountId,
+    val role: Role,
+    val language: InterfaceLanguage?,
+)
 
 /**
  * FR-030/FR-032: every failure — unknown user, wrong password, deactivated account — yields the same
@@ -26,13 +30,20 @@ class LoginUseCase(
      * [chosenLanguage] is a language the user actively chose on the login page before logging in. FR-042: it is saved
      * only if the account has no language yet; a saved language always wins.
      */
-    fun execute(username: String, plainPassword: String, chosenLanguage: InterfaceLanguage? = null): UseCaseResult<LoggedInUser> =
+    fun execute(
+        username: String,
+        plainPassword: String,
+        chosenLanguage: InterfaceLanguage? = null,
+    ): UseCaseResult<LoggedInUser> =
         transactions.inTransaction {
             outcome {
-                val accountId = authenticator.authenticate(username, plainPassword)
-                    ?: fail(ApplicationError.AuthenticationFailed)
+                val accountId =
+                    authenticator.authenticate(username, plainPassword)
+                        ?: fail(ApplicationError.AuthenticationFailed)
                 val account = accounts.findById(accountId)
-                if (account == null || !account.active) fail(ApplicationError.AuthenticationFailed)
+                if (account == null || !account.active) {
+                    fail(ApplicationError.AuthenticationFailed)
+                }
                 if (account.preferredLanguage == null && chosenLanguage != null) {
                     accounts.updatePreferredLanguage(account.id, chosenLanguage)
                 }

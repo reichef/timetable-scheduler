@@ -2,10 +2,10 @@ package timetablescheduler.adapters.persistence.school
 
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
-import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -23,7 +23,6 @@ object SchoolTable : Table("school") {
 }
 
 class ExposedSchoolRepository : SchoolRepository {
-
     override fun insert(school: School) {
         SchoolTable.insert {
             it[id] = school.id.value
@@ -39,23 +38,38 @@ class ExposedSchoolRepository : SchoolRepository {
         } == 1
 
     override fun findById(schoolId: SchoolId): School? =
-        SchoolTable.selectAll().where { SchoolTable.id eq schoolId.value }.singleOrNull()?.toSchool()
+        SchoolTable
+            .selectAll()
+            .where { SchoolTable.id eq schoolId.value }
+            .singleOrNull()
+            ?.toSchool()
 
     override fun findByIds(schoolIds: Set<SchoolId>): List<School> =
-        if (schoolIds.isEmpty()) emptyList()
-        else SchoolTable.selectAll().where { SchoolTable.id inList schoolIds.map { it.value } }
-            .map { it.toSchool() }
-            .sortedBy { it.name.lowercase() }
+        if (schoolIds.isEmpty()) {
+            emptyList()
+        } else {
+            SchoolTable
+                .selectAll()
+                .where { SchoolTable.id inList schoolIds.map { it.value } }
+                .map { it.toSchool() }
+                .sortedBy { it.name.lowercase() }
+        }
 
     override fun findAllIds(): List<SchoolId> = SchoolTable.selectAll().map { SchoolId(it[SchoolTable.id]) }
 
     override fun findByNameIgnoreCase(name: String): School? =
-        SchoolTable.selectAll().where { SchoolTable.name.lowerCase() eq name.trim().lowercase() }
-            .singleOrNull()?.toSchool()
+        SchoolTable
+            .selectAll()
+            .where { SchoolTable.name.lowerCase() eq name.trim().lowercase() }
+            .singleOrNull()
+            ?.toSchool()
 
     override fun findTimeGrid(schoolId: SchoolId): TimeGrid = TimeGridStore.load(schoolId)
 
-    override fun saveTimeGrid(schoolId: SchoolId, timeGrid: TimeGrid) = TimeGridStore.save(schoolId, timeGrid)
+    override fun saveTimeGrid(
+        schoolId: SchoolId,
+        timeGrid: TimeGrid,
+    ) = TimeGridStore.save(schoolId, timeGrid)
 
     private fun ResultRow.toSchool() =
         School(id = SchoolId(this[SchoolTable.id]), name = this[SchoolTable.name], version = this[SchoolTable.version])

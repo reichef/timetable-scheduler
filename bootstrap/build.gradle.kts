@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":adapters:persistence"))
     implementation(project(":adapters:web"))
     implementation(project(":adapters:solver"))
+
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.slf4j.api)
@@ -32,15 +33,18 @@ tasks.test {
 val testSchoolTest by tasks.registering(Test::class) {
     description = "Seeds the fictitious test school into a PostgreSQL container and runs one generation (feature 002, T114)."
     group = "verification"
+
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
+
     useJUnitPlatform { includeTags("testschool") }
     testLogging { showStandardStreams = true }
     outputs.upToDateWhen { false }
 }
 
 val seedTestSchool by tasks.registering(JavaExec::class) {
-    description = "Seeds the fictitious test school (-PtestSchool=full|understaffed) into the database of the TTS_* variables (must be empty)."
+    description =
+        "Seeds the fictitious test school (-PtestSchool=full|understaffed) into the database of the TTS_* variables (must be empty)."
     group = "application"
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("timetablescheduler.bootstrap.testschool.SeedTestSchoolKt")

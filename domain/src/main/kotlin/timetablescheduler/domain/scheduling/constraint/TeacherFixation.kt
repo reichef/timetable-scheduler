@@ -8,7 +8,9 @@ import timetablescheduler.domain.scheduling.solution.CourseKey
 import java.util.UUID
 
 @JvmInline
-value class TeacherFixationId(val value: UUID) {
+value class TeacherFixationId(
+    val value: UUID,
+) {
     companion object {
         fun new() = TeacherFixationId(UUID.randomUUID())
     }

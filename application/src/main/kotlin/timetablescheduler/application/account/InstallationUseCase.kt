@@ -15,7 +15,11 @@ import timetablescheduler.domain.account.UserAccount
 import timetablescheduler.domain.scheduling.constraint.DefaultConstraints
 import timetablescheduler.domain.school.School
 
-data class InitialSetup(val schoolName: String, val plannerUsername: String, val plannerPassword: String)
+data class InitialSetup(
+    val schoolName: String,
+    val plannerUsername: String,
+    val plannerPassword: String,
+)
 
 enum class InstallationOutcome { INSTALLED, ALREADY_INSTALLED }
 
@@ -31,20 +35,23 @@ class InstallationUseCase(
     private val hasher: PasswordHasher,
     private val constraints: SchedulingConstraintRepository,
 ) {
-    fun isInstalled(): Boolean =
-        (transactions.inTransaction { UseCaseResult.Success(accounts.existsAny()) } as UseCaseResult.Success).value
+    fun isInstalled(): Boolean = (transactions.inTransaction { UseCaseResult.Success(accounts.existsAny()) } as UseCaseResult.Success).value
 
     fun execute(setup: InitialSetup): UseCaseResult<InstallationOutcome> =
         transactions.inTransaction {
             outcome {
-                if (accounts.existsAny()) return@outcome InstallationOutcome.ALREADY_INSTALLED
+                if (accounts.existsAny()) {
+                    return@outcome InstallationOutcome.ALREADY_INSTALLED
+                }
                 PasswordPolicy.validate(setup.plannerPassword)?.let { fail(ApplicationError.Invalid(listOf(it))) }
                 val firstSchool = School.create(setup.schoolName).bind()
                 val initialPlanner = UserAccount.create(setup.plannerUsername, Role.PLANNER, setOf(firstSchool.id)).bind()
+
                 schools.insert(firstSchool)
                 accounts.insert(initialPlanner)
                 credentials.save(initialPlanner.id, hasher.hash(setup.plannerPassword))
                 DefaultConstraints.forSchool(firstSchool.id).forEach(constraints::insert)
+
                 InstallationOutcome.INSTALLED
             }
         }

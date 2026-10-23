@@ -11,11 +11,18 @@ import java.util.UUID
  * Server-side session: only a signed session id travels in the cookie. [language] is the account's interface
  * language (or the one chosen at login); null means the browser's preferred language applies (R19).
  */
-data class UserSession(val accountId: AccountId, val csrfToken: String, val language: InterfaceLanguage? = null) {
+data class UserSession(
+    val accountId: AccountId,
+    val csrfToken: String,
+    val language: InterfaceLanguage? = null,
+) {
     companion object {
         private val random = SecureRandom()
 
-        fun startFor(accountId: AccountId, language: InterfaceLanguage? = null): UserSession {
+        fun startFor(
+            accountId: AccountId,
+            language: InterfaceLanguage? = null,
+        ): UserSession {
             val tokenBytes = ByteArray(32).also(random::nextBytes)
             return UserSession(accountId, Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes), language)
         }

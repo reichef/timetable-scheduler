@@ -20,7 +20,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class CurriculumUseCasesTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
@@ -58,7 +57,10 @@ class CurriculumUseCasesTest {
 
         curriculum.updateSubject.execute(admin.id, nord.id, mathe.id, "Mathe", emptySet(), mathe.version).value()
 
-        assertEquals(ApplicationError.VersionConflict, curriculum.updateSubject.execute(admin.id, nord.id, mathe.id, "M", emptySet(), mathe.version).error())
+        assertEquals(
+            ApplicationError.VersionConflict,
+            curriculum.updateSubject.execute(admin.id, nord.id, mathe.id, "M", emptySet(), mathe.version).error(),
+        )
     }
 
     @Test
@@ -67,9 +69,16 @@ class CurriculumUseCasesTest {
         val deutsch = world.subject(nord.id, "Deutsch")
         val level = curriculum.createClassLevel.execute(admin.id, nord.id, "6").value()
 
-        val saved = curriculum.updateClassLevel.execute(
-            admin.id, nord.id, level.id, "6", listOf(CurriculumEntry(mathe.id, 4), CurriculumEntry(deutsch.id, 4)), level.version,
-        ).value()
+        val saved =
+            curriculum.updateClassLevel
+                .execute(
+                    admin.id,
+                    nord.id,
+                    level.id,
+                    "6",
+                    listOf(CurriculumEntry(mathe.id, 4), CurriculumEntry(deutsch.id, 4)),
+                    level.version,
+                ).value()
 
         assertEquals(8, saved.level.weeklyPeriods())
     }
@@ -88,7 +97,16 @@ class CurriculumUseCasesTest {
         val mathe = world.subject(nord.id, "Mathematik")
         val level = world.classLevel(nord.id, "6")
 
-        val saved = curriculum.updateClassLevel.execute(admin.id, nord.id, level.id, "6", listOf(CurriculumEntry(mathe.id, 3)), level.version).value()
+        val saved =
+            curriculum.updateClassLevel
+                .execute(
+                    admin.id,
+                    nord.id,
+                    level.id,
+                    "6",
+                    listOf(CurriculumEntry(mathe.id, 3)),
+                    level.version,
+                ).value()
 
         assertEquals(ReadinessIssue.LevelExceedsGrid(level.id, excessPeriods = 2), saved.warning)
         assertEquals(3, world.classLevels.findById(level.id)!!.weeklyPeriods())
@@ -101,7 +119,18 @@ class CurriculumUseCasesTest {
         val mathe = world.subject(nord.id, "Mathematik")
         val level = world.classLevel(nord.id, "6")
 
-        assertNull(curriculum.updateClassLevel.execute(admin.id, nord.id, level.id, "6", listOf(CurriculumEntry(mathe.id, 1)), level.version).value().warning)
+        assertNull(
+            curriculum.updateClassLevel
+                .execute(
+                    admin.id,
+                    nord.id,
+                    level.id,
+                    "6",
+                    listOf(CurriculumEntry(mathe.id, 1)),
+                    level.version,
+                ).value()
+                .warning,
+        )
     }
 
     @Test
@@ -111,7 +140,15 @@ class CurriculumUseCasesTest {
         world.schoolClass(level, "b")
 
         val proposal = curriculum.proposeClassSuffix.execute(admin.id, nord.id, level.id).value()
-        val created = curriculum.createSchoolClass.execute(admin.id, nord.id, level.id, proposal.suffix!!, SchoolClass.DEFAULT_PRIORITY_WEIGHT).value()
+        val created =
+            curriculum.createSchoolClass
+                .execute(
+                    admin.id,
+                    nord.id,
+                    level.id,
+                    proposal.suffix!!,
+                    SchoolClass.DEFAULT_PRIORITY_WEIGHT,
+                ).value()
 
         assertEquals("c", proposal.suffix)
         assertEquals("6c", created.displayName(level))
@@ -122,7 +159,10 @@ class CurriculumUseCasesTest {
         val level = world.classLevel(nord.id, "6")
         world.schoolClass(level, "a")
 
-        assertEquals(duplicate(SchoolClass.FIELD_SUFFIX), curriculum.createSchoolClass.execute(admin.id, nord.id, level.id, "A", 10).error())
+        assertEquals(
+            duplicate(SchoolClass.FIELD_SUFFIX),
+            curriculum.createSchoolClass.execute(admin.id, nord.id, level.id, "A", 10).error(),
+        )
     }
 
     @Test
@@ -168,7 +208,9 @@ class CurriculumUseCasesTest {
 
         assertEquals(
             blockedBy(Dependant(DependantType.SUBJECT, "Chemie")),
-            world.roomUseCases.deleteFeature.execute(admin.id, nord.id, lab.id).error(),
+            world.roomUseCases.deleteFeature
+                .execute(admin.id, nord.id, lab.id)
+                .error(),
         )
     }
 
@@ -182,8 +224,20 @@ class CurriculumUseCasesTest {
         curriculum.deleteClassLevel.execute(admin.id, nord.id, level.id, level.version).value()
         curriculum.deleteSubject.execute(admin.id, nord.id, mathe.id, mathe.version).value()
 
-        assertEquals(emptyList(), curriculum.listSubjects.execute(admin.id, nord.id).value().subjects)
-        assertEquals(emptyList(), curriculum.listClassLevels.execute(admin.id, nord.id).value().levels)
+        assertEquals(
+            emptyList(),
+            curriculum.listSubjects
+                .execute(admin.id, nord.id)
+                .value()
+                .subjects,
+        )
+        assertEquals(
+            emptyList(),
+            curriculum.listClassLevels
+                .execute(admin.id, nord.id)
+                .value()
+                .levels,
+        )
     }
 
     @Test

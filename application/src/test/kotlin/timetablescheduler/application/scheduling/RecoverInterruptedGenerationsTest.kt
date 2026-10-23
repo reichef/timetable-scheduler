@@ -8,7 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class RecoverInterruptedGenerationsTest {
-
     private val test = SchedulingTestSchool()
     private val world = test.world
 
@@ -16,9 +15,10 @@ class RecoverInterruptedGenerationsTest {
     fun `generations still running at start-up failed with the restart and keep their alternatives`() {
         world.executor.deferred = true
         world.solver.candidates = { listOf(test.complete()) }
-        val generation = assertIs<UseCaseResult.Success<Generation>>(
-            test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1, warningsConfirmed = true)),
-        ).value
+        val generation =
+            assertIs<UseCaseResult.Success<Generation>>(
+                test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1, warningsConfirmed = true)),
+            ).value
         val alternative = world.storeAlternative(generation, test.complete())
 
         val recovered = test.scheduling.recoverInterrupted.execute()

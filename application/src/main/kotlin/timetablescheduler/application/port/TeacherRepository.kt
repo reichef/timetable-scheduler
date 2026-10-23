@@ -15,6 +15,7 @@ interface TeacherRepository {
     fun delete(teacherId: TeacherId)
 
     fun findById(teacherId: TeacherId): Teacher?
+
     fun findBySchool(schoolId: SchoolId): List<Teacher>
 
     /** Short codes are unique in the installation, compared case-insensitively (FR-016). */

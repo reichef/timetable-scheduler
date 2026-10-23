@@ -24,4 +24,7 @@ data class TimeSlot(
 }
 
 /** The slot does not exist on that teaching day, e.g. a shorter Friday (FR-007). */
-data class SlotDayExclusion(val slotId: TimeSlotId, val dayOfWeek: DayOfWeek)
+data class SlotDayExclusion(
+    val slotId: TimeSlotId,
+    val dayOfWeek: DayOfWeek,
+)

@@ -37,15 +37,24 @@ const val QUALIFICATION_FIELD = "subjectId"
 const val SLOT_FIELD = "slot"
 
 fun teachersPath(schoolId: SchoolId) = "/schools/${schoolId.value}/teachers"
+
 fun teacherPath(teacher: Teacher) = "${teachersPath(teacher.schoolId)}/${teacher.id.value}"
 
 /** Form value of one unavailability checkbox, `{dayOfWeek}:{slotId}` as in the route contract. */
 fun Unavailability.formValue() = "${dayOfWeek.name}:${slotId.value}"
 
 /** Entered general data, kept when the form is shown again after an error. */
-data class TeacherFormInput(val name: String, val shortCode: String, val weeklyLoad: String)
+data class TeacherFormInput(
+    val name: String,
+    val shortCode: String,
+    val weeklyLoad: String,
+)
 
-private fun FORM.generalFields(entered: TeacherFormInput?, teachingSlotsPerWeek: Int, texts: UiTexts) {
+private fun FORM.generalFields(
+    entered: TeacherFormInput?,
+    teachingSlotsPerWeek: Int,
+    texts: UiTexts,
+) {
     textField("name", texts.common.name, entered?.name)
     textField("shortCode", texts.teachers.shortCodeLabel, entered?.shortCode)
     textField("weeklyLoad", texts.teachers.loadLabel(teachingSlotsPerWeek), entered?.weeklyLoad, InputType.number)
@@ -62,7 +71,11 @@ suspend fun ApplicationCall.respondTeacherList(
     val texts = texts
     respondPage(texts.teachers.title, status) { session ->
         table {
-            tr { th { +texts.common.name }; th { +texts.teachers.shortCodeColumn }; th { +texts.teachers.loadColumn } }
+            tr {
+                th { +texts.common.name }
+                th { +texts.teachers.shortCodeColumn }
+                th { +texts.teachers.loadColumn }
+            }
             teachers.forEach { teacher ->
                 tr {
                     td { a(href = teacherPath(teacher)) { +teacher.name } }
@@ -82,10 +95,16 @@ suspend fun ApplicationCall.respondTeacherList(
     }
 }
 
-private fun FORM.qualificationCheckboxes(subjects: List<Subject>, teacher: Teacher, texts: UiTexts) {
+private fun FORM.qualificationCheckboxes(
+    subjects: List<Subject>,
+    teacher: Teacher,
+    texts: UiTexts,
+) {
     fieldSet {
         legend { +texts.teachers.subjectsLegend }
-        if (subjects.isEmpty()) p { +texts.teachers.noSubjects }
+        if (subjects.isEmpty()) {
+            p { +texts.teachers.noSubjects }
+        }
         subjects.forEach { subject ->
             label {
                 input(type = InputType.checkBox, name = QUALIFICATION_FIELD) {
@@ -99,13 +118,18 @@ private fun FORM.qualificationCheckboxes(subjects: List<Subject>, teacher: Teach
 }
 
 /** Days × teaching slots; a cell offers a checkbox only where the slot exists on that day (FR-021). */
-private fun FORM.unavailabilityGrid(grid: TimeGrid, teacher: Teacher, texts: UiTexts) {
+private fun FORM.unavailabilityGrid(
+    grid: TimeGrid,
+    teacher: Teacher,
+    texts: UiTexts,
+) {
     val days = grid.teachingDays.sorted()
     val teachingSlots = grid.slots.filter { slot -> days.any { day -> grid.teachingSlotsOn(day).contains(slot) } }
     if (teachingSlots.isEmpty()) {
         p { +texts.teachers.noTeachingSlots }
         return
     }
+
     table {
         tr {
             th { +texts.teachers.slotColumn }
@@ -143,6 +167,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
     val path = teacherPath(teacher)
     respondPage(texts.teachers.teacherTitle(teacher.displayName), status) { session ->
         validationErrors(errors, texts)
+
         h2 { +texts.teachers.general }
         form(action = path, method = FormMethod.post) {
             csrfField(session)
@@ -151,6 +176,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
             generalFields(current, details.timeGrid.teachingSlotsPerWeek(), texts)
             button { +texts.common.save }
         }
+
         h2 { +texts.teachers.qualifications }
         form(action = "$path/qualifications", method = FormMethod.post) {
             csrfField(session)
@@ -158,6 +184,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
             qualificationCheckboxes(details.subjects, teacher, texts)
             button { +texts.teachers.saveQualifications }
         }
+
         h2 { +texts.teachers.unavailabilityTitle }
         form(action = "$path/unavailability", method = FormMethod.post) {
             csrfField(session)
@@ -170,6 +197,7 @@ suspend fun ApplicationCall.respondTeacherDetails(
             hiddenField("version", "${teacher.version}")
             button(classes = "danger") { +texts.teachers.deleteTeacher }
         }
+
         p { a(href = teachersPath(teacher.schoolId)) { +texts.teachers.toTeachers } }
     }
 }

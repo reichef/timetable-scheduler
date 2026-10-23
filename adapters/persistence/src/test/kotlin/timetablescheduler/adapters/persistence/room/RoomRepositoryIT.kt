@@ -13,7 +13,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RoomRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
     private val rooms = ExposedRoomRepository()
     private val features = ExposedRoomFeatureRepository()

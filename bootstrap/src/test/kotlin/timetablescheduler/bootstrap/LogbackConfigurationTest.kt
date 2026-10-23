@@ -9,7 +9,6 @@ import kotlin.test.assertFalse
 
 /** Constitution III: the production logging configuration never lets confidential exception messages through. */
 class LogbackConfigurationTest {
-
     @Test
     fun `Ktor status pages logger stays at WARN even when the root logger is lowered for debugging`() {
         val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger

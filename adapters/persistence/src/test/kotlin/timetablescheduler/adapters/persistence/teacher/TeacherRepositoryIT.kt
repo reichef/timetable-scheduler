@@ -20,7 +20,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TeacherRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
     private val subjects = ExposedSubjectRepository()
     private val teachers = ExposedTeacherRepository()
@@ -29,25 +28,38 @@ class TeacherRepositoryIT : PostgresTestBase() {
     private fun <T> ValidationResult<T>.valid(): T = (this as ValidationResult.Valid).value
 
     private val school = School.create("Gymnasium Nord").valid()
-    private val grid = TimeGrid.empty().withTeachingDays(setOf(MONDAY, FRIDAY))
-        .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING).valid()
-        .withSlotAdded("2. Stunde", LocalTime.of(8, 50), LocalTime.of(9, 35), SlotKind.TEACHING).valid()
+    private val grid =
+        TimeGrid
+            .empty()
+            .withTeachingDays(setOf(MONDAY, FRIDAY))
+            .withSlotAdded("1. Stunde", LocalTime.of(8, 0), LocalTime.of(8, 45), SlotKind.TEACHING)
+            .valid()
+            .withSlotAdded("2. Stunde", LocalTime.of(8, 50), LocalTime.of(9, 35), SlotKind.TEACHING)
+            .valid()
     private val first = grid.slots[0]
     private val second = grid.slots[1]
     private val mathe = Subject.create(school.id, "Mathematik", emptySet(), emptySet()).valid()
     private val chemie = Subject.create(school.id, "Chemie", emptySet(), emptySet()).valid()
 
-    private fun arrangeSchool() = inTransaction {
-        schools.insert(school)
-        schools.saveTimeGrid(school.id, grid)
-        subjects.insert(mathe)
-        subjects.insert(chemie)
-    }
+    private fun arrangeSchool() =
+        inTransaction {
+            schools.insert(school)
+            schools.saveTimeGrid(school.id, grid)
+            subjects.insert(mathe)
+            subjects.insert(chemie)
+        }
 
-    private fun teacher(name: String, shortCode: String): Teacher =
-        Teacher.create(school.id, name, shortCode, weeklyLoad = 2, teachingSlotsPerWeek = 4).valid()
-            .withQualifications(setOf(mathe.id), setOf(mathe.id, chemie.id)).valid()
-            .withUnavailability(setOf(Unavailability(FRIDAY, second.id), Unavailability(MONDAY, first.id)), grid).valid()
+    private fun teacher(
+        name: String,
+        shortCode: String,
+    ): Teacher =
+        Teacher
+            .create(school.id, name, shortCode, weeklyLoad = 2, teachingSlotsPerWeek = 4)
+            .valid()
+            .withQualifications(setOf(mathe.id), setOf(mathe.id, chemie.id))
+            .valid()
+            .withUnavailability(setOf(Unavailability(FRIDAY, second.id), Unavailability(MONDAY, first.id)), grid)
+            .valid()
 
     @Test
     fun `round trip with qualifications and unavailability`() {
@@ -67,8 +79,12 @@ class TeacherRepositoryIT : PostgresTestBase() {
         arrangeSchool()
         val anna = teacher("Anna Schmidt", "SCHA")
         inTransaction { teachers.insert(anna) }
-        val changed = anna.withQualifications(setOf(chemie.id), setOf(mathe.id, chemie.id)).valid()
-            .withUnavailability(emptySet(), grid).valid()
+        val changed =
+            anna
+                .withQualifications(setOf(chemie.id), setOf(mathe.id, chemie.id))
+                .valid()
+                .withUnavailability(emptySet(), grid)
+                .valid()
 
         assertTrue(inTransaction { teachers.update(changed) })
         assertFalse(inTransaction { teachers.update(changed) })

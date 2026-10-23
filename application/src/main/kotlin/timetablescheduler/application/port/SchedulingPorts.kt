@@ -28,7 +28,12 @@ interface SolverListener {
 
 /** Searches timetables for a problem within a time limit (G1, G2); implemented by the solver adapter. */
 interface TimetableSolver {
-    fun solve(problem: SchedulingProblem, timeLimit: Duration, stopSignal: StopSignal, listener: SolverListener)
+    fun solve(
+        problem: SchedulingProblem,
+        timeLimit: Duration,
+        stopSignal: StopSignal,
+        listener: SolverListener,
+    )
 }
 
 /** Runs generations in the background, one after another (G6). */
@@ -39,12 +44,18 @@ fun interface GenerationExecutor {
 /** Generations and their alternatives (FR-022); every call runs inside the caller's transaction. */
 interface GenerationRepository {
     fun insert(generation: Generation)
+
     fun findById(generationId: GenerationId): Generation?
+
     fun findBySchool(schoolId: SchoolId): List<Generation>
+
     fun findRunning(schoolId: SchoolId): Generation?
 
     /** Progress shown while a generation runs (FR-011). */
-    fun updateProgress(generationId: GenerationId, alternativesFound: Int)
+    fun updateProgress(
+        generationId: GenerationId,
+        alternativesFound: Int,
+    )
 
     fun saveEnd(generation: Generation)
 
@@ -52,8 +63,11 @@ interface GenerationRepository {
     fun failRunning(at: Instant): Int
 
     fun addAlternative(alternative: Alternative)
+
     fun removeAlternative(alternativeId: AlternativeId)
+
     fun findAlternatives(generationId: GenerationId): List<Alternative>
+
     fun findAlternative(alternativeId: AlternativeId): Alternative?
 
     /** Removes the generation with its alternatives and snapshots (US4). */
@@ -66,9 +80,23 @@ interface GenerationRepository {
  */
 interface GenerationEventLog {
     fun started(generationId: GenerationId)
-    fun discarded(generationId: GenerationId, candidates: Int)
-    fun finished(generationId: GenerationId, status: GenerationStatus, alternatives: Int, duration: Duration)
-    fun failed(generationId: GenerationId, exceptionClass: String)
+
+    fun discarded(
+        generationId: GenerationId,
+        candidates: Int,
+    )
+
+    fun finished(
+        generationId: GenerationId,
+        status: GenerationStatus,
+        alternatives: Int,
+        duration: Duration,
+    )
+
+    fun failed(
+        generationId: GenerationId,
+        exceptionClass: String,
+    )
 }
 
 /** The school's chosen timetable (FR-021); at most one per school. */
@@ -79,5 +107,8 @@ interface ChosenTimetableRepository {
      * Stores [chosen] as the school's timetable: inserted when [expectedVersion] is null and none exists yet, otherwise
      * replaced if the stored version equals [expectedVersion]. Returns false on a concurrent choice (FR-028).
      */
-    fun save(chosen: ChosenTimetable, expectedVersion: Int?): Boolean
+    fun save(
+        chosen: ChosenTimetable,
+        expectedVersion: Int?,
+    ): Boolean
 }

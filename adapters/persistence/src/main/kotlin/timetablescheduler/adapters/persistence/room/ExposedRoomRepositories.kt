@@ -45,7 +45,6 @@ object RoomHasFeatureTable : Table("room_has_feature") {
 }
 
 class ExposedRoomFeatureRepository : RoomFeatureRepository {
-
     override fun insert(feature: RoomFeature) {
         RoomFeatureTable.insert {
             it[id] = feature.id.value
@@ -59,22 +58,30 @@ class ExposedRoomFeatureRepository : RoomFeatureRepository {
     }
 
     override fun findById(featureId: RoomFeatureId): RoomFeature? =
-        RoomFeatureTable.selectAll().where { RoomFeatureTable.id eq featureId.value }.singleOrNull()?.toFeature()
+        RoomFeatureTable
+            .selectAll()
+            .where { RoomFeatureTable.id eq featureId.value }
+            .singleOrNull()
+            ?.toFeature()
 
     override fun findBySchool(schoolId: SchoolId): List<RoomFeature> =
         RoomFeatureTable.selectAll().where { RoomFeatureTable.schoolId eq schoolId.value }.map { it.toFeature() }
 
-    override fun findByNameIgnoreCase(schoolId: SchoolId, name: String): RoomFeature? =
-        RoomFeatureTable.selectAll()
+    override fun findByNameIgnoreCase(
+        schoolId: SchoolId,
+        name: String,
+    ): RoomFeature? =
+        RoomFeatureTable
+            .selectAll()
             .where { (RoomFeatureTable.schoolId eq schoolId.value) and (RoomFeatureTable.name.lowerCase() eq name.trim().lowercase()) }
-            .singleOrNull()?.toFeature()
+            .singleOrNull()
+            ?.toFeature()
 
     private fun ResultRow.toFeature() =
         RoomFeature(RoomFeatureId(this[RoomFeatureTable.id]), SchoolId(this[RoomFeatureTable.schoolId]), this[RoomFeatureTable.name])
 }
 
 class ExposedRoomRepository : RoomRepository {
-
     override fun insert(room: Room) {
         RoomTable.insert {
             it[id] = room.id.value
@@ -86,11 +93,15 @@ class ExposedRoomRepository : RoomRepository {
     }
 
     override fun update(room: Room): Boolean {
-        val updatedRows = RoomTable.update({ (RoomTable.id eq room.id.value) and (RoomTable.version eq room.version) }) {
-            it[identifier] = room.identifier
-            it[version] = room.version + 1
+        val updatedRows =
+            RoomTable.update({ (RoomTable.id eq room.id.value) and (RoomTable.version eq room.version) }) {
+                it[identifier] = room.identifier
+                it[version] = room.version + 1
+            }
+        if (updatedRows != 1) {
+            return false
         }
-        if (updatedRows != 1) return false
+
         RoomHasFeatureTable.deleteWhere { RoomHasFeatureTable.roomId eq room.id.value }
         insertFeatures(room)
         return true
@@ -101,23 +112,39 @@ class ExposedRoomRepository : RoomRepository {
         RoomTable.deleteWhere { RoomTable.id eq roomId.value }
     }
 
-    override fun findById(roomId: RoomId): Room? = loadRooms(RoomTable.selectAll().where { RoomTable.id eq roomId.value }.toList()).singleOrNull()
+    override fun findById(roomId: RoomId): Room? =
+        loadRooms(
+            RoomTable
+                .selectAll()
+                .where {
+                    RoomTable.id eq roomId.value
+                }.toList(),
+        ).singleOrNull()
 
     override fun findBySchool(schoolId: SchoolId): List<Room> =
         loadRooms(RoomTable.selectAll().where { RoomTable.schoolId eq schoolId.value }.toList())
 
-    override fun findByIdentifierIgnoreCase(schoolId: SchoolId, identifier: String): Room? =
+    override fun findByIdentifierIgnoreCase(
+        schoolId: SchoolId,
+        identifier: String,
+    ): Room? =
         loadRooms(
-            RoomTable.selectAll()
+            RoomTable
+                .selectAll()
                 .where { (RoomTable.schoolId eq schoolId.value) and (RoomTable.identifier.lowerCase() eq identifier.trim().lowercase()) }
                 .toList(),
         ).singleOrNull()
 
     override fun findUsingFeature(featureId: RoomFeatureId): List<Room> {
-        val roomIds = RoomHasFeatureTable.select(RoomHasFeatureTable.roomId)
-            .where { RoomHasFeatureTable.featureId eq featureId.value }
-            .map { it[RoomHasFeatureTable.roomId] }
-        if (roomIds.isEmpty()) return emptyList()
+        val roomIds =
+            RoomHasFeatureTable
+                .select(RoomHasFeatureTable.roomId)
+                .where { RoomHasFeatureTable.featureId eq featureId.value }
+                .map { it[RoomHasFeatureTable.roomId] }
+        if (roomIds.isEmpty()) {
+            return emptyList()
+        }
+
         return loadRooms(RoomTable.selectAll().where { RoomTable.id inList roomIds }.toList())
     }
 
@@ -130,11 +157,16 @@ class ExposedRoomRepository : RoomRepository {
 
     /** Loads the features of all [rows] with one query instead of one per room. */
     private fun loadRooms(rows: List<ResultRow>): List<Room> {
-        if (rows.isEmpty()) return emptyList()
-        val featuresByRoom: Map<UUID, Set<RoomFeatureId>> = RoomHasFeatureTable.selectAll()
-            .where { RoomHasFeatureTable.roomId inList rows.map { it[RoomTable.id] } }
-            .groupBy({ it[RoomHasFeatureTable.roomId] }, { RoomFeatureId(it[RoomHasFeatureTable.featureId]) })
-            .mapValues { it.value.toSet() }
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
+
+        val featuresByRoom: Map<UUID, Set<RoomFeatureId>> =
+            RoomHasFeatureTable
+                .selectAll()
+                .where { RoomHasFeatureTable.roomId inList rows.map { it[RoomTable.id] } }
+                .groupBy({ it[RoomHasFeatureTable.roomId] }, { RoomFeatureId(it[RoomHasFeatureTable.featureId]) })
+                .mapValues { it.value.toSet() }
         return rows.map { row ->
             Room(
                 id = RoomId(row[RoomTable.id]),

@@ -20,10 +20,16 @@ data class Subject(
     val version: Int,
 ) {
     /** [schoolFeatures] are the room features of this subject's school; others are rejected. */
-    fun update(newName: String, newRequiredFeatureIds: Set<RoomFeatureId>, schoolFeatures: Set<RoomFeatureId>): ValidationResult<Subject> {
+    fun update(
+        newName: String,
+        newRequiredFeatureIds: Set<RoomFeatureId>,
+        schoolFeatures: Set<RoomFeatureId>,
+    ): ValidationResult<Subject> {
         val validation = ValidationCollector()
         val validName = validation.requiredText(FIELD_NAME, newName, NAME_MAX_LENGTH)
-        if (!schoolFeatures.containsAll(newRequiredFeatureIds)) validation.add(ValidationError.InvalidReference(FIELD_FEATURES))
+        if (!schoolFeatures.containsAll(newRequiredFeatureIds)) {
+            validation.add(ValidationError.InvalidReference(FIELD_FEATURES))
+        }
         return validation.result { copy(name = validName, requiredFeatureIds = newRequiredFeatureIds) }
     }
 

@@ -15,7 +15,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class SchoolUseCasesTest {
-
     private val world = MasterDataWorld()
     private val nord = world.school("Gymnasium Nord")
     private val admin = world.planner("admin", nord.id)
@@ -85,6 +84,13 @@ class SchoolUseCasesTest {
     fun `slot helper adds teaching slot`() {
         world.slot(nord.id, "Pause", "09:35", "09:55", SlotKind.BREAK)
 
-        assertEquals(LocalTime.of(9, 35), world.schools.findTimeGrid(nord.id).slots.single().startTime)
+        assertEquals(
+            LocalTime.of(9, 35),
+            world.schools
+                .findTimeGrid(nord.id)
+                .slots
+                .single()
+                .startTime,
+        )
     }
 }

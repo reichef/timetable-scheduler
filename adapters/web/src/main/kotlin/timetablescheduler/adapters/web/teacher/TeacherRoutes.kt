@@ -39,7 +39,9 @@ private suspend fun ApplicationCall.teacherIdParameter(): TeacherId? = idParamet
 private fun Parameters.teacherInput() = TeacherFormInput(text("name"), text("shortCode"), text("weeklyLoad"))
 
 /** Parses the general-data form; a load that is no whole number is reported like a business-rule violation. */
-private fun Parameters.parseGeneralData(save: (name: String, shortCode: String, weeklyLoad: Int) -> UseCaseResult<Teacher>): UseCaseResult<Teacher> {
+private fun Parameters.parseGeneralData(
+    save: (name: String, shortCode: String, weeklyLoad: Int) -> UseCaseResult<Teacher>,
+): UseCaseResult<Teacher> {
     val input = FormInput(this)
     val weeklyLoad = input.int("weeklyLoad") ?: return UseCaseResult.Failure(ApplicationError.Invalid(input.errors))
     return save(text("name"), text("shortCode"), weeklyLoad)
@@ -47,11 +49,13 @@ private fun Parameters.parseGeneralData(save: (name: String, shortCode: String, 
 
 /** Reads `{dayOfWeek}:{slotId}` checkbox values; null if any value is malformed. */
 private fun Parameters.unavailability(): Set<Unavailability>? =
-    getAll(SLOT_FIELD).orEmpty().map { value ->
-        val day = DayOfWeek.entries.firstOrNull { it.name == value.substringBefore(':') } ?: return null
-        val slotId = runCatching { UUID.fromString(value.substringAfter(':')) }.getOrNull() ?: return null
-        Unavailability(day, TimeSlotId(slotId))
-    }.toSet()
+    getAll(SLOT_FIELD)
+        .orEmpty()
+        .map { value ->
+            val day = DayOfWeek.entries.firstOrNull { it.name == value.substringBefore(':') } ?: return null
+            val slotId = runCatching { UUID.fromString(value.substringAfter(':')) }.getOrNull() ?: return null
+            Unavailability(day, TimeSlotId(slotId))
+        }.toSet()
 
 private suspend fun ApplicationCall.showTeacherAgain(
     teachers: TeacherUseCases,
@@ -97,7 +101,9 @@ fun Route.teacherRoutes(dependencies: WebDependencies) {
             call.respondFormResult(
                 form.parseGeneralData { name, shortCode, load -> teachers.create.execute(call.actor, schoolId, name, shortCode, load) },
                 backLink = teachersPath(schoolId),
-                onInvalid = { errors -> call.respondTeacherListPage(schoolId, errors, form.teacherInput(), HttpStatusCode.UnprocessableEntity) },
+                onInvalid = { errors ->
+                    call.respondTeacherListPage(schoolId, errors, form.teacherInput(), HttpStatusCode.UnprocessableEntity)
+                },
             ) { call.seeOther(teacherPath(it)) }
         }
 
@@ -137,8 +143,13 @@ fun Route.teacherRoutes(dependencies: WebDependencies) {
             val teacherId = call.teacherIdParameter() ?: return@post
             val form = call.receiveCheckedForm()
             val entries = form.unavailability()
-            val result = if (entries == null) UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(SLOT_FIELD))))
-            else teachers.updateUnavailability.execute(call.actor, schoolId, teacherId, entries, form.version())
+            val result =
+                if (entries == null) {
+                    UseCaseResult.Failure(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(SLOT_FIELD))))
+                } else {
+                    teachers.updateUnavailability.execute(call.actor, schoolId, teacherId, entries, form.version())
+                }
+
             call.respondFormResult(
                 result,
                 backLink = "${teachersPath(schoolId)}/${teacherId.value}",

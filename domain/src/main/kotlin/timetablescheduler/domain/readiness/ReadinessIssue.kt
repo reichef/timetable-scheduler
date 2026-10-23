@@ -13,26 +13,47 @@ import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
  */
 sealed interface ReadinessIssue {
     /** `SUBJECT_NO_SUITABLE_ROOM`: no room offers all required features; [missingFeatureIds] are offered by no room at all. */
-    data class SubjectNoSuitableRoom(val subjectId: SubjectId, val missingFeatureIds: Set<RoomFeatureId>) : ReadinessIssue
+    data class SubjectNoSuitableRoom(
+        val subjectId: SubjectId,
+        val missingFeatureIds: Set<RoomFeatureId>,
+    ) : ReadinessIssue
 
     /** `SUBJECT_NO_QUALIFIED_TEACHER` */
-    data class SubjectNoQualifiedTeacher(val subjectId: SubjectId) : ReadinessIssue
+    data class SubjectNoQualifiedTeacher(
+        val subjectId: SubjectId,
+    ) : ReadinessIssue
 
     /** `SUBJECT_TEACHER_CAPACITY_SHORTFALL` */
-    data class SubjectTeacherCapacityShortfall(val subjectId: SubjectId, val shortfallPeriods: Int) : ReadinessIssue
+    data class SubjectTeacherCapacityShortfall(
+        val subjectId: SubjectId,
+        val shortfallPeriods: Int,
+    ) : ReadinessIssue
 
     /** `LEVEL_EXCEEDS_GRID` */
-    data class LevelExceedsGrid(val classLevelId: ClassLevelId, val excessPeriods: Int) : ReadinessIssue
+    data class LevelExceedsGrid(
+        val classLevelId: ClassLevelId,
+        val excessPeriods: Int,
+    ) : ReadinessIssue
 
     /** `TEACHER_WITHOUT_QUALIFICATION` */
-    data class TeacherWithoutQualification(val teacherId: TeacherId) : ReadinessIssue
+    data class TeacherWithoutQualification(
+        val teacherId: TeacherId,
+    ) : ReadinessIssue
 
     /** `TEACHER_ZERO_LOAD` */
-    data class TeacherZeroLoad(val teacherId: TeacherId) : ReadinessIssue
+    data class TeacherZeroLoad(
+        val teacherId: TeacherId,
+    ) : ReadinessIssue
 
     /** `TEACHER_LOAD_EXCEEDS_GRID` */
-    data class TeacherLoadExceedsGrid(val teacherId: TeacherId, val excessPeriods: Int) : ReadinessIssue
+    data class TeacherLoadExceedsGrid(
+        val teacherId: TeacherId,
+        val excessPeriods: Int,
+    ) : ReadinessIssue
 
     /** `INVALID_TEACHER_FIXATION` (002 FR-013a): a fixation no longer fits the master data; blocks generations. */
-    data class InvalidTeacherFixation(val fixationId: TeacherFixationId, val reason: FixationInvalidity) : ReadinessIssue
+    data class InvalidTeacherFixation(
+        val fixationId: TeacherFixationId,
+        val reason: FixationInvalidity,
+    ) : ReadinessIssue
 }

@@ -15,7 +15,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class GenerationInfrastructureTest {
-
     @Test
     fun `generations run one after another on a single background thread (G6)`() {
         val executor = SingleThreadGenerationExecutor()

@@ -13,7 +13,9 @@ import java.time.DayOfWeek.TUESDAY
  * A small ready school for scheduling use case tests: two days with two teaching slots, one class 5a with
  * Mathematics 2 periods, teachers SCHA (load 4) and MUEL (load 4), rooms A-101 and B-102.
  */
-class SchedulingTestSchool(val world: MasterDataWorld = MasterDataWorld()) {
+class SchedulingTestSchool(
+    val world: MasterDataWorld = MasterDataWorld(),
+) {
     val school = world.school("Gymnasium Nord")
     val admin = world.planner("admin", school.id)
     val teacherAccount = world.account("lehrer1", Role.TEACHER, school.id)
@@ -36,8 +38,11 @@ class SchedulingTestSchool(val world: MasterDataWorld = MasterDataWorld()) {
 
     val scheduling get() = world.useCases.scheduling
 
-    fun mathLesson(teacher: timetablescheduler.domain.teacher.Teacher = schmidt, day: java.time.DayOfWeek = MONDAY, early: Boolean = true) =
-        LessonAssignment(class5a.id, math.id, teacher.id, roomA.id, DaySlot(day, if (early) first.id else second.id))
+    fun mathLesson(
+        teacher: timetablescheduler.domain.teacher.Teacher = schmidt,
+        day: java.time.DayOfWeek = MONDAY,
+        early: Boolean = true,
+    ) = LessonAssignment(class5a.id, math.id, teacher.id, roomA.id, DaySlot(day, if (early) first.id else second.id))
 
     /** Both periods placed, taught by [teacher]. */
     fun complete(teacher: timetablescheduler.domain.teacher.Teacher = schmidt) =

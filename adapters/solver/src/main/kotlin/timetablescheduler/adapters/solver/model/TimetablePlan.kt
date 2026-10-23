@@ -1,8 +1,8 @@
 package timetablescheduler.adapters.solver.model
 
+import ai.timefold.solver.core.api.domain.common.PlanningId
 import ai.timefold.solver.core.api.domain.entity.PlanningEntity
 import ai.timefold.solver.core.api.domain.entity.PlanningPin
-import ai.timefold.solver.core.api.domain.common.PlanningId
 import ai.timefold.solver.core.api.domain.solution.PlanningEntityCollectionProperty
 import ai.timefold.solver.core.api.domain.solution.PlanningScore
 import ai.timefold.solver.core.api.domain.solution.PlanningSolution
@@ -21,6 +21,7 @@ import timetablescheduler.domain.scheduling.constraint.AppliedConstraint
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
 import timetablescheduler.domain.scheduling.constraint.RuleViolations
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
+import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.scheduling.solution.LessonAssignment
 import java.time.DayOfWeek
 
@@ -28,11 +29,18 @@ import java.time.DayOfWeek
 // solution cloner; problem facts are immutable. None of these types leaves the solver adapter.
 
 /** A teaching slot of the week; [weekIndex] orders all teaching slots, [dayPosition] counts slots incl. breaks. */
-data class TimeslotFact(val weekIndex: Int, val daySlot: DaySlot, val dayPosition: Int) {
+data class TimeslotFact(
+    val weekIndex: Int,
+    val daySlot: DaySlot,
+    val dayPosition: Int,
+) {
     val day: DayOfWeek get() = daySlot.day
 }
 
-data class RoomFact(val id: RoomId, val featureIds: Set<RoomFeatureId>)
+data class RoomFact(
+    val id: RoomId,
+    val featureIds: Set<RoomFeatureId>,
+)
 
 /** A teacher; [unavailableWeekIndices] are the timeslots in which the teacher cannot teach (001 FR-021). */
 data class TeacherFact(
@@ -43,7 +51,10 @@ data class TeacherFact(
 )
 
 /** The class of a course with its normalized fill weight: priority / Σ (priority · required periods) (G3). */
-data class ClassFact(val id: SchoolClassId, val priorityWeight: Int)
+data class ClassFact(
+    val id: SchoolClassId,
+    val priorityWeight: Int,
+)
 
 /**
  * The weights of the current solver pass (G2) in objective order — class fill, teacher load usage, the soft
@@ -86,25 +97,34 @@ class AppliedRuleFact(
     val isHard: Boolean get() = applied.constraint.isHard
 
     /** Rules about one class are joined by class; all others are matched lesson by lesson. */
-    val classKey: SchoolClassId? = when (val rule = applied.rule) {
-        is ConstraintRule.TeacherMaxPeriodsPerDay, is ConstraintRule.TeacherMaxGapsPerDay, is ConstraintRule.TeacherExcludedSlots -> null
-        is ConstraintRule.SubjectExcludedSlots -> rule.classId
-        is ConstraintRule.SubjectDoublePeriodsInClass -> rule.classId
-        is ConstraintRule.ClassExcludedSlots -> rule.classId
-        else -> applied.classId
-    }
+    val classKey: SchoolClassId? =
+        when (val rule = applied.rule) {
+            is ConstraintRule.TeacherMaxPeriodsPerDay,
+            is ConstraintRule.TeacherMaxGapsPerDay,
+            is ConstraintRule.TeacherExcludedSlots,
+            -> null
+
+            is ConstraintRule.SubjectExcludedSlots -> rule.classId
+
+            is ConstraintRule.SubjectDoublePeriodsInClass -> rule.classId
+
+            is ConstraintRule.ClassExcludedSlots -> rule.classId
+
+            else -> applied.classId
+        }
 
     /** Whether a placed lesson of [course] can count for this rule. */
-    fun covers(course: CourseAssignment): Boolean = when (val rule = applied.rule) {
-        is ConstraintRule.TeacherMaxPeriodsPerDay -> course.teacher?.id == rule.teacherId
-        is ConstraintRule.TeacherMaxGapsPerDay -> course.teacher?.id == rule.teacherId
-        is ConstraintRule.TeacherExcludedSlots -> course.teacher?.id == rule.teacherId
-        is ConstraintRule.SubjectExcludedSlots -> course.subjectId == rule.subjectId && (rule.classId == null || course.classFact.id == rule.classId)
-        is ConstraintRule.SubjectDoublePeriodsInClass -> course.classFact.id == rule.classId && course.subjectId == rule.subjectId
-        is ConstraintRule.SubjectMaxPerDayInClass -> course.classFact.id == applied.classId && course.subjectId == applied.subjectId
-        is ConstraintRule.ClassExcludedSlots -> course.classFact.id == rule.classId
-        else -> course.classFact.id == applied.classId
-    }
+    fun covers(course: CourseAssignment): Boolean =
+        when (val rule = applied.rule) {
+            is ConstraintRule.TeacherMaxPeriodsPerDay -> course.teacher?.id == rule.teacherId
+            is ConstraintRule.TeacherMaxGapsPerDay -> course.teacher?.id == rule.teacherId
+            is ConstraintRule.TeacherExcludedSlots -> course.teacher?.id == rule.teacherId
+            is ConstraintRule.SubjectExcludedSlots -> rule.appliesTo(CourseKey(course.classFact.id, course.subjectId))
+            is ConstraintRule.SubjectDoublePeriodsInClass -> course.classFact.id == rule.classId && course.subjectId == rule.subjectId
+            is ConstraintRule.SubjectMaxPerDayInClass -> course.classFact.id == applied.classId && course.subjectId == applied.subjectId
+            is ConstraintRule.ClassExcludedSlots -> course.classFact.id == rule.classId
+            else -> course.classFact.id == applied.classId
+        }
 
     fun violations(lessons: List<LessonAssignment>): Int = RuleViolations.of(applied, problem, lessons).count
 
@@ -197,7 +217,7 @@ class LessonPlacement() {
 }
 
 @PlanningSolution
-class TimetablePlan() {
+class TimetablePlan {
     @field:ProblemFactCollectionProperty
     @field:ValueRangeProvider(id = "timeslots")
     var timeslots: List<TimeslotFact> = emptyList()

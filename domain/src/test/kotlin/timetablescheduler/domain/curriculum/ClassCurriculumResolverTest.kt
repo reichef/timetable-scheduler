@@ -8,13 +8,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class ClassCurriculumResolverTest {
-
     private val mathe = SubjectId.new()
     private val deutsch = SubjectId.new()
     private val schoolSubjects = setOf(mathe, deutsch)
-    private val level6 = (ClassLevel.create(SchoolId.new(), "6") as ValidationResult.Valid).value
-        .update("6", listOf(CurriculumEntry(mathe, 4), CurriculumEntry(deutsch, 4)), schoolSubjects)
-        .let { (it as ValidationResult.Valid).value }
+    private val level6 =
+        (ClassLevel.create(SchoolId.new(), "6") as ValidationResult.Valid)
+            .value
+            .update("6", listOf(CurriculumEntry(mathe, 4), CurriculumEntry(deutsch, 4)), schoolSubjects)
+            .let { (it as ValidationResult.Valid).value }
     private val class6a = (SchoolClass.create(level6.id, "a") as ValidationResult.Valid).value
 
     @Test

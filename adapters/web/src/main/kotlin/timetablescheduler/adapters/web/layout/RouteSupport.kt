@@ -16,7 +16,9 @@ import java.util.UUID
 /** Reads an id from the URL; a malformed id is answered like an unknown one (404) and yields null. */
 suspend fun ApplicationCall.idParameter(name: String): UUID? {
     val id = parameters[name]?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-    if (id == null) respondBusinessFailure(ApplicationError.NotFound)
+    if (id == null) {
+        respondBusinessFailure(ApplicationError.NotFound)
+    }
     return id
 }
 
@@ -43,10 +45,17 @@ suspend fun <T> ApplicationCall.respondFormResult(
     onSuccess: suspend (T) -> Unit,
 ) {
     when (result) {
-        is UseCaseResult.Success -> onSuccess(result.value)
+        is UseCaseResult.Success -> {
+            onSuccess(result.value)
+        }
+
         is UseCaseResult.Failure -> {
             val error = result.error
-            if (error is ApplicationError.Invalid) onInvalid(error.errors) else respondBusinessFailure(error, backLink)
+            if (error is ApplicationError.Invalid) {
+                onInvalid(error.errors)
+            } else {
+                respondBusinessFailure(error, backLink)
+            }
         }
     }
 }
@@ -62,7 +71,9 @@ fun Parameters.daysOfWeek(name: String): Set<DayOfWeek> =
     getAll(name).orEmpty().mapNotNull { day -> DayOfWeek.entries.firstOrNull { it.name == day } }.toSet()
 
 /** Collects form-format problems (not business rules) before a use case is called. */
-class FormInput(val form: Parameters) {
+class FormInput(
+    val form: Parameters,
+) {
     val errors = mutableListOf<ValidationError>()
 
     fun time(name: String): LocalTime? =
@@ -73,10 +84,11 @@ class FormInput(val form: Parameters) {
             null
         }
 
-    fun int(name: String): Int? = form[name]?.trim()?.toIntOrNull() ?: run {
-        errors += ValidationError.InvalidFormat(name)
-        null
-    }
+    fun int(name: String): Int? =
+        form[name]?.trim()?.toIntOrNull() ?: run {
+            errors += ValidationError.InvalidFormat(name)
+            null
+        }
 
     inline fun <reified E : Enum<E>> enum(name: String): E? =
         enumValues<E>().firstOrNull { it.name == form[name] } ?: run {
@@ -85,6 +97,9 @@ class FormInput(val form: Parameters) {
         }
 }
 
-fun FORM.hiddenField(name: String, fieldValue: String) {
+fun FORM.hiddenField(
+    name: String,
+    fieldValue: String,
+) {
     input(type = InputType.hidden, name = name) { value = fieldValue }
 }

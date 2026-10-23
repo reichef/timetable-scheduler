@@ -27,7 +27,6 @@ import timetablescheduler.domain.scheduling.constraint.TeacherFixation
 import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 
 class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
-
     override fun insert(constraint: SchedulingConstraint) {
         val columns = RuleColumns.of(constraint.rule)
         SchedulingConstraintTable.insert {
@@ -50,24 +49,29 @@ class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
 
     override fun update(constraint: SchedulingConstraint): Boolean {
         val columns = RuleColumns.of(constraint.rule)
-        val updatedRows = SchedulingConstraintTable.update({
-            (SchedulingConstraintTable.id eq constraint.id.value) and (SchedulingConstraintTable.version eq constraint.version)
-        }) {
-            it[type] = columns.type.name
-            it[kind] = constraint.kind.name
-            it[weight] = constraint.weight?.name
-            it[active] = constraint.active
-            it[allClasses] = columns.allClasses
-            it[classId] = columns.classId
-            it[teacherId] = columns.teacherId
-            it[subjectId] = columns.subjectId
-            it[limitValue] = columns.limit
-            it[acrossBreaks] = columns.acrossBreaks
-            it[version] = constraint.version + 1
+        val updatedRows =
+            SchedulingConstraintTable.update({
+                (SchedulingConstraintTable.id eq constraint.id.value) and (SchedulingConstraintTable.version eq constraint.version)
+            }) {
+                it[type] = columns.type.name
+                it[kind] = constraint.kind.name
+                it[weight] = constraint.weight?.name
+                it[active] = constraint.active
+                it[allClasses] = columns.allClasses
+                it[classId] = columns.classId
+                it[teacherId] = columns.teacherId
+                it[subjectId] = columns.subjectId
+                it[limitValue] = columns.limit
+                it[acrossBreaks] = columns.acrossBreaks
+                it[version] = constraint.version + 1
+            }
+        if (updatedRows != 1) {
+            return false
         }
-        if (updatedRows != 1) return false
+
         SchedulingConstraintSlotTable.deleteWhere { SchedulingConstraintSlotTable.constraintId eq constraint.id.value }
         insertSlots(constraint.id, columns)
+
         return true
     }
 
@@ -80,21 +84,29 @@ class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
 
     override fun findBySchool(schoolId: SchoolId): List<SchedulingConstraint> = load(SchedulingConstraintTable.schoolId eq schoolId.value)
 
-    override fun findReferencingClass(classId: SchoolClassId): List<SchedulingConstraint> = load(SchedulingConstraintTable.classId eq classId.value)
+    override fun findReferencingClass(classId: SchoolClassId): List<SchedulingConstraint> =
+        load(SchedulingConstraintTable.classId eq classId.value)
 
-    override fun findReferencingTeacher(teacherId: TeacherId): List<SchedulingConstraint> = load(SchedulingConstraintTable.teacherId eq teacherId.value)
+    override fun findReferencingTeacher(teacherId: TeacherId): List<SchedulingConstraint> =
+        load(SchedulingConstraintTable.teacherId eq teacherId.value)
 
-    override fun findReferencingSubject(subjectId: SubjectId): List<SchedulingConstraint> = load(SchedulingConstraintTable.subjectId eq subjectId.value)
+    override fun findReferencingSubject(subjectId: SubjectId): List<SchedulingConstraint> =
+        load(SchedulingConstraintTable.subjectId eq subjectId.value)
 
     override fun findReferencingSlot(slotId: TimeSlotId): List<SchedulingConstraint> {
-        val ids = SchedulingConstraintSlotTable.select(SchedulingConstraintSlotTable.constraintId)
-            .where { SchedulingConstraintSlotTable.slotId eq slotId.value }
-            .map { it[SchedulingConstraintSlotTable.constraintId] }
-            .distinct()
+        val ids =
+            SchedulingConstraintSlotTable
+                .select(SchedulingConstraintSlotTable.constraintId)
+                .where { SchedulingConstraintSlotTable.slotId eq slotId.value }
+                .map { it[SchedulingConstraintSlotTable.constraintId] }
+                .distinct()
         return if (ids.isEmpty()) emptyList() else load(SchedulingConstraintTable.id inList ids)
     }
 
-    private fun insertSlots(constraintId: SchedulingConstraintId, columns: RuleColumns) {
+    private fun insertSlots(
+        constraintId: SchedulingConstraintId,
+        columns: RuleColumns,
+    ) {
         SchedulingConstraintSlotTable.batchInsert(columns.slots) { slot ->
             this[SchedulingConstraintSlotTable.constraintId] = constraintId.value
             this[SchedulingConstraintSlotTable.dayOfWeek] = slot.day.name
@@ -105,27 +117,33 @@ class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
     /** Loads the constraints matching [condition] with their slots in one further query. */
     private fun load(condition: Op<Boolean>): List<SchedulingConstraint> {
         val rows = SchedulingConstraintTable.selectAll().where { condition }.toList()
-        if (rows.isEmpty()) return emptyList()
-        val slotsByConstraint = SchedulingConstraintSlotTable.selectAll()
-            .where { SchedulingConstraintSlotTable.constraintId inList rows.map { it[SchedulingConstraintTable.id] } }
-            .groupBy(
-                { it[SchedulingConstraintSlotTable.constraintId] },
-                { RuleColumns.slotOf(it[SchedulingConstraintSlotTable.dayOfWeek], it[SchedulingConstraintSlotTable.slotId]) },
-            )
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
+
+        val slotsByConstraint =
+            SchedulingConstraintSlotTable
+                .selectAll()
+                .where { SchedulingConstraintSlotTable.constraintId inList rows.map { it[SchedulingConstraintTable.id] } }
+                .groupBy(
+                    { it[SchedulingConstraintSlotTable.constraintId] },
+                    { RuleColumns.slotOf(it[SchedulingConstraintSlotTable.dayOfWeek], it[SchedulingConstraintSlotTable.slotId]) },
+                )
         return rows.map { it.toConstraint(slotsByConstraint[it[SchedulingConstraintTable.id]].orEmpty().toSet()) }
     }
 
     private fun ResultRow.toConstraint(slots: Set<timetablescheduler.domain.scheduling.DaySlot>): SchedulingConstraint {
-        val columns = RuleColumns(
-            type = ConstraintType.valueOf(this[SchedulingConstraintTable.type]),
-            allClasses = this[SchedulingConstraintTable.allClasses],
-            classId = this[SchedulingConstraintTable.classId],
-            teacherId = this[SchedulingConstraintTable.teacherId],
-            subjectId = this[SchedulingConstraintTable.subjectId],
-            limit = this[SchedulingConstraintTable.limitValue],
-            acrossBreaks = this[SchedulingConstraintTable.acrossBreaks],
-            slots = slots,
-        )
+        val columns =
+            RuleColumns(
+                type = ConstraintType.valueOf(this[SchedulingConstraintTable.type]),
+                allClasses = this[SchedulingConstraintTable.allClasses],
+                classId = this[SchedulingConstraintTable.classId],
+                teacherId = this[SchedulingConstraintTable.teacherId],
+                subjectId = this[SchedulingConstraintTable.subjectId],
+                limit = this[SchedulingConstraintTable.limitValue],
+                acrossBreaks = this[SchedulingConstraintTable.acrossBreaks],
+                slots = slots,
+            )
         return SchedulingConstraint(
             id = SchedulingConstraintId(this[SchedulingConstraintTable.id]),
             schoolId = SchoolId(this[SchedulingConstraintTable.schoolId]),
@@ -139,7 +157,6 @@ class ExposedSchedulingConstraintRepository : SchedulingConstraintRepository {
 }
 
 class ExposedTeacherFixationRepository : TeacherFixationRepository {
-
     override fun insert(fixation: TeacherFixation) {
         TeacherFixationTable.insert {
             it[id] = fixation.id.value
@@ -152,7 +169,9 @@ class ExposedTeacherFixationRepository : TeacherFixationRepository {
     }
 
     override fun update(fixation: TeacherFixation): Boolean =
-        TeacherFixationTable.update({ (TeacherFixationTable.id eq fixation.id.value) and (TeacherFixationTable.version eq fixation.version) }) {
+        TeacherFixationTable.update(
+            { (TeacherFixationTable.id eq fixation.id.value) and (TeacherFixationTable.version eq fixation.version) },
+        ) {
             it[teacherId] = fixation.teacherId.value
             it[version] = fixation.version + 1
         } == 1
@@ -161,12 +180,21 @@ class ExposedTeacherFixationRepository : TeacherFixationRepository {
         TeacherFixationTable.deleteWhere { TeacherFixationTable.id eq fixationId.value }
     }
 
-    override fun findById(fixationId: TeacherFixationId): TeacherFixation? = load(TeacherFixationTable.id eq fixationId.value).singleOrNull()
+    override fun findById(fixationId: TeacherFixationId): TeacherFixation? =
+        load(TeacherFixationTable.id eq fixationId.value).singleOrNull()
+
     override fun findBySchool(schoolId: SchoolId): List<TeacherFixation> = load(TeacherFixationTable.schoolId eq schoolId.value)
-    override fun findByCourse(classId: SchoolClassId, subjectId: SubjectId): TeacherFixation? =
+
+    override fun findByCourse(
+        classId: SchoolClassId,
+        subjectId: SubjectId,
+    ): TeacherFixation? =
         load((TeacherFixationTable.classId eq classId.value) and (TeacherFixationTable.subjectId eq subjectId.value)).singleOrNull()
+
     override fun findByClass(classId: SchoolClassId): List<TeacherFixation> = load(TeacherFixationTable.classId eq classId.value)
+
     override fun findByTeacher(teacherId: TeacherId): List<TeacherFixation> = load(TeacherFixationTable.teacherId eq teacherId.value)
+
     override fun findBySubject(subjectId: SubjectId): List<TeacherFixation> = load(TeacherFixationTable.subjectId eq subjectId.value)
 
     private fun load(condition: Op<Boolean>): List<TeacherFixation> =

@@ -9,7 +9,11 @@ import timetablescheduler.domain.scheduling.problem.SchedulingProblem
  * A constraint as it applies to one target: class-related rules apply per class ([classId]); the subject daily limit
  * applies per class and subject ([subjectId]); teacher and exclusion rules carry their targets in the rule.
  */
-data class AppliedConstraint(val constraint: SchedulingConstraint, val classId: SchoolClassId?, val subjectId: SubjectId?) {
+data class AppliedConstraint(
+    val constraint: SchedulingConstraint,
+    val classId: SchoolClassId?,
+    val subjectId: SubjectId?,
+) {
     val rule: ConstraintRule get() = constraint.rule
 }
 
@@ -20,25 +24,39 @@ data class AppliedConstraint(val constraint: SchedulingConstraint, val classId: 
  * only for that subject; a class's limit for every subject replaces them for all its subjects not limited individually.
  */
 object EffectiveConstraints {
-
     fun resolve(problem: SchedulingProblem): List<AppliedConstraint> {
         val active = problem.constraints.filter { it.active }
         return active.flatMap { constraint ->
             when (val rule = constraint.rule) {
-                is ConstraintRule.SubjectMaxPerDayInClass -> subjectLimitTargets(constraint, rule, active, problem)
-                else -> when (val scope = rule.classScope) {
-                    null -> listOf(AppliedConstraint(constraint, null, null))
-                    is ClassScope.SpecificClass -> listOf(AppliedConstraint(constraint, scope.classId, null))
-                    ClassScope.AllClasses -> problem.classes
-                        .filterNot { schoolClass -> active.hasOwnConstraint(rule.type, schoolClass.id) }
-                        .map { AppliedConstraint(constraint, it.id, null) }
+                is ConstraintRule.SubjectMaxPerDayInClass -> {
+                    subjectLimitTargets(constraint, rule, active, problem)
+                }
+
+                else -> {
+                    when (val scope = rule.classScope) {
+                        null -> {
+                            listOf(AppliedConstraint(constraint, null, null))
+                        }
+
+                        is ClassScope.SpecificClass -> {
+                            listOf(AppliedConstraint(constraint, scope.classId, null))
+                        }
+
+                        ClassScope.AllClasses -> {
+                            problem.classes
+                                .filterNot { schoolClass -> active.hasOwnConstraint(rule.type, schoolClass.id) }
+                                .map { AppliedConstraint(constraint, it.id, null) }
+                        }
+                    }
                 }
             }
         }
     }
 
-    private fun List<SchedulingConstraint>.hasOwnConstraint(type: ConstraintType, classId: SchoolClassId): Boolean =
-        any { it.rule.type == type && it.rule.classScope == ClassScope.SpecificClass(classId) }
+    private fun List<SchedulingConstraint>.hasOwnConstraint(
+        type: ConstraintType,
+        classId: SchoolClassId,
+    ): Boolean = any { it.rule.type == type && it.rule.classScope == ClassScope.SpecificClass(classId) }
 
     private fun subjectLimitTargets(
         constraint: SchedulingConstraint,
@@ -47,14 +65,19 @@ object EffectiveConstraints {
         problem: SchedulingProblem,
     ): List<AppliedConstraint> {
         val classLimits = active.map { it.rule }.filterIsInstance<ConstraintRule.SubjectMaxPerDayInClass>()
-        fun ownLimitFor(classId: SchoolClassId, subjectId: SubjectId?) =
-            classLimits.any { it.scope == ClassScope.SpecificClass(classId) && it.subjectId == subjectId }
-        val classes = when (val scope = rule.scope) {
-            ClassScope.AllClasses -> problem.classes
-            is ClassScope.SpecificClass -> listOfNotNull(problem.schoolClass(scope.classId))
-        }
+
+        fun ownLimitFor(
+            classId: SchoolClassId,
+            subjectId: SubjectId?,
+        ) = classLimits.any { it.scope == ClassScope.SpecificClass(classId) && it.subjectId == subjectId }
+        val classes =
+            when (val scope = rule.scope) {
+                ClassScope.AllClasses -> problem.classes
+                is ClassScope.SpecificClass -> listOfNotNull(problem.schoolClass(scope.classId))
+            }
         return classes.flatMap { schoolClass ->
-            schoolClass.curriculum.map { it.subjectId }
+            schoolClass.curriculum
+                .map { it.subjectId }
                 .filter { subjectId -> rule.subjectId == null || rule.subjectId == subjectId }
                 .filterNot { subjectId ->
                     when {
@@ -62,8 +85,7 @@ object EffectiveConstraints {
                         rule.subjectId == null -> ownLimitFor(schoolClass.id, subjectId)
                         else -> false
                     }
-                }
-                .map { subjectId -> AppliedConstraint(constraint, schoolClass.id, subjectId) }
+                }.map { subjectId -> AppliedConstraint(constraint, schoolClass.id, subjectId) }
         }
     }
 }
@@ -72,10 +94,19 @@ object EffectiveConstraints {
 object DefaultConstraints {
     const val DEFAULT_SUBJECT_LIMIT = 2
 
-    fun forSchool(schoolId: SchoolId): List<SchedulingConstraint> = listOf(
-        ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, DEFAULT_SUBJECT_LIMIT),
-        ConstraintRule.ClassNoGaps(ClassScope.AllClasses),
-    ).map { rule ->
-        SchedulingConstraint(SchedulingConstraintId.new(), schoolId, ConstraintKind.SOFT, SoftWeight.MEDIUM, active = true, rule = rule, version = 0)
-    }
+    fun forSchool(schoolId: SchoolId): List<SchedulingConstraint> =
+        listOf(
+            ConstraintRule.SubjectMaxPerDayInClass(ClassScope.AllClasses, null, DEFAULT_SUBJECT_LIMIT),
+            ConstraintRule.ClassNoGaps(ClassScope.AllClasses),
+        ).map { rule ->
+            SchedulingConstraint(
+                SchedulingConstraintId.new(),
+                schoolId,
+                ConstraintKind.SOFT,
+                SoftWeight.MEDIUM,
+                active = true,
+                rule = rule,
+                version = 0,
+            )
+        }
 }

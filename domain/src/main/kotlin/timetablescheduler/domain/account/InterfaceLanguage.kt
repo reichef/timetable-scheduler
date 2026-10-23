@@ -1,7 +1,9 @@
 package timetablescheduler.domain.account
 
 /** The languages the user interface is offered in (FR-037); German is the reference language. */
-enum class InterfaceLanguage(val code: String) {
+enum class InterfaceLanguage(
+    val code: String,
+) {
     GERMAN("de"),
     ENGLISH("en"),
     ;

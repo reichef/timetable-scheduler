@@ -13,16 +13,21 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class TimeGridTest {
-
     private val mondayToFriday = DayOfWeek.entries.filter { it <= FRIDAY }.toSet()
 
     private fun time(text: String) = LocalTime.parse(text)
 
-    private fun TimeGrid.addValid(label: String, start: String, end: String, kind: SlotKind = SlotKind.TEACHING): TimeGrid =
-        assertIs<ValidationResult.Valid<TimeGrid>>(withSlotAdded(label, time(start), time(end), kind)).value
+    private fun TimeGrid.addValid(
+        label: String,
+        start: String,
+        end: String,
+        kind: SlotKind = SlotKind.TEACHING,
+    ): TimeGrid = assertIs<ValidationResult.Valid<TimeGrid>>(withSlotAdded(label, time(start), time(end), kind)).value
 
     private fun gridWithMorning(): TimeGrid =
-        TimeGrid.empty().withTeachingDays(mondayToFriday)
+        TimeGrid
+            .empty()
+            .withTeachingDays(mondayToFriday)
             .addValid("1. Stunde", "08:00", "08:45")
             .addValid("2. Stunde", "08:50", "09:35")
             .addValid("Große Pause", "09:35", "09:55", SlotKind.BREAK)
@@ -30,9 +35,11 @@ class TimeGridTest {
 
     @Test
     fun `slots are ordered chronologically regardless of insertion order`() {
-        val grid = TimeGrid.empty()
-            .addValid("3. Stunde", "09:55", "10:40")
-            .addValid("1. Stunde", "08:00", "08:45")
+        val grid =
+            TimeGrid
+                .empty()
+                .addValid("3. Stunde", "09:55", "10:40")
+                .addValid("1. Stunde", "08:00", "08:45")
 
         assertEquals(listOf("1. Stunde", "3. Stunde"), grid.slots.map { it.label })
     }
@@ -75,7 +82,13 @@ class TimeGridTest {
         val relabelled = grid.withSlotUpdated(first.id, "Erste", first.startTime, first.endTime, SlotKind.TEACHING)
         val overlapping = grid.withSlotUpdated(first.id, "Erste", time("08:00"), time("09:00"), SlotKind.TEACHING)
 
-        assertEquals("Erste", assertIs<ValidationResult.Valid<TimeGrid>>(relabelled).value.slots.first().label)
+        assertEquals(
+            "Erste",
+            assertIs<ValidationResult.Valid<TimeGrid>>(relabelled)
+                .value.slots
+                .first()
+                .label,
+        )
         assertTrue(ValidationError.Overlap in assertIs<ValidationResult.Invalid>(overlapping).errors)
     }
 

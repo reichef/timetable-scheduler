@@ -27,7 +27,11 @@ import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.validation.ValidationError
 
 /** What the planner entered for a constraint; a soft constraint without weight gets medium (FR-014). */
-data class ConstraintInput(val kind: ConstraintKind, val weight: SoftWeight?, val rule: ConstraintRule) {
+data class ConstraintInput(
+    val kind: ConstraintKind,
+    val weight: SoftWeight?,
+    val rule: ConstraintRule,
+) {
     val effectiveWeight: SoftWeight? get() = if (kind == ConstraintKind.SOFT) weight ?: SoftWeight.MEDIUM else null
 }
 
@@ -44,15 +48,27 @@ data class ConstraintOverview(
     val problem: SchedulingProblem,
 )
 
-private fun OutcomeScope.loadConstraintOfSchool(constraints: SchedulingConstraintRepository, schoolId: SchoolId, id: SchedulingConstraintId): SchedulingConstraint {
+private fun OutcomeScope.loadConstraintOfSchool(
+    constraints: SchedulingConstraintRepository,
+    schoolId: SchoolId,
+    id: SchedulingConstraintId,
+): SchedulingConstraint {
     val constraint = constraints.findById(id)
-    if (constraint == null || constraint.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (constraint == null || constraint.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return constraint
 }
 
-private fun OutcomeScope.loadFixationOfSchool(fixations: TeacherFixationRepository, schoolId: SchoolId, id: TeacherFixationId): TeacherFixation {
+private fun OutcomeScope.loadFixationOfSchool(
+    fixations: TeacherFixationRepository,
+    schoolId: SchoolId,
+    id: TeacherFixationId,
+): TeacherFixation {
     val fixation = fixations.findById(id)
-    if (fixation == null || fixation.schoolId != schoolId) fail(ApplicationError.NotFound)
+    if (fixation == null || fixation.schoolId != schoolId) {
+        fail(ApplicationError.NotFound)
+    }
     return fixation
 }
 
@@ -72,7 +88,10 @@ class ListConstraints(
     private val context: ConstraintContextLoader,
     private val names: TimetableNamesLoader,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId): UseCaseResult<ConstraintOverview> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+    ): UseCaseResult<ConstraintOverview> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -81,7 +100,13 @@ class ListConstraints(
                     schoolId = schoolId,
                     constraints = problem.constraints,
                     fixations = problem.fixations,
-                    invalidFixations = problem.fixations.mapNotNull { fixation -> TeacherFixationRules.invalidityOf(fixation, problem)?.let { fixation.id to it } }.toMap(),
+                    invalidFixations =
+                        problem.fixations
+                            .mapNotNull { fixation ->
+                                TeacherFixationRules.invalidityOf(fixation, problem)?.let {
+                                    fixation.id to it
+                                }
+                            }.toMap(),
                     names = names.load(schoolId),
                     problem = problem,
                 )
@@ -94,7 +119,11 @@ class GetConstraint(
     private val access: SchoolAccessPolicy,
     private val constraints: SchedulingConstraintRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, constraintId: SchedulingConstraintId): UseCaseResult<SchedulingConstraint> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        constraintId: SchedulingConstraintId,
+    ): UseCaseResult<SchedulingConstraint> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -110,13 +139,24 @@ class CreateConstraint(
     private val constraints: SchedulingConstraintRepository,
     private val context: ConstraintContextLoader,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, input: ConstraintInput): UseCaseResult<SchedulingConstraint> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        input: ConstraintInput,
+    ): UseCaseResult<SchedulingConstraint> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 requireValid(input, context.load(schoolId))
-                SchedulingConstraint(SchedulingConstraintId.new(), schoolId, input.kind, input.effectiveWeight, active = true, rule = input.rule, version = 0)
-                    .also(constraints::insert)
+                SchedulingConstraint(
+                    SchedulingConstraintId.new(),
+                    schoolId,
+                    input.kind,
+                    input.effectiveWeight,
+                    active = true,
+                    rule = input.rule,
+                    version = 0,
+                ).also(constraints::insert)
             }
         }
 }
@@ -127,15 +167,24 @@ class UpdateConstraint(
     private val constraints: SchedulingConstraintRepository,
     private val context: ConstraintContextLoader,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, constraintId: SchedulingConstraintId, input: ConstraintInput, expectedVersion: Int): UseCaseResult<SchedulingConstraint> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        constraintId: SchedulingConstraintId,
+        input: ConstraintInput,
+        expectedVersion: Int,
+    ): UseCaseResult<SchedulingConstraint> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
+
                 val stored = loadConstraintOfSchool(constraints, schoolId, constraintId)
                 val problem = context.load(schoolId)
                 requireValid(input, problem.copy(constraints = problem.constraints.filterNot { it.id == constraintId }))
                 val updated = stored.copy(kind = input.kind, weight = input.effectiveWeight, rule = input.rule, version = expectedVersion)
+
                 requireUpdated(constraints.update(updated))
+
                 updated.copy(version = expectedVersion + 1)
             }
         }
@@ -147,7 +196,13 @@ class SetConstraintActive(
     private val access: SchoolAccessPolicy,
     private val constraints: SchedulingConstraintRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, constraintId: SchedulingConstraintId, active: Boolean, expectedVersion: Int): UseCaseResult<SchedulingConstraint> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        constraintId: SchedulingConstraintId,
+        active: Boolean,
+        expectedVersion: Int,
+    ): UseCaseResult<SchedulingConstraint> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
@@ -164,20 +219,32 @@ class DeleteConstraint(
     private val access: SchoolAccessPolicy,
     private val constraints: SchedulingConstraintRepository,
 ) {
-    fun execute(actor: AccountId, schoolId: SchoolId, constraintId: SchedulingConstraintId, expectedVersion: Int): UseCaseResult<Unit> =
+    fun execute(
+        actor: AccountId,
+        schoolId: SchoolId,
+        constraintId: SchedulingConstraintId,
+        expectedVersion: Int,
+    ): UseCaseResult<Unit> =
         transactions.inTransaction {
             outcome {
                 access.requireSchoolAccess(actor, schoolId).bind()
                 val stored = loadConstraintOfSchool(constraints, schoolId, constraintId)
-                if (stored.version != expectedVersion) fail(ApplicationError.VersionConflict)
+                if (stored.version != expectedVersion) {
+                    fail(ApplicationError.VersionConflict)
+                }
                 constraints.delete(constraintId)
             }
         }
 }
 
-private fun OutcomeScope.requireValid(input: ConstraintInput, problem: SchedulingProblem) {
+private fun OutcomeScope.requireValid(
+    input: ConstraintInput,
+    problem: SchedulingProblem,
+) {
     val errors = ConstraintValidation.validate(input.rule, input.kind, problem)
-    if (errors.isNotEmpty()) fail(ApplicationError.Invalid(errors))
+    if (errors.isNotEmpty()) {
+        fail(ApplicationError.Invalid(errors))
+    }
 }
 
 /** FR-013a: create, change and delete teacher fixations; one per class and subject. */
@@ -192,7 +259,13 @@ class TeacherFixationUseCases(
     val delete = Delete()
 
     inner class Create {
-        fun execute(actor: AccountId, schoolId: SchoolId, classId: SchoolClassId, subjectId: SubjectId, teacherId: TeacherId): UseCaseResult<TeacherFixation> =
+        fun execute(
+            actor: AccountId,
+            schoolId: SchoolId,
+            classId: SchoolClassId,
+            subjectId: SubjectId,
+            teacherId: TeacherId,
+        ): UseCaseResult<TeacherFixation> =
             transactions.inTransaction {
                 outcome {
                     access.requireSchoolAccess(actor, schoolId).bind()
@@ -207,11 +280,22 @@ class TeacherFixationUseCases(
     }
 
     inner class Update {
-        fun execute(actor: AccountId, schoolId: SchoolId, fixationId: TeacherFixationId, teacherId: TeacherId, expectedVersion: Int): UseCaseResult<TeacherFixation> =
+        fun execute(
+            actor: AccountId,
+            schoolId: SchoolId,
+            fixationId: TeacherFixationId,
+            teacherId: TeacherId,
+            expectedVersion: Int,
+        ): UseCaseResult<TeacherFixation> =
             transactions.inTransaction {
                 outcome {
                     access.requireSchoolAccess(actor, schoolId).bind()
-                    val updated = loadFixationOfSchool(fixations, schoolId, fixationId).copy(teacherId = teacherId, version = expectedVersion)
+                    val updated =
+                        loadFixationOfSchool(
+                            fixations,
+                            schoolId,
+                            fixationId,
+                        ).copy(teacherId = teacherId, version = expectedVersion)
                     requireValidFixation(updated, schoolId)
                     requireUpdated(fixations.update(updated))
                     updated.copy(version = expectedVersion + 1)
@@ -220,21 +304,35 @@ class TeacherFixationUseCases(
     }
 
     inner class Delete {
-        fun execute(actor: AccountId, schoolId: SchoolId, fixationId: TeacherFixationId, expectedVersion: Int): UseCaseResult<Unit> =
+        fun execute(
+            actor: AccountId,
+            schoolId: SchoolId,
+            fixationId: TeacherFixationId,
+            expectedVersion: Int,
+        ): UseCaseResult<Unit> =
             transactions.inTransaction {
                 outcome {
                     access.requireSchoolAccess(actor, schoolId).bind()
-                    if (loadFixationOfSchool(fixations, schoolId, fixationId).version != expectedVersion) fail(ApplicationError.VersionConflict)
+                    if (loadFixationOfSchool(fixations, schoolId, fixationId).version != expectedVersion) {
+                        fail(ApplicationError.VersionConflict)
+                    }
                     fixations.delete(fixationId)
                 }
             }
     }
 
-    private fun OutcomeScope.requireValidFixation(fixation: TeacherFixation, schoolId: SchoolId) {
+    private fun OutcomeScope.requireValidFixation(
+        fixation: TeacherFixation,
+        schoolId: SchoolId,
+    ) {
         val problem = context.load(schoolId)
-        if (problem.schoolClass(fixation.classId) == null) fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(FIELD_CLASS))))
+        if (problem.schoolClass(fixation.classId) == null) {
+            fail(ApplicationError.Invalid(listOf(ValidationError.InvalidReference(FIELD_CLASS))))
+        }
         val errors = TeacherFixationRules.validate(fixation, problem)
-        if (errors.isNotEmpty()) fail(ApplicationError.Invalid(errors))
+        if (errors.isNotEmpty()) {
+            fail(ApplicationError.Invalid(errors))
+        }
     }
 
     companion object {

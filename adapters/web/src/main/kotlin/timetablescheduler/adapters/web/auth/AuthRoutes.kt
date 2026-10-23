@@ -52,8 +52,10 @@ fun Route.authRoutes(dependencies: WebDependencies) {
                 call.sessions.set(UserSession.startFor(result.value.accountId, result.value.language))
                 call.seeOther(if (result.value.role == Role.PLANNER) "/schools" else "/home")
             }
-            is UseCaseResult.Failure ->
+
+            is UseCaseResult.Failure -> {
                 call.respondLoginPage(HttpStatusCode.Unauthorized, loginFailed = true, username = username, chosenLanguage = chosenLanguage)
+            }
         }
     }
 
@@ -82,9 +84,13 @@ private suspend fun ApplicationCall.respondLoginPage(
 ) {
     val texts = texts
     respondPage(texts.auth.loginTitle, status) {
-        if (loginFailed) div(classes = "errors") { p { +texts.auth.loginFailed } }
+        if (loginFailed) {
+            div(classes = "errors") { p { +texts.auth.loginFailed } }
+        }
         form(action = "/login", method = FormMethod.post) {
-            if (chosenLanguage != null) input(type = InputType.hidden, name = CHOSEN_LANGUAGE_FIELD) { value = chosenLanguage.code }
+            if (chosenLanguage != null) {
+                input(type = InputType.hidden, name = CHOSEN_LANGUAGE_FIELD) { value = chosenLanguage.code }
+            }
             textField("username", texts.auth.username, username)
             textField("password", texts.auth.password, null, InputType.password)
             button { +texts.auth.loginTitle }

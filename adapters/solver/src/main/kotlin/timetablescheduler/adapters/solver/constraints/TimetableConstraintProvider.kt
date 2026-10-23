@@ -20,22 +20,22 @@ import kotlin.math.roundToLong
  * incremental score calculation notices when the course's teacher changes.
  */
 class TimetableConstraintProvider : ConstraintProvider {
-
-    override fun defineConstraints(factory: ConstraintFactory): Array<Constraint> = arrayOf(
-        classConflict(factory),
-        roomConflict(factory),
-        teacherConflict(factory),
-        teacherUnavailable(factory),
-        teacherLoadExceeded(factory),
-        lessonWithoutTeacher(factory),
-        classFill(factory),
-        teacherLoadUsage(factory),
-        stability(factory),
-        classRulesHard(factory),
-        classRulesSoft(factory),
-        otherRulesHard(factory),
-        otherRulesSoft(factory),
-    )
+    override fun defineConstraints(factory: ConstraintFactory): Array<Constraint> =
+        arrayOf(
+            classConflict(factory),
+            roomConflict(factory),
+            teacherConflict(factory),
+            teacherUnavailable(factory),
+            teacherLoadExceeded(factory),
+            lessonWithoutTeacher(factory),
+            classFill(factory),
+            teacherLoadUsage(factory),
+            stability(factory),
+            classRulesHard(factory),
+            classRulesSoft(factory),
+            otherRulesHard(factory),
+            otherRulesSoft(factory),
+        )
 
     /**
      * Planner constraints about one class, joined by class: the placed lessons each rule covers are grouped per rule
@@ -47,8 +47,7 @@ class TimetableConstraintProvider : ConstraintProvider {
                 AppliedRuleFact::class.java,
                 Joiners.equal({ _, course -> course.classFact.id }, { rule -> rule.classKey }),
                 Joiners.filtering { _, course, rule -> rule.covers(course) },
-            )
-            .groupBy({ _, _, rule -> rule }, ConstraintCollectors.toList { lesson, course, _ -> assignmentOf(lesson, course) })
+            ).groupBy({ _, _, rule -> rule }, ConstraintCollectors.toList { lesson, course, _ -> assignmentOf(lesson, course) })
 
     /** Planner constraints about teachers or about a subject in every class, matched lesson by lesson. */
     private fun otherRuleGroups(factory: ConstraintFactory) =
@@ -56,37 +55,45 @@ class TimetableConstraintProvider : ConstraintProvider {
             .join(
                 factory.forEach(AppliedRuleFact::class.java).filter { it.classKey == null },
                 Joiners.filtering { _, course, rule -> rule.covers(course) },
-            )
-            .groupBy({ _, _, rule -> rule }, ConstraintCollectors.toList { lesson, course, _ -> assignmentOf(lesson, course) })
+            ).groupBy({ _, _, rule -> rule }, ConstraintCollectors.toList { lesson, course, _ -> assignmentOf(lesson, course) })
 
     private fun classRulesHard(factory: ConstraintFactory): Constraint =
-        classRuleGroups(factory).filter { rule, _ -> rule.isHard }
+        classRuleGroups(factory)
+            .filter { rule, _ -> rule.isHard }
             .penalize(HardSoftScore.ONE_HARD) { rule, lessons -> rule.violations(lessons).toLong() }
             .asConstraint("Planner constraint for a class (hard)")
 
     private fun classRulesSoft(factory: ConstraintFactory): Constraint =
-        classRuleGroups(factory).filter { rule, _ -> !rule.isHard }
+        classRuleGroups(factory)
+            .filter { rule, _ -> !rule.isHard }
             .join(PassWeights::class.java)
             .penalize(HardSoftScore.ONE_SOFT) { rule, lessons, weights -> softPenalty(rule, rule.violations(lessons), weights) }
             .asConstraint("Planner constraint for a class (soft)")
 
     private fun otherRulesHard(factory: ConstraintFactory): Constraint =
-        otherRuleGroups(factory).filter { rule, _ -> rule.isHard }
+        otherRuleGroups(factory)
+            .filter { rule, _ -> rule.isHard }
             .penalize(HardSoftScore.ONE_HARD) { rule, lessons -> rule.violations(lessons).toLong() }
             .asConstraint("Planner constraint for teachers or subjects (hard)")
 
     private fun otherRulesSoft(factory: ConstraintFactory): Constraint =
-        otherRuleGroups(factory).filter { rule, _ -> !rule.isHard }
+        otherRuleGroups(factory)
+            .filter { rule, _ -> !rule.isHard }
             .join(PassWeights::class.java)
             .penalize(HardSoftScore.ONE_SOFT) { rule, lessons, weights -> softPenalty(rule, rule.violations(lessons), weights) }
             .asConstraint("Planner constraint for teachers or subjects (soft)")
 
     /** G3: weight of the rule's objective in this pass times weight factor times violations / normalizer, in soft points. */
-    private fun softPenalty(rule: AppliedRuleFact, violations: Int, weights: PassWeights): Long =
-        scaled(weights.weightOf(rule.objectiveIndex) * rule.weightFactor * violations / rule.normalizer)
+    private fun softPenalty(
+        rule: AppliedRuleFact,
+        violations: Int,
+        weights: PassWeights,
+    ): Long = scaled(weights.weightOf(rule.objectiveIndex) * rule.weightFactor * violations / rule.normalizer)
 
-    private fun assignmentOf(lesson: LessonPlacement, course: CourseAssignment) =
-        LessonAssignment(course.classFact.id, course.subjectId, course.teacher!!.id, lesson.room!!.id, lesson.timeslot!!.daySlot)
+    private fun assignmentOf(
+        lesson: LessonPlacement,
+        course: CourseAssignment,
+    ) = LessonAssignment(course.classFact.id, course.subjectId, course.teacher!!.id, lesson.room!!.id, lesson.timeslot!!.daySlot)
 
     private fun placedLessons(factory: ConstraintFactory) = factory.forEach(LessonPlacement::class.java).filter { it.isPlaced }
 
@@ -95,20 +102,23 @@ class TimetableConstraintProvider : ConstraintProvider {
         placedLessons(factory).join(CourseAssignment::class.java, Joiners.equal({ lesson -> lesson.course }, { course -> course }))
 
     private fun classConflict(factory: ConstraintFactory): Constraint =
-        factory.forEachUniquePair(LessonPlacement::class.java, Joiners.equal { it.timeslot }, Joiners.equal { it.classId })
+        factory
+            .forEachUniquePair(LessonPlacement::class.java, Joiners.equal { it.timeslot }, Joiners.equal { it.classId })
             .filter { first, second -> first.isPlaced && second.isPlaced }
             .penalize(HardSoftScore.ONE_HARD)
             .asConstraint("Class conflict")
 
     private fun roomConflict(factory: ConstraintFactory): Constraint =
-        factory.forEachUniquePair(LessonPlacement::class.java, Joiners.equal { it.timeslot }, Joiners.equal { it.room })
+        factory
+            .forEachUniquePair(LessonPlacement::class.java, Joiners.equal { it.timeslot }, Joiners.equal { it.room })
             .filter { first, second -> first.isPlaced && second.isPlaced }
             .penalize(HardSoftScore.ONE_HARD)
             .asConstraint("Room conflict")
 
     /** Two placed lessons in one timeslot whose courses have the same teacher. */
     private fun teacherConflict(factory: ConstraintFactory): Constraint =
-        factory.forEachUniquePair(LessonPlacement::class.java, Joiners.equal { it.timeslot })
+        factory
+            .forEachUniquePair(LessonPlacement::class.java, Joiners.equal { it.timeslot })
             .filter { first, second -> first.isPlaced && second.isPlaced }
             .join(CourseAssignment::class.java, Joiners.equal({ first, _ -> first.course }, { course -> course }))
             .join(CourseAssignment::class.java, Joiners.equal({ _, second, _ -> second.course }, { course -> course }))
@@ -147,8 +157,7 @@ class TimetableConstraintProvider : ConstraintProvider {
             .join(PassWeights::class.java)
             .reward(HardSoftScore.ONE_SOFT) { _, course, weights ->
                 scaled(weights.classFill * course.classFact.priorityWeight / weights.totalWeightedDemand)
-            }
-            .asConstraint("Class fill")
+            }.asConstraint("Class fill")
 
     /** Teacher load usage (G3): each lesson a teacher with load gives adds 1 / Σ load, weighted for the pass. */
     private fun teacherLoadUsage(factory: ConstraintFactory): Constraint =

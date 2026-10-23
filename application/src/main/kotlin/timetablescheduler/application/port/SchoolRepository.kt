@@ -21,5 +21,8 @@ interface SchoolRepository {
     fun findTimeGrid(schoolId: SchoolId): TimeGrid
 
     /** Stores teaching days, slots and exclusions; existing slots keep their identity. */
-    fun saveTimeGrid(schoolId: SchoolId, timeGrid: TimeGrid)
+    fun saveTimeGrid(
+        schoolId: SchoolId,
+        timeGrid: TimeGrid,
+    )
 }

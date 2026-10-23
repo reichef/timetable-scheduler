@@ -40,9 +40,9 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.UUID
 
 class ExposedGenerationRepository : GenerationRepository {
-
     override fun insert(generation: Generation) {
         GenerationTable.insert {
             it[id] = generation.id.value
@@ -104,18 +104,26 @@ class ExposedGenerationRepository : GenerationRepository {
     }
 
     override fun findById(generationId: GenerationId): Generation? =
-        GenerationTable.selectAll().where { GenerationTable.id eq generationId.value }.singleOrNull()?.toGeneration()
+        GenerationTable
+            .selectAll()
+            .where { GenerationTable.id eq generationId.value }
+            .singleOrNull()
+            ?.toGeneration()
 
     override fun findBySchool(schoolId: SchoolId): List<Generation> =
         GenerationTable.selectAll().where { GenerationTable.schoolId eq schoolId.value }.map { it.toGeneration() }
 
     override fun findRunning(schoolId: SchoolId): Generation? =
-        GenerationTable.selectAll()
+        GenerationTable
+            .selectAll()
             .where { (GenerationTable.schoolId eq schoolId.value) and (GenerationTable.status eq GenerationStatus.RUNNING.name) }
             .singleOrNull()
             ?.toGeneration()
 
-    override fun updateProgress(generationId: GenerationId, alternativesFound: Int) {
+    override fun updateProgress(
+        generationId: GenerationId,
+        alternativesFound: Int,
+    ) {
         GenerationTable.update({ GenerationTable.id eq generationId.value }) { it[GenerationTable.alternativesFound] = alternativesFound }
     }
 
@@ -195,19 +203,15 @@ class ExposedGenerationRepository : GenerationRepository {
 
     /** Loads lessons, unplaced periods and soft violations of all [rows] with one query each. */
     private fun loadAlternatives(rows: List<ResultRow>): List<Alternative> {
-        if (rows.isEmpty()) return emptyList()
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
+
         val ids = rows.map { it[AlternativeTable.id] }
-        val lessons = AlternativeLessonTable.selectAll().where { AlternativeLessonTable.alternativeId inList ids }
-            .sortedBy { it[AlternativeLessonTable.position] }
-            .groupBy({ it[AlternativeLessonTable.alternativeId] }, { it.toLesson() })
-        val unplaced = AlternativeUnplacedTable.selectAll().where { AlternativeUnplacedTable.alternativeId inList ids }
-            .groupBy({ it[AlternativeUnplacedTable.alternativeId] }, {
-                CourseKey(SchoolClassId(it[AlternativeUnplacedTable.classId]), SubjectId(it[AlternativeUnplacedTable.subjectId])) to it[AlternativeUnplacedTable.periods]
-            })
-        val softViolations = AlternativeSoftViolationTable.selectAll().where { AlternativeSoftViolationTable.alternativeId inList ids }
-            .groupBy({ it[AlternativeSoftViolationTable.alternativeId] }, {
-                SchedulingConstraintId(it[AlternativeSoftViolationTable.constraintId]) to it[AlternativeSoftViolationTable.violations]
-            })
+        val lessons = lessonsOf(ids)
+        val unplaced = unplacedOf(ids)
+        val softViolations = softViolationsOf(ids)
+
         return rows.map { row ->
             val id = row[AlternativeTable.id]
             Alternative(
@@ -222,59 +226,115 @@ class ExposedGenerationRepository : GenerationRepository {
         }
     }
 
-    private fun ResultRow.toObjectiveValues() = ObjectiveValues(
-        classFill = this[AlternativeTable.classFill].toDouble(),
-        teacherLoadUsage = this[AlternativeTable.teacherLoadUsage].toDouble(),
-        separate = listOfNotNull(this[AlternativeTable.separate1], this[AlternativeTable.separate2], this[AlternativeTable.separate3]).map { it.toDouble() },
-        otherSoft = this[AlternativeTable.otherSoft].toDouble(),
-        stability = this[AlternativeTable.stability]?.toDouble(),
-    )
+    private fun lessonsOf(alternativeIds: List<UUID>): Map<UUID, List<LessonAssignment>> =
+        AlternativeLessonTable
+            .selectAll()
+            .where { AlternativeLessonTable.alternativeId inList alternativeIds }
+            .sortedBy { it[AlternativeLessonTable.position] }
+            .groupBy({ it[AlternativeLessonTable.alternativeId] }, { it.toLesson() })
 
-    private fun ResultRow.toLesson() = LessonAssignment(
-        classId = SchoolClassId(this[AlternativeLessonTable.classId]),
-        subjectId = SubjectId(this[AlternativeLessonTable.subjectId]),
-        teacherId = TeacherId(this[AlternativeLessonTable.teacherId]),
-        roomId = RoomId(this[AlternativeLessonTable.roomId]),
-        daySlot = DaySlot(DayOfWeek.valueOf(this[AlternativeLessonTable.dayOfWeek]), TimeSlotId(this[AlternativeLessonTable.timeSlotId])),
-    )
+    private fun unplacedOf(alternativeIds: List<UUID>): Map<UUID, List<Pair<CourseKey, Int>>> =
+        AlternativeUnplacedTable
+            .selectAll()
+            .where { AlternativeUnplacedTable.alternativeId inList alternativeIds }
+            .groupBy({ it[AlternativeUnplacedTable.alternativeId] }, { it.toUnplacedCourse() to it[AlternativeUnplacedTable.periods] })
+
+    private fun ResultRow.toUnplacedCourse() =
+        CourseKey(SchoolClassId(this[AlternativeUnplacedTable.classId]), SubjectId(this[AlternativeUnplacedTable.subjectId]))
+
+    private fun softViolationsOf(alternativeIds: List<UUID>): Map<UUID, List<Pair<SchedulingConstraintId, Int>>> =
+        AlternativeSoftViolationTable
+            .selectAll()
+            .where { AlternativeSoftViolationTable.alternativeId inList alternativeIds }
+            .groupBy(
+                { it[AlternativeSoftViolationTable.alternativeId] },
+                { SchedulingConstraintId(it[AlternativeSoftViolationTable.constraintId]) to it[AlternativeSoftViolationTable.violations] },
+            )
+
+    private fun ResultRow.toObjectiveValues() =
+        ObjectiveValues(
+            classFill = this[AlternativeTable.classFill].toDouble(),
+            teacherLoadUsage = this[AlternativeTable.teacherLoadUsage].toDouble(),
+            separate =
+                listOfNotNull(this[AlternativeTable.separate1], this[AlternativeTable.separate2], this[AlternativeTable.separate3]).map {
+                    it.toDouble()
+                },
+            otherSoft = this[AlternativeTable.otherSoft].toDouble(),
+            stability = this[AlternativeTable.stability]?.toDouble(),
+        )
+
+    private fun ResultRow.toLesson() =
+        LessonAssignment(
+            classId = SchoolClassId(this[AlternativeLessonTable.classId]),
+            subjectId = SubjectId(this[AlternativeLessonTable.subjectId]),
+            teacherId = TeacherId(this[AlternativeLessonTable.teacherId]),
+            roomId = RoomId(this[AlternativeLessonTable.roomId]),
+            daySlot =
+                DaySlot(
+                    DayOfWeek.valueOf(this[AlternativeLessonTable.dayOfWeek]),
+                    TimeSlotId(this[AlternativeLessonTable.timeSlotId]),
+                ),
+        )
 
     private fun ResultRow.toGeneration(): Generation {
         val id = this[GenerationTable.id]
         return toGenerationWithoutSnapshot().copy(
-            separateObjectiveIds = GenerationSeparateObjectiveTable.selectAll().where { GenerationSeparateObjectiveTable.generationId eq id }
-                .sortedBy { it[GenerationSeparateObjectiveTable.position] }
-                .map { SchedulingConstraintId(it[GenerationSeparateObjectiveTable.originalConstraintId]) },
+            separateObjectiveIds =
+                GenerationSeparateObjectiveTable
+                    .selectAll()
+                    .where { GenerationSeparateObjectiveTable.generationId eq id }
+                    .sortedBy { it[GenerationSeparateObjectiveTable.position] }
+                    .map { SchedulingConstraintId(it[GenerationSeparateObjectiveTable.originalConstraintId]) },
             constraintSnapshot = constraintSnapshotOf(id),
-            fixationSnapshot = GenerationFixationTable.selectAll().where { GenerationFixationTable.generationId eq id }
-                .sortedBy { it[GenerationFixationTable.position] }
-                .map {
-                    TeacherFixation(
-                        TeacherFixationId(it[GenerationFixationTable.originalFixationId]), SchoolId(this[GenerationTable.schoolId]),
-                        SchoolClassId(it[GenerationFixationTable.classId]), SubjectId(it[GenerationFixationTable.subjectId]),
-                        TeacherId(it[GenerationFixationTable.teacherId]), it[GenerationFixationTable.version],
-                    )
-                },
-            infeasibleConstraintIds = GenerationInfeasibleConstraintTable.selectAll().where { GenerationInfeasibleConstraintTable.generationId eq id }
-                .map { SchedulingConstraintId(it[GenerationInfeasibleConstraintTable.originalConstraintId]) },
+            fixationSnapshot =
+                GenerationFixationTable
+                    .selectAll()
+                    .where { GenerationFixationTable.generationId eq id }
+                    .sortedBy { it[GenerationFixationTable.position] }
+                    .map {
+                        TeacherFixation(
+                            TeacherFixationId(it[GenerationFixationTable.originalFixationId]),
+                            SchoolId(this[GenerationTable.schoolId]),
+                            SchoolClassId(it[GenerationFixationTable.classId]),
+                            SubjectId(it[GenerationFixationTable.subjectId]),
+                            TeacherId(it[GenerationFixationTable.teacherId]),
+                            it[GenerationFixationTable.version],
+                        )
+                    },
+            infeasibleConstraintIds =
+                GenerationInfeasibleConstraintTable
+                    .selectAll()
+                    .where {
+                        GenerationInfeasibleConstraintTable.generationId eq
+                            id
+                    }.map { SchedulingConstraintId(it[GenerationInfeasibleConstraintTable.originalConstraintId]) },
         )
     }
 
     private fun constraintSnapshotOf(generationId: java.util.UUID): List<SchedulingConstraint> {
-        val slots = GenerationConstraintSlotTable.selectAll().where { GenerationConstraintSlotTable.generationId eq generationId }
-            .groupBy({ it[GenerationConstraintSlotTable.position] }, { RuleColumns.slotOf(it[GenerationConstraintSlotTable.dayOfWeek], it[GenerationConstraintSlotTable.slotId]) })
-        return GenerationConstraintTable.selectAll().where { GenerationConstraintTable.generationId eq generationId }
+        val slots =
+            GenerationConstraintSlotTable
+                .selectAll()
+                .where { GenerationConstraintSlotTable.generationId eq generationId }
+                .groupBy({
+                    it[GenerationConstraintSlotTable.position]
+                }, { RuleColumns.slotOf(it[GenerationConstraintSlotTable.dayOfWeek], it[GenerationConstraintSlotTable.slotId]) })
+        return GenerationConstraintTable
+            .selectAll()
+            .where { GenerationConstraintTable.generationId eq generationId }
             .sortedBy { it[GenerationConstraintTable.position] }
             .map { row ->
-                val columns = RuleColumns(
-                    type = ConstraintType.valueOf(row[GenerationConstraintTable.type]),
-                    allClasses = row[GenerationConstraintTable.allClasses],
-                    classId = row[GenerationConstraintTable.classId],
-                    teacherId = row[GenerationConstraintTable.teacherId],
-                    subjectId = row[GenerationConstraintTable.subjectId],
-                    limit = row[GenerationConstraintTable.limitValue],
-                    acrossBreaks = row[GenerationConstraintTable.acrossBreaks],
-                    slots = slots[row[GenerationConstraintTable.position]].orEmpty().toSet(),
-                )
+                val columns =
+                    RuleColumns(
+                        type = ConstraintType.valueOf(row[GenerationConstraintTable.type]),
+                        allClasses = row[GenerationConstraintTable.allClasses],
+                        classId = row[GenerationConstraintTable.classId],
+                        teacherId = row[GenerationConstraintTable.teacherId],
+                        subjectId = row[GenerationConstraintTable.subjectId],
+                        limit = row[GenerationConstraintTable.limitValue],
+                        acrossBreaks = row[GenerationConstraintTable.acrossBreaks],
+                        slots = slots[row[GenerationConstraintTable.position]].orEmpty().toSet(),
+                    )
                 SchedulingConstraint(
                     id = SchedulingConstraintId(row[GenerationConstraintTable.originalConstraintId]),
                     schoolId = SchoolId(this@ExposedGenerationRepository.schoolIdOf(generationId)),
@@ -290,20 +350,21 @@ class ExposedGenerationRepository : GenerationRepository {
     private fun schoolIdOf(generationId: java.util.UUID): java.util.UUID =
         GenerationTable.select(GenerationTable.schoolId).where { GenerationTable.id eq generationId }.single()[GenerationTable.schoolId]
 
-    private fun ResultRow.toGenerationWithoutSnapshot() = Generation(
-        id = GenerationId(this[GenerationTable.id]),
-        schoolId = SchoolId(this[GenerationTable.schoolId]),
-        startedBy = AccountId(this[GenerationTable.startedBy]),
-        startedAt = this[GenerationTable.startedAt].toInstant(),
-        finishedAt = this[GenerationTable.finishedAt]?.let(OffsetDateTime::toInstant),
-        timeLimitMinutes = this[GenerationTable.timeLimitMinutes],
-        maxAlternatives = this[GenerationTable.maxAlternatives],
-        status = GenerationStatus.valueOf(this[GenerationTable.status]),
-        inputFingerprint = this[GenerationTable.inputFingerprint],
-        alternativesFound = this[GenerationTable.alternativesFound],
-        referenceAlternativeId = this[GenerationTable.referenceAlternativeId]?.let(::AlternativeId),
-        minimumPlacedShare = this[GenerationTable.minimumPlacedShare].toInt(),
-    )
+    private fun ResultRow.toGenerationWithoutSnapshot() =
+        Generation(
+            id = GenerationId(this[GenerationTable.id]),
+            schoolId = SchoolId(this[GenerationTable.schoolId]),
+            startedBy = AccountId(this[GenerationTable.startedBy]),
+            startedAt = this[GenerationTable.startedAt].toInstant(),
+            finishedAt = this[GenerationTable.finishedAt]?.let(OffsetDateTime::toInstant),
+            timeLimitMinutes = this[GenerationTable.timeLimitMinutes],
+            maxAlternatives = this[GenerationTable.maxAlternatives],
+            status = GenerationStatus.valueOf(this[GenerationTable.status]),
+            inputFingerprint = this[GenerationTable.inputFingerprint],
+            alternativesFound = this[GenerationTable.alternativesFound],
+            referenceAlternativeId = this[GenerationTable.referenceAlternativeId]?.let(::AlternativeId),
+            minimumPlacedShare = this[GenerationTable.minimumPlacedShare].toInt(),
+        )
 
     private fun decimalOf(value: Double): BigDecimal = BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP)
 }

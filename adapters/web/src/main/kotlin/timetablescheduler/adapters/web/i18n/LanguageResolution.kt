@@ -34,14 +34,20 @@ fun resolveInterfaceLanguage(
  * variants count for their language ("de-AT" → German). Ties keep the header order; null if neither is listed.
  */
 fun preferredBrowserLanguage(acceptLanguage: String?): InterfaceLanguage? =
-    acceptLanguage.orEmpty().split(',')
+    acceptLanguage
+        .orEmpty()
+        .split(',')
         .mapNotNull { entry ->
             val parts = entry.split(';').map { it.trim() }
             val language = InterfaceLanguage.fromCode(parts.first().substringBefore('-')) ?: return@mapNotNull null
-            val quality = parts.drop(1).firstOrNull { it.startsWith("q=") }?.removePrefix("q=")?.toDoubleOrNull() ?: 1.0
+            val quality =
+                parts
+                    .drop(1)
+                    .firstOrNull { it.startsWith("q=") }
+                    ?.removePrefix("q=")
+                    ?.toDoubleOrNull() ?: 1.0
             language to quality
-        }
-        .filter { (_, quality) -> quality > 0.0 }
+        }.filter { (_, quality) -> quality > 0.0 }
         .maxByOrNull { (_, quality) -> quality }
         ?.first
 
@@ -51,8 +57,9 @@ fun preferredBrowserLanguage(acceptLanguage: String?): InterfaceLanguage? =
  */
 fun safeReturnTo(raw: String?): String {
     val candidate = raw.orEmpty()
-    val isLocalPath = candidate.startsWith("/") && !candidate.startsWith("//") &&
-        candidate.none { it == '\\' || it.isISOControl() }
+    val isLocalPath =
+        candidate.startsWith("/") && !candidate.startsWith("//") &&
+            candidate.none { it == '\\' || it.isISOControl() }
     return if (isLocalPath) candidate else "/"
 }
 
@@ -74,7 +81,10 @@ val ApplicationCall.texts: UiTexts get() = textsFor(interfaceLanguage())
  * (e.g. a 422 with errors) the page the form was sent from, taken from the `Referer` path.
  */
 fun ApplicationCall.currentPageForLanguageSwitch(): String {
-    if (request.httpMethod == HttpMethod.Get) return request.uri
+    if (request.httpMethod == HttpMethod.Get) {
+        return request.uri
+    }
+
     val referer = request.headers[HttpHeaders.Referrer] ?: return "/"
     val uri = runCatching { URI(referer) }.getOrNull() ?: return "/"
     val path = uri.rawPath ?: return "/"

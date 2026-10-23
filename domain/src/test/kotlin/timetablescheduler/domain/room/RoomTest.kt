@@ -10,7 +10,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class RoomTest {
-
     private val school = SchoolId.new()
     private val chemistryLab = (RoomFeature.create(school, "Chemieraum") as ValidationResult.Valid).value
 

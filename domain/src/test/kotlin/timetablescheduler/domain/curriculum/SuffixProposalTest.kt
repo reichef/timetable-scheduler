@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SuffixProposalTest {
-
     @Test
     fun `first class of a level gets a`() {
         assertEquals("a", SuffixProposal.next(emptyList()))

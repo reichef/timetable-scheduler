@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class WeightVectorsTest {
-
     @Test
     fun `first vector weights all objectives equally`() {
         assertEquals(listOf(0.25, 0.25, 0.25, 0.25), WeightVectors.forObjectives(4).first())

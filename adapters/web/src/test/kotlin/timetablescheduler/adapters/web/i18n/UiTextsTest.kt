@@ -8,6 +8,9 @@ import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.domain.scheduling.constraint.FixationInvalidity
+import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
+import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek
@@ -18,34 +21,39 @@ import kotlin.test.assertTrue
 
 /** FR-045: every interface text exists in both languages and is really translated. */
 class UiTextsTest {
+    private val validationErrors =
+        listOf(
+            ValidationError.BlankValue("name"),
+            ValidationError.TooLong("name", 80),
+            ValidationError.OutOfRange("weeklyLoad", 0, 38),
+            ValidationError.OutOfRange("password", 10, null),
+            ValidationError.InvalidFormat("startTime"),
+            ValidationError.DuplicateValue("identifier"),
+            ValidationError.InvalidReference("features"),
+            ValidationError.Overlap,
+            ValidationError.EndNotAfterStart,
+            ValidationError.LastSchoolRemoved,
+            ValidationError.NoActivePlannerLeft(SchoolId.new()),
+            ValidationError.IncorrectCurrentPassword,
+        )
 
-    private val validationErrors = listOf(
-        ValidationError.BlankValue("name"),
-        ValidationError.TooLong("name", 80),
-        ValidationError.OutOfRange("weeklyLoad", 0, 38),
-        ValidationError.OutOfRange("password", 10, null),
-        ValidationError.InvalidFormat("startTime"),
-        ValidationError.DuplicateValue("identifier"),
-        ValidationError.InvalidReference("features"),
-        ValidationError.Overlap,
-        ValidationError.EndNotAfterStart,
-        ValidationError.LastSchoolRemoved,
-        ValidationError.NoActivePlannerLeft(SchoolId.new()),
-        ValidationError.IncorrectCurrentPassword,
-    )
-
-    private val readinessIssues = listOf(
-        ReadinessIssue.SubjectNoSuitableRoom(SubjectId.new(), emptySet()),
-        ReadinessIssue.SubjectNoQualifiedTeacher(SubjectId.new()),
-        ReadinessIssue.SubjectTeacherCapacityShortfall(SubjectId.new(), 3),
-        ReadinessIssue.LevelExceedsGrid(ClassLevelId.new(), 2),
-        ReadinessIssue.TeacherWithoutQualification(TeacherId.new()),
-        ReadinessIssue.TeacherZeroLoad(TeacherId.new()),
-        ReadinessIssue.TeacherLoadExceedsGrid(TeacherId.new(), 1),
-    )
+    private val readinessIssues =
+        listOf(
+            ReadinessIssue.SubjectNoSuitableRoom(SubjectId.new(), emptySet()),
+            ReadinessIssue.SubjectNoQualifiedTeacher(SubjectId.new()),
+            ReadinessIssue.SubjectTeacherCapacityShortfall(SubjectId.new(), 3),
+            ReadinessIssue.LevelExceedsGrid(ClassLevelId.new(), 2),
+            ReadinessIssue.TeacherWithoutQualification(TeacherId.new()),
+            ReadinessIssue.TeacherZeroLoad(TeacherId.new()),
+            ReadinessIssue.TeacherLoadExceedsGrid(TeacherId.new(), 1),
+            ReadinessIssue.InvalidTeacherFixation(TeacherFixationId.new(), FixationInvalidity.NOT_QUALIFIED),
+        )
 
     /** Renders [text] in both catalogs and checks both are filled and differ. */
-    private fun assertTranslated(description: String, text: (UiTexts) -> String) {
+    private fun assertTranslated(
+        description: String,
+        text: (UiTexts) -> String,
+    ) {
         val german = text(GermanTexts)
         val english = text(EnglishTexts)
         assertTrue(german.isNotBlank() && english.isNotBlank(), "$description is empty")
@@ -77,5 +85,11 @@ class UiTextsTest {
     fun `every readiness issue kind has a heading in both languages`() {
         readinessIssues.forEach { issue -> assertTranslated(issue::class.simpleName!!) { it.readiness.heading(issue) } }
         assertEquals(readinessIssues.size, readinessIssues.map { GermanTexts.readiness.heading(it) }.toSet().size)
+    }
+
+    @Test
+    fun `every hard rule and every reason why a fixation no longer fits is named in both languages`() {
+        HardRule.entries.forEach { rule -> assertTranslated("$rule") { it.generations.hardRuleName(rule) } }
+        FixationInvalidity.entries.forEach { reason -> assertTranslated("$reason") { it.constraints.invalidityReason(reason) } }
     }
 }

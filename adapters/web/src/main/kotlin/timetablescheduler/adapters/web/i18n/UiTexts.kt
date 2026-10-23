@@ -1,10 +1,10 @@
 package timetablescheduler.adapters.web.i18n
 
 import timetablescheduler.application.error.DependantType
-import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.readiness.ReadinessIssue
+import timetablescheduler.domain.scheduling.evaluation.HardRule
 import timetablescheduler.domain.scheduling.generation.GenerationStatus
 import timetablescheduler.domain.school.SlotKind
 import timetablescheduler.domain.validation.ValidationError
@@ -35,10 +35,11 @@ interface UiTexts {
     val timetables: TimetableTexts
 }
 
-fun textsFor(language: InterfaceLanguage): UiTexts = when (language) {
-    InterfaceLanguage.GERMAN -> GermanTexts
-    InterfaceLanguage.ENGLISH -> EnglishTexts
-}
+fun textsFor(language: InterfaceLanguage): UiTexts =
+    when (language) {
+        InterfaceLanguage.GERMAN -> GermanTexts
+        InterfaceLanguage.ENGLISH -> EnglishTexts
+    }
 
 interface CommonTexts {
     val appTitle: String
@@ -60,7 +61,9 @@ interface CommonTexts {
     val noticeTitle: String
     val errorTitle: String
     val roomFeatures: String
+
     fun dayName(day: DayOfWeek): String
+
     fun roleName(role: Role): String
 }
 
@@ -85,8 +88,11 @@ interface ErrorTexts {
     val deletionBlocked: String
     val invalidInputTitle: String
     val invalidInput: String
+
     fun hiddenDependants(count: Int): String
+
     fun describe(error: ValidationError): String
+
     fun describe(type: DependantType): String
 }
 
@@ -104,9 +110,13 @@ interface SchoolTexts {
     val generationsLink: String
     val constraintsLink: String
     val chosenTimetableLink: String
+
     fun featuresLink(count: Int): String
+
     fun roomsLink(count: Int): String
+
     fun timeGridLink(teachingSlotsPerWeek: Int): String
+
     fun readinessSummary(issueCount: Int): String
 }
 
@@ -119,6 +129,7 @@ interface RoomTexts {
     val toRoomList: String
     val createFeature: String
     val toRooms: String
+
     fun roomTitle(identifier: String): String
 }
 
@@ -140,12 +151,25 @@ interface TimeGridTexts {
     val toTimeGrid: String
     val deleteSlotTitle: String
     val deletePermanently: String
+
     fun title(schoolName: String): String
+
     fun teachingSlotsPerWeek(count: Int): String
+
     fun slotKindName(kind: SlotKind): String
+
     fun slotTitle(label: String): String
-    fun deleteQuestion(label: String, start: LocalTime, end: LocalTime): String
-    fun deleteRemovals(exclusionCount: Int, unavailabilityCount: Int): String
+
+    fun deleteQuestion(
+        label: String,
+        start: LocalTime,
+        end: LocalTime,
+    ): String
+
+    fun deleteRemovals(
+        exclusionCount: Int,
+        unavailabilityCount: Int,
+    ): String
 }
 
 interface SubjectTexts {
@@ -155,6 +179,7 @@ interface SubjectTexts {
     val createSubject: String
     val deleteSubject: String
     val toSubjects: String
+
     fun subjectTitle(name: String): String
 }
 
@@ -178,13 +203,28 @@ interface ClassLevelTexts {
     val deleteClass: String
     val homeRoomLabel: String
     val noHomeRoom: String
+
     fun gridOffers(teachingSlotsPerWeek: Int): String
+
     fun levelTitle(identifier: String): String
-    fun gridWarning(weeklyPeriods: Int, teachingSlotsPerWeek: Int, excessPeriods: Int): String
-    fun levelSum(weeklyPeriods: Int, teachingSlotsPerWeek: Int): String
+
+    fun gridWarning(
+        weeklyPeriods: Int,
+        teachingSlotsPerWeek: Int,
+        excessPeriods: Int,
+    ): String
+
+    fun levelSum(
+        weeklyPeriods: Int,
+        teachingSlotsPerWeek: Int,
+    ): String
+
     fun newClassTitle(levelIdentifier: String): String
+
     fun classTitle(displayName: String): String
+
     fun curriculumFromLevel(levelIdentifier: String): String
+
     fun classSum(weeklyPeriods: Int): String
 }
 
@@ -205,7 +245,9 @@ interface TeacherTexts {
     val saveUnavailability: String
     val deleteTeacher: String
     val toTeachers: String
+
     fun loadLabel(teachingSlotsPerWeek: Int): String
+
     fun teacherTitle(displayName: String): String
 }
 
@@ -228,8 +270,11 @@ interface AccountTexts {
     val passwordChanged: String
     val currentPassword: String
     val changeButton: String
+
     fun accountTitle(username: String): String
+
     fun stateName(active: Boolean): String
+
     fun status(active: Boolean): String
 }
 
@@ -237,10 +282,15 @@ interface ReadinessTexts {
     val title: String
     val noIssues: String
     val noRoomOffersAll: String
+
     fun heading(issue: ReadinessIssue): String
+
     fun missingFeatures(featureNames: List<String>): String
+
     fun missingPeriods(periods: Int): String
+
     fun excessPeriods(periods: Int): String
+
     fun levelName(identifier: String): String
 }
 
@@ -298,17 +348,38 @@ interface GenerationTexts {
     val deleteTitle: String
     val deleteIntro: String
     val deleteButton: String
+
     fun changedLessons(count: Int): String
+
     fun minimumShare(percent: Int): String
-    fun chartCaption(xTitle: String, yTitle: String): String
-    fun diffTitle(first: Int, second: Int): String
+
+    fun chartCaption(
+        xTitle: String,
+        yTitle: String,
+    ): String
+
+    fun diffTitle(
+        first: Int,
+        second: Int,
+    ): String
+
     fun hardRuleName(rule: HardRule): String
+
     fun statusName(status: GenerationStatus): String
+
     fun generationTitle(startedAt: String): String
-    fun progress(elapsed: String, alternativesFound: Int): String
+
+    fun progress(
+        elapsed: String,
+        alternativesFound: Int,
+    ): String
+
     fun alternativeTitle(number: Int): String
+
     fun percent(value: Double): String
+
     fun dateTime(at: java.time.Instant): String
+
     fun duration(seconds: Long): String
 }
 
@@ -331,7 +402,22 @@ interface TimetableTexts {
     val noLongerRequired: String
     val noLongerRequiredHeading: String
     val notPlacedHeading: String
-    fun chosenInfo(chosenAt: String, username: String): String
-    fun lessonAt(className: String, subjectName: String, dayName: String, slotLabel: String): String
-    fun unplacedEntry(className: String, subjectName: String, periods: Int): String
+
+    fun chosenInfo(
+        chosenAt: String,
+        username: String,
+    ): String
+
+    fun lessonAt(
+        className: String,
+        subjectName: String,
+        dayName: String,
+        slotLabel: String,
+    ): String
+
+    fun unplacedEntry(
+        className: String,
+        subjectName: String,
+        periods: Int,
+    ): String
 }

@@ -21,14 +21,15 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class GenerationRunnerTest {
-
     private val test = SchedulingTestSchool()
     private val world = test.world
 
     private fun <T> UseCaseResult<T>.value(): T = assertIs<UseCaseResult.Success<T>>(this).value
 
     private fun startedGeneration(): Generation =
-        test.scheduling.start.execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1, warningsConfirmed = true)).value()
+        test.scheduling.start
+            .execute(test.admin.id, test.school.id, StartRequest(timeLimitMinutes = 1, warningsConfirmed = true))
+            .value()
 
     private fun alternativesOf(generation: Generation) = world.generations.findAlternatives(generation.id)
 
@@ -66,7 +67,8 @@ class GenerationRunnerTest {
 
     @Test
     fun `stored alternatives never dominate each other (SC-003)`() {
-        world.solver.candidates = { listOf(test.halfFilled(), test.complete(test.mueller), test.complete(test.schmidt), test.halfFilled(test.mueller)) }
+        world.solver.candidates =
+            { listOf(test.halfFilled(), test.complete(test.mueller), test.complete(test.schmidt), test.halfFilled(test.mueller)) }
 
         val generation = startedGeneration()
 
@@ -81,7 +83,9 @@ class GenerationRunnerTest {
         world.solver.candidates = { listOf(test.halfFilled(), test.complete()) }
         val generation = startedGeneration()
 
-        test.scheduling.stop.execute(test.admin.id, test.school.id, generation.id).value()
+        test.scheduling.stop
+            .execute(test.admin.id, test.school.id, generation.id)
+            .value()
         world.executor.runPending()
 
         assertEquals(GenerationStatus.STOPPED, world.generations.findById(generation.id)!!.status)
@@ -97,7 +101,11 @@ class GenerationRunnerTest {
         assertEquals(GenerationStatus.FAILED, world.generations.findById(generation.id)!!.status)
         assertEquals(1, alternativesOf(generation).size)
         assertTrue(GenerationEvent.Failed(generation.id, IllegalStateException::class.java.name) in world.generationLog.events)
-        assertFalse(world.generationLog.events.toString().contains("Schmidt"))
+        assertFalse(
+            world.generationLog.events
+                .toString()
+                .contains("Schmidt"),
+        )
     }
 
     @Test
@@ -112,13 +120,23 @@ class GenerationRunnerTest {
 
     @Test
     fun `an infeasible generation names the active hard constraints that can force violations`() {
-        val minimum = world.useCases.constraints.create.execute(
-            test.admin.id, test.school.id,
-            ConstraintInput(ConstraintKind.HARD, null, ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), 1)),
-        ).value()
-        world.useCases.constraints.create.execute(
-            test.admin.id, test.school.id, ConstraintInput(ConstraintKind.HARD, null, ConstraintRule.ClassNoGaps(ClassScope.AllClasses)),
-        ).value()
+        val minimum =
+            world.useCases.constraints.create
+                .execute(
+                    test.admin.id,
+                    test.school.id,
+                    ConstraintInput(
+                        ConstraintKind.HARD,
+                        null,
+                        ConstraintRule.ClassMinPeriodsPerDay(ClassScope.SpecificClass(test.class5a.id), 1),
+                    ),
+                ).value()
+        world.useCases.constraints.create
+            .execute(
+                test.admin.id,
+                test.school.id,
+                ConstraintInput(ConstraintKind.HARD, null, ConstraintRule.ClassNoGaps(ClassScope.AllClasses)),
+            ).value()
         world.solver.infeasiblePasses = 1
 
         val generation = startedGeneration()
@@ -169,15 +187,21 @@ class GenerationRunnerTest {
         val tuesday = setOf(DaySlot(TUESDAY, test.first.id), DaySlot(TUESDAY, test.second.id))
         val rule = ConstraintRule.SubjectExcludedSlots(test.math.id, null, tuesday)
 
-        world.useCases.constraints.create.execute(test.admin.id, test.school.id, ConstraintInput(ConstraintKind.SOFT, SoftWeight.MEDIUM, rule)).value()
+        world.useCases.constraints.create
+            .execute(
+                test.admin.id,
+                test.school.id,
+                ConstraintInput(ConstraintKind.SOFT, SoftWeight.MEDIUM, rule),
+            ).value()
     }
 
     private fun startedGeneration(minimumPlacedShare: Int): Generation =
-        test.scheduling.start.execute(
-            test.admin.id,
-            test.school.id,
-            StartRequest(timeLimitMinutes = 1, warningsConfirmed = true, minimumPlacedShare = minimumPlacedShare),
-        ).value()
+        test.scheduling.start
+            .execute(
+                test.admin.id,
+                test.school.id,
+                StartRequest(timeLimitMinutes = 1, warningsConfirmed = true, minimumPlacedShare = minimumPlacedShare),
+            ).value()
 
     @Test
     fun `an equally optimal alternative placing too few lessons is not kept (FR-007a)`() {

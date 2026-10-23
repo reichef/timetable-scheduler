@@ -33,7 +33,6 @@ import kotlin.test.assertTrue
  */
 @Tag("testschool")
 class TestSchoolScenarioTest {
-
     private val setup = InitialSetup("Installationsschule", "testplaner", "testplaner-passwort-1")
 
     @Test
@@ -56,7 +55,10 @@ class TestSchoolScenarioTest {
     }
 
     /** Independent check of the weekly loads (001 FR-018): no teacher teaches more lessons than the load allows. */
-    private fun assertNoTeacherAboveLoad(lessons: List<LessonAssignment>, seeded: SeededTestSchool) {
+    private fun assertNoTeacherAboveLoad(
+        lessons: List<LessonAssignment>,
+        seeded: SeededTestSchool,
+    ) {
         val loadOf = UnderstaffedTestSet.teachers.associate { seeded.teacherIds.getValue(it.code) to it.weeklyLoad }
 
         lessons.groupingBy { it.teacherId }.eachCount().forEach { (teacherId, lessonCount) ->
@@ -68,24 +70,34 @@ class TestSchoolScenarioTest {
      * A finished generation with the time its first alternative was stored and, per poll, the elapsed time and the most
      * lessons any stored alternative placed — to find when the first alternative meeting the final share appeared.
      */
-    private class GenerationRun(val generation: Generation, val firstAlternativeAfter: Duration?, val bestPlacedOverTime: List<Pair<Duration, Int>>) {
-
+    private class GenerationRun(
+        val generation: Generation,
+        val firstAlternativeAfter: Duration?,
+        val bestPlacedOverTime: List<Pair<Duration, Int>>,
+    ) {
         /** SC-001: when the first alternative appeared that meets the minimum share of the final best one (FR-007a). */
         fun firstMeetingShareAfter(share: PlacementShare): Duration? =
             bestPlacedOverTime.firstOrNull { (_, placed) -> share.admits(placed) }?.first
     }
 
     /** The seeded test school and the alternatives of its finished generation. */
-    private class ScenarioResult(val seeded: SeededTestSchool, val alternatives: List<Alternative>)
+    private class ScenarioResult(
+        val seeded: SeededTestSchool,
+        val alternatives: List<Alternative>,
+    )
 
     /** One scenario on [testSet]: seed it into a fresh database, run one generation and check the common rules. */
-    private inner class Scenario(private val testSet: TestSchoolData) {
-
+    private inner class Scenario(
+        private val testSet: TestSchoolData,
+    ) {
         fun run(): ScenarioResult =
             PostgreSQLContainer("postgres:17").use { container ->
                 container.start()
 
-                val database = DatabaseFactory.connectAndMigrate(DatabaseSettings(container.jdbcUrl, container.username, container.password))
+                val database =
+                    DatabaseFactory.connectAndMigrate(
+                        DatabaseSettings(container.jdbcUrl, container.username, container.password),
+                    )
 
                 try {
                     runOn(database)
@@ -106,7 +118,11 @@ class TestSchoolScenarioTest {
             assertReadyForScheduling(useCases, actor, schoolId)
 
             val run = runGeneration(useCases, actor, schoolId)
-            val alternatives = useCases.scheduling.get.execute(actor, schoolId, run.generation.id).required("load result").alternatives
+            val alternatives =
+                useCases.scheduling.get
+                    .execute(actor, schoolId, run.generation.id)
+                    .required("load result")
+                    .alternatives
 
             printMetrics(run, alternatives, seeded)
             assertExpectedResults(useCases, actor, run, alternatives, seeded)
@@ -114,22 +130,39 @@ class TestSchoolScenarioTest {
             return ScenarioResult(seeded, alternatives)
         }
 
-        private fun assertReadyForScheduling(useCases: MasterDataUseCases, actor: AccountId, schoolId: SchoolId) {
+        private fun assertReadyForScheduling(
+            useCases: MasterDataUseCases,
+            actor: AccountId,
+            schoolId: SchoolId,
+        ) {
             val report = useCases.readiness.execute(actor, schoolId).required("readiness")
 
             assertEquals(emptyList(), GenerationGate.classify(report.issues).blocking, "blocking readiness issues")
         }
 
         /** Starts a generation with the default time limit and polls it until it ends, like the progress page does. */
-        private fun runGeneration(useCases: MasterDataUseCases, actor: AccountId, schoolId: SchoolId): GenerationRun {
+        private fun runGeneration(
+            useCases: MasterDataUseCases,
+            actor: AccountId,
+            schoolId: SchoolId,
+        ): GenerationRun {
             val started = Instant.now()
-            val generation = useCases.scheduling.start.execute(actor, schoolId, StartRequest(warningsConfirmed = true)).required("start generation")
+            val generation =
+                useCases.scheduling.start
+                    .execute(
+                        actor,
+                        schoolId,
+                        StartRequest(warningsConfirmed = true),
+                    ).required("start generation")
             val deadline = started.plus(Duration.ofMinutes(Generation.DEFAULT_TIME_LIMIT_MINUTES + 3L))
             var firstAlternativeAfter: Duration? = null
             val bestPlacedOverTime = mutableListOf<Pair<Duration, Int>>()
 
             while (true) {
-                val details = useCases.scheduling.get.execute(actor, schoolId, generation.id).required("poll generation")
+                val details =
+                    useCases.scheduling.get
+                        .execute(actor, schoolId, generation.id)
+                        .required("poll generation")
                 val elapsed = Duration.between(started, Instant.now())
 
                 if (firstAlternativeAfter == null && details.alternatives.isNotEmpty()) {
@@ -156,13 +189,23 @@ class TestSchoolScenarioTest {
             val firstMeetingShare = run.firstMeetingShareAfter(share)
 
             assertEquals(GenerationStatus.FINISHED, run.generation.status)
-            assertTrue(firstMeetingShare != null && firstMeetingShare < Duration.ofMinutes(2), "first alternative meeting the share after $firstMeetingShare (SC-001)")
+            assertTrue(
+                firstMeetingShare != null && firstMeetingShare < Duration.ofMinutes(2),
+                "first alternative meeting the share after $firstMeetingShare (SC-001)",
+            )
             alternatives.forEach { alternative ->
                 assertTrue(share.admits(alternative.lessons.size), "alternative below the minimum share or without lessons (FR-007a)")
             }
 
             alternatives.forEach { alternative ->
-                val details = useCases.scheduling.getAlternative.execute(actor, seeded.schoolId, run.generation.id, alternative.id).required("load alternative")
+                val details =
+                    useCases.scheduling.getAlternative
+                        .execute(
+                            actor,
+                            seeded.schoolId,
+                            run.generation.id,
+                            alternative.id,
+                        ).required("load alternative")
 
                 assertEquals(emptyList(), details.conflicts, "hard constraint violations re-checked against the stored data")
                 assertLowerGradesEndBeforeNinthPeriod(alternative.lessons, seeded)
@@ -173,27 +216,43 @@ class TestSchoolScenarioTest {
         }
 
         /** The minimum share of the generation, measured against its best alternative. */
-        private fun finalShare(run: GenerationRun, alternatives: List<Alternative>): PlacementShare =
+        private fun finalShare(
+            run: GenerationRun,
+            alternatives: List<Alternative>,
+        ): PlacementShare =
             PlacementShare(run.generation.minimumPlacedShare).apply { record(alternatives.maxOfOrNull { it.lessons.size } ?: 0) }
 
         /** Hard constraints 4–9: grades 5 and 6 have no lessons in the 9. and 10. Stunde. */
-        private fun assertLowerGradesEndBeforeNinthPeriod(lessons: List<LessonAssignment>, seeded: SeededTestSchool) {
-            val lowerGrades = testSet.classes.filter { it.grade <= 6 }.map { seeded.classIds.getValue(it.name) }.toSet()
+        private fun assertLowerGradesEndBeforeNinthPeriod(
+            lessons: List<LessonAssignment>,
+            seeded: SeededTestSchool,
+        ) {
+            val lowerGrades =
+                testSet.classes
+                    .filter { it.grade <= 6 }
+                    .map { seeded.classIds.getValue(it.name) }
+                    .toSet()
             val lateSlots = setOf(seeded.slotIds.getValue("9. Stunde"), seeded.slotIds.getValue("10. Stunde"))
 
             assertTrue(lessons.none { it.classId in lowerGrades && it.daySlot.slotId in lateSlots }, "grades 5/6 in the 9./10. Stunde")
         }
 
         /** Subjects with a required feature take place in rooms with it, all others in the class's home room (FR-002a). */
-        private fun assertRoomRules(lessons: List<LessonAssignment>, seeded: SeededTestSchool) {
+        private fun assertRoomRules(
+            lessons: List<LessonAssignment>,
+            seeded: SeededTestSchool,
+        ) {
             val homeRoomOf = testSet.classes.associate { seeded.classIds.getValue(it.name) to seeded.roomIds.getValue(it.homeRoom) }
-            val roomsWithFeature = testSet.rooms.filter { it.feature != null }
-                .groupBy({ it.feature!! }, { seeded.roomIds.getValue(it.identifier) })
-            val allowedRooms = testSet.subjects.associate { subject ->
-                val rooms: Set<RoomId>? = subject.requiredFeature?.let { roomsWithFeature.getValue(it).toSet() }
+            val roomsWithFeature =
+                testSet.rooms
+                    .filter { it.feature != null }
+                    .groupBy({ it.feature!! }, { seeded.roomIds.getValue(it.identifier) })
+            val allowedRooms =
+                testSet.subjects.associate { subject ->
+                    val rooms: Set<RoomId>? = subject.requiredFeature?.let { roomsWithFeature.getValue(it).toSet() }
 
-                seeded.subjectIds.getValue(subject.name) to rooms
-            }
+                    seeded.subjectIds.getValue(subject.name) to rooms
+                }
 
             lessons.forEach { lesson ->
                 val expected = allowedRooms.getValue(lesson.subjectId) ?: setOf(homeRoomOf.getValue(lesson.classId))
@@ -202,20 +261,29 @@ class TestSchoolScenarioTest {
             }
         }
 
-        private fun assertFixationsAndUnavailability(lessons: List<LessonAssignment>, seeded: SeededTestSchool) {
+        private fun assertFixationsAndUnavailability(
+            lessons: List<LessonAssignment>,
+            seeded: SeededTestSchool,
+        ) {
             testSet.fixations.forEach { fixation ->
                 val classId = seeded.classIds.getValue(fixation.className)
                 val subjectId = seeded.subjectIds.getValue(fixation.subject)
                 val teacherId = seeded.teacherIds.getValue(fixation.teacherCode)
 
-                assertTrue(lessons.filter { it.classId == classId && it.subjectId == subjectId }.all { it.teacherId == teacherId }, "fixation not kept")
+                assertTrue(
+                    lessons.filter { it.classId == classId && it.subjectId == subjectId }.all { it.teacherId == teacherId },
+                    "fixation not kept",
+                )
             }
 
             testSet.teachers.filter { it.unavailable.isNotEmpty() }.forEach { teacher ->
                 val teacherId = seeded.teacherIds.getValue(teacher.code)
                 val unavailable = teacher.unavailable.map(seeded::daySlot).toSet()
 
-                assertTrue(lessons.none { it.teacherId == teacherId && it.daySlot in unavailable }, "lesson while the teacher is unavailable")
+                assertTrue(
+                    lessons.none { it.teacherId == teacherId && it.daySlot in unavailable },
+                    "lesson while the teacher is unavailable",
+                )
             }
         }
 
@@ -228,25 +296,47 @@ class TestSchoolScenarioTest {
         }
 
         /** The recorded metrics of the test set; they decide whether the specification needs refining (T115). */
-        private fun printMetrics(run: GenerationRun, alternatives: List<Alternative>, seeded: SeededTestSchool) {
-            val classNames = seeded.classIds.entries.associate { (name, id) -> id to name }
-            val best = alternatives.maxByOrNull { it.objectiveValues.classFill }
+        private fun printMetrics(
+            run: GenerationRun,
+            alternatives: List<Alternative>,
+            seeded: SeededTestSchool,
+        ) {
+            val generation = run.generation
             val share = finalShare(run, alternatives)
+            val firstMeetingShare = run.firstMeetingShareAfter(share)?.toSeconds()
 
-            println("TESTSCHOOL [${testSet.schoolName}] status=${run.generation.status} alternatives=${alternatives.size} minimumShare=${run.generation.minimumPlacedShare}% bestPlaced=${share.bestPlaced}")
-            println("TESTSCHOOL [${testSet.schoolName}] firstAlternativeAfter=${run.firstAlternativeAfter?.toSeconds()}s firstMeetingShareAfter=${run.firstMeetingShareAfter(share)?.toSeconds()}s")
+            fun report(text: String) = println("TESTSCHOOL [${testSet.schoolName}] $text")
+
+            report(
+                "status=${generation.status} alternatives=${alternatives.size} " +
+                    "minimumShare=${generation.minimumPlacedShare}% bestPlaced=${share.bestPlaced}",
+            )
+            report("firstAlternativeAfter=${run.firstAlternativeAfter?.toSeconds()}s firstMeetingShareAfter=${firstMeetingShare}s")
             alternatives.forEachIndexed { index, alternative ->
-                println("TESTSCHOOL [${testSet.schoolName}] alternative ${index + 1}: objectives=${alternative.objectiveValues.asVector()} unplaced=${alternative.unplacedPeriods()} softViolations=${alternative.softViolations.values.sum()}")
-            }
-            if (best != null) {
-                val unplacedPerClass = best.unplaced.entries.groupBy({ classNames[it.key.classId] }, { it.value }).mapValues { it.value.sum() }
+                val objectives = alternative.objectiveValues.asVector()
+                val softViolations = alternative.softViolations.values.sum()
 
-                val subjectNames = seeded.subjectIds.entries.associate { (name, id) -> id to name }
-                val unplacedPerSubject = best.unplaced.entries.groupBy({ subjectNames[it.key.subjectId] }, { it.value }).mapValues { it.value.sum() }
-
-                println("TESTSCHOOL [${testSet.schoolName}] best class fill=${best.objectiveValues.classFill} unplaced per class=$unplacedPerClass")
-                println("TESTSCHOOL [${testSet.schoolName}] best unplaced per subject=$unplacedPerSubject")
+                report(
+                    "alternative ${index + 1}: objectives=$objectives unplaced=${alternative.unplacedPeriods()} softViolations=$softViolations",
+                )
             }
+
+            val best = alternatives.maxByOrNull { it.objectiveValues.classFill } ?: return
+            val classNames = seeded.classIds.entries.associate { (name, id) -> id to name }
+            val subjectNames = seeded.subjectIds.entries.associate { (name, id) -> id to name }
+            val unplacedPerClass =
+                best.unplaced.entries
+                    .groupBy({ classNames[it.key.classId] }, { it.value })
+                    .mapValues { it.value.sum() }
+            val unplacedPerSubject =
+                best.unplaced.entries
+                    .groupBy(
+                        { subjectNames[it.key.subjectId] },
+                        { it.value },
+                    ).mapValues { it.value.sum() }
+
+            report("best class fill=${best.objectiveValues.classFill} unplaced per class=$unplacedPerClass")
+            report("best unplaced per subject=$unplacedPerSubject")
         }
     }
 

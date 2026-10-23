@@ -40,64 +40,112 @@ internal object GermanConstraintTexts : ConstraintTexts {
     override val deleteConstraint = "Bedingung löschen"
     override val deleteFixation = "Festlegung löschen"
 
-    override fun typeName(type: ConstraintType) = when (type) {
-        ConstraintType.CLASS_MAX_PERIODS_PER_DAY -> "höchstens Stunden pro Tag (Klasse)"
-        ConstraintType.CLASS_MIN_PERIODS_PER_DAY -> "mindestens Stunden pro Tag (Klasse)"
-        ConstraintType.CLASS_NO_GAPS -> "keine Freistunden (Klasse)"
-        ConstraintType.TEACHER_MAX_PERIODS_PER_DAY -> "höchstens Stunden pro Tag (Lehrkraft)"
-        ConstraintType.TEACHER_MAX_GAPS_PER_DAY -> "höchstens Freistunden pro Tag (Lehrkraft)"
-        ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS -> "Fach höchstens Stunden pro Tag"
-        ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS -> "Doppelstunde"
-        ConstraintType.CLASS_EXCLUDED_SLOTS -> "Klasse nicht in bestimmten Stunden"
-        ConstraintType.TEACHER_EXCLUDED_SLOTS -> "Lehrkraft frei in bestimmten Stunden"
-        ConstraintType.SUBJECT_EXCLUDED_SLOTS -> "Fach nicht in bestimmten Stunden"
-    }
+    override fun typeName(type: ConstraintType) =
+        when (type) {
+            ConstraintType.CLASS_MAX_PERIODS_PER_DAY -> "höchstens Stunden pro Tag (Klasse)"
+            ConstraintType.CLASS_MIN_PERIODS_PER_DAY -> "mindestens Stunden pro Tag (Klasse)"
+            ConstraintType.CLASS_NO_GAPS -> "keine Freistunden (Klasse)"
+            ConstraintType.TEACHER_MAX_PERIODS_PER_DAY -> "höchstens Stunden pro Tag (Lehrkraft)"
+            ConstraintType.TEACHER_MAX_GAPS_PER_DAY -> "höchstens Freistunden pro Tag (Lehrkraft)"
+            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS -> "Fach höchstens Stunden pro Tag"
+            ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS -> "Doppelstunde"
+            ConstraintType.CLASS_EXCLUDED_SLOTS -> "Klasse nicht in bestimmten Stunden"
+            ConstraintType.TEACHER_EXCLUDED_SLOTS -> "Lehrkraft frei in bestimmten Stunden"
+            ConstraintType.SUBJECT_EXCLUDED_SLOTS -> "Fach nicht in bestimmten Stunden"
+        }
 
-    override fun kindName(kind: ConstraintKind) = when (kind) {
-        ConstraintKind.HARD -> "Muss"
-        ConstraintKind.SOFT -> "Soll"
-    }
+    override fun kindName(kind: ConstraintKind) =
+        when (kind) {
+            ConstraintKind.HARD -> "Muss"
+            ConstraintKind.SOFT -> "Soll"
+        }
 
-    override fun weightName(weight: SoftWeight) = when (weight) {
-        SoftWeight.LOW -> "niedrig"
-        SoftWeight.MEDIUM -> "mittel"
-        SoftWeight.HIGH -> "hoch"
-    }
+    override fun weightName(weight: SoftWeight) =
+        when (weight) {
+            SoftWeight.LOW -> "niedrig"
+            SoftWeight.MEDIUM -> "mittel"
+            SoftWeight.HIGH -> "hoch"
+        }
 
     override fun newConstraintTitle(type: ConstraintType) = "Neue Bedingung: ${typeName(type)}"
 
     private fun periods(count: Int) = if (count == 1) "1 Stunde" else "$count Stunden"
 
-    private fun scope(scope: ClassScope, names: RuleNames) = when (scope) {
+    private fun scope(
+        scope: ClassScope,
+        names: RuleNames,
+    ) = when (scope) {
         ClassScope.AllClasses -> "Alle Klassen"
         is ClassScope.SpecificClass -> "Klasse ${names.className(scope.classId)}"
     }
 
-    override fun ruleText(rule: ConstraintRule, kind: ConstraintKind, names: RuleNames) = when (rule) {
-        is ConstraintRule.ClassMaxPeriodsPerDay -> "${scope(rule.scope, names)}: höchstens ${periods(rule.limit)} pro Tag"
-        is ConstraintRule.ClassMinPeriodsPerDay -> "${scope(rule.scope, names)}: mindestens ${periods(rule.limit)} pro Tag"
-        is ConstraintRule.ClassNoGaps -> "${scope(rule.scope, names)}: keine Freistunden"
-        is ConstraintRule.TeacherMaxPeriodsPerDay -> "Lehrkraft ${names.teacherShortCode(rule.teacherId)}: höchstens ${periods(rule.limit)} pro Tag"
-        is ConstraintRule.TeacherMaxGapsPerDay ->
-            "Lehrkraft ${names.teacherShortCode(rule.teacherId)}: höchstens ${rule.limit} ${if (rule.limit == 1) "Freistunde" else "Freistunden"} pro Tag"
-        is ConstraintRule.SubjectMaxPerDayInClass ->
-            "${scope(rule.scope, names)}: ${rule.subjectId?.let(names.subjectName) ?: everySubject} höchstens ${periods(rule.limit)} pro Tag"
-        is ConstraintRule.SubjectDoublePeriodsInClass ->
-            "Klasse ${names.className(rule.classId)}: ${names.subjectName(rule.subjectId)} als Doppelstunde" + if (rule.acrossBreaks) " (auch über Pausen)" else ""
-        is ConstraintRule.ClassExcludedSlots -> "Klasse ${names.className(rule.classId)}: nicht in ${slotList(rule.slots, names)}"
-        is ConstraintRule.TeacherExcludedSlots ->
-            "Lehrkraft ${names.teacherShortCode(rule.teacherId)}: ${if (kind == ConstraintKind.SOFT) "frei" else "nicht in"} ${slotList(rule.slots, names)}"
-        is ConstraintRule.SubjectExcludedSlots ->
-            "${names.subjectName(rule.subjectId)} (${rule.classId?.let { "Klasse ${names.className(it)}" } ?: allClasses}): nicht in ${slotList(rule.slots, names)}"
+    override fun ruleText(
+        rule: ConstraintRule,
+        kind: ConstraintKind,
+        names: RuleNames,
+    ) = when (rule) {
+        is ConstraintRule.ClassMaxPeriodsPerDay -> {
+            "${scope(rule.scope, names)}: höchstens ${periods(rule.limit)} pro Tag"
+        }
+
+        is ConstraintRule.ClassMinPeriodsPerDay -> {
+            "${scope(rule.scope, names)}: mindestens ${periods(rule.limit)} pro Tag"
+        }
+
+        is ConstraintRule.ClassNoGaps -> {
+            "${scope(rule.scope, names)}: keine Freistunden"
+        }
+
+        is ConstraintRule.TeacherMaxPeriodsPerDay -> {
+            "Lehrkraft ${names.teacherShortCode(rule.teacherId)}: höchstens ${periods(rule.limit)} pro Tag"
+        }
+
+        is ConstraintRule.TeacherMaxGapsPerDay -> {
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Lehrkraft $teacher: höchstens ${rule.limit} ${if (rule.limit == 1) "Freistunde" else "Freistunden"} pro Tag"
+        }
+
+        is ConstraintRule.SubjectMaxPerDayInClass -> {
+            val subject = rule.subjectId?.let(names.subjectName) ?: everySubject
+
+            "${scope(rule.scope, names)}: $subject höchstens ${periods(rule.limit)} pro Tag"
+        }
+
+        is ConstraintRule.SubjectDoublePeriodsInClass -> {
+            "Klasse ${names.className(rule.classId)}: ${names.subjectName(rule.subjectId)} als Doppelstunde" +
+                if (rule.acrossBreaks) " (auch über Pausen)" else ""
+        }
+
+        is ConstraintRule.ClassExcludedSlots -> {
+            "Klasse ${names.className(rule.classId)}: nicht in ${slotList(rule.slots, names)}"
+        }
+
+        is ConstraintRule.TeacherExcludedSlots -> {
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Lehrkraft $teacher: ${if (kind == ConstraintKind.SOFT) "frei" else "nicht in"} ${slotList(rule.slots, names)}"
+        }
+
+        is ConstraintRule.SubjectExcludedSlots -> {
+            val classes = rule.classId?.let { "Klasse ${names.className(it)}" } ?: allClasses
+
+            "${names.subjectName(rule.subjectId)} ($classes): nicht in ${slotList(rule.slots, names)}"
+        }
     }
 
-    override fun fixationText(className: String, subjectName: String, teacherShortCode: String) = "$className $subjectName: $teacherShortCode"
+    override fun fixationText(
+        className: String,
+        subjectName: String,
+        teacherShortCode: String,
+    ) = "$className $subjectName: $teacherShortCode"
 
-    override fun invalidityReason(reason: FixationInvalidity) = when (reason) {
-        FixationInvalidity.NOT_IN_CURRICULUM -> "das Fach steht nicht mehr im Lehrplan der Klasse"
-        FixationInvalidity.NOT_QUALIFIED -> "die Lehrkraft ist für das Fach nicht mehr qualifiziert"
-        FixationInvalidity.EXCEEDS_LOAD -> "die festgelegten Stunden übersteigen das Deputat"
-    }
+    override fun invalidityReason(reason: FixationInvalidity) =
+        when (reason) {
+            FixationInvalidity.NOT_IN_CURRICULUM -> "das Fach steht nicht mehr im Lehrplan der Klasse"
+            FixationInvalidity.NOT_QUALIFIED -> "die Lehrkraft ist für das Fach nicht mehr qualifiziert"
+            FixationInvalidity.EXCEEDS_LOAD -> "die festgelegten Stunden übersteigen das Deputat"
+        }
 }
 
 /** English constraint texts (002 US2). */
@@ -133,62 +181,110 @@ internal object EnglishConstraintTexts : ConstraintTexts {
     override val deleteConstraint = "Delete constraint"
     override val deleteFixation = "Delete fixation"
 
-    override fun typeName(type: ConstraintType) = when (type) {
-        ConstraintType.CLASS_MAX_PERIODS_PER_DAY -> "at most periods per day (class)"
-        ConstraintType.CLASS_MIN_PERIODS_PER_DAY -> "at least periods per day (class)"
-        ConstraintType.CLASS_NO_GAPS -> "no free periods (class)"
-        ConstraintType.TEACHER_MAX_PERIODS_PER_DAY -> "at most periods per day (teacher)"
-        ConstraintType.TEACHER_MAX_GAPS_PER_DAY -> "at most free periods per day (teacher)"
-        ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS -> "subject at most periods per day"
-        ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS -> "double periods"
-        ConstraintType.CLASS_EXCLUDED_SLOTS -> "class not in certain periods"
-        ConstraintType.TEACHER_EXCLUDED_SLOTS -> "teacher free in certain periods"
-        ConstraintType.SUBJECT_EXCLUDED_SLOTS -> "subject not in certain periods"
-    }
+    override fun typeName(type: ConstraintType) =
+        when (type) {
+            ConstraintType.CLASS_MAX_PERIODS_PER_DAY -> "at most periods per day (class)"
+            ConstraintType.CLASS_MIN_PERIODS_PER_DAY -> "at least periods per day (class)"
+            ConstraintType.CLASS_NO_GAPS -> "no free periods (class)"
+            ConstraintType.TEACHER_MAX_PERIODS_PER_DAY -> "at most periods per day (teacher)"
+            ConstraintType.TEACHER_MAX_GAPS_PER_DAY -> "at most free periods per day (teacher)"
+            ConstraintType.SUBJECT_MAX_PER_DAY_IN_CLASS -> "subject at most periods per day"
+            ConstraintType.SUBJECT_DOUBLE_PERIODS_IN_CLASS -> "double periods"
+            ConstraintType.CLASS_EXCLUDED_SLOTS -> "class not in certain periods"
+            ConstraintType.TEACHER_EXCLUDED_SLOTS -> "teacher free in certain periods"
+            ConstraintType.SUBJECT_EXCLUDED_SLOTS -> "subject not in certain periods"
+        }
 
-    override fun kindName(kind: ConstraintKind) = when (kind) {
-        ConstraintKind.HARD -> "hard"
-        ConstraintKind.SOFT -> "soft"
-    }
+    override fun kindName(kind: ConstraintKind) =
+        when (kind) {
+            ConstraintKind.HARD -> "hard"
+            ConstraintKind.SOFT -> "soft"
+        }
 
-    override fun weightName(weight: SoftWeight) = when (weight) {
-        SoftWeight.LOW -> "low"
-        SoftWeight.MEDIUM -> "medium"
-        SoftWeight.HIGH -> "high"
-    }
+    override fun weightName(weight: SoftWeight) =
+        when (weight) {
+            SoftWeight.LOW -> "low"
+            SoftWeight.MEDIUM -> "medium"
+            SoftWeight.HIGH -> "high"
+        }
 
     override fun newConstraintTitle(type: ConstraintType) = "New constraint: ${typeName(type)}"
 
     private fun periods(count: Int) = if (count == 1) "1 period" else "$count periods"
 
-    private fun scope(scope: ClassScope, names: RuleNames) = when (scope) {
+    private fun scope(
+        scope: ClassScope,
+        names: RuleNames,
+    ) = when (scope) {
         ClassScope.AllClasses -> "All classes"
         is ClassScope.SpecificClass -> "Class ${names.className(scope.classId)}"
     }
 
-    override fun ruleText(rule: ConstraintRule, kind: ConstraintKind, names: RuleNames) = when (rule) {
-        is ConstraintRule.ClassMaxPeriodsPerDay -> "${scope(rule.scope, names)}: at most ${periods(rule.limit)} per day"
-        is ConstraintRule.ClassMinPeriodsPerDay -> "${scope(rule.scope, names)}: at least ${periods(rule.limit)} per day"
-        is ConstraintRule.ClassNoGaps -> "${scope(rule.scope, names)}: no free periods"
-        is ConstraintRule.TeacherMaxPeriodsPerDay -> "Teacher ${names.teacherShortCode(rule.teacherId)}: at most ${periods(rule.limit)} per day"
-        is ConstraintRule.TeacherMaxGapsPerDay ->
-            "Teacher ${names.teacherShortCode(rule.teacherId)}: at most ${rule.limit} ${if (rule.limit == 1) "free period" else "free periods"} per day"
-        is ConstraintRule.SubjectMaxPerDayInClass ->
-            "${scope(rule.scope, names)}: ${rule.subjectId?.let(names.subjectName) ?: everySubject} at most ${periods(rule.limit)} per day"
-        is ConstraintRule.SubjectDoublePeriodsInClass ->
-            "Class ${names.className(rule.classId)}: ${names.subjectName(rule.subjectId)} as double periods" + if (rule.acrossBreaks) " (also across breaks)" else ""
-        is ConstraintRule.ClassExcludedSlots -> "Class ${names.className(rule.classId)}: not in ${slotList(rule.slots, names)}"
-        is ConstraintRule.TeacherExcludedSlots ->
-            "Teacher ${names.teacherShortCode(rule.teacherId)}: ${if (kind == ConstraintKind.SOFT) "free" else "not in"} ${slotList(rule.slots, names)}"
-        is ConstraintRule.SubjectExcludedSlots ->
-            "${names.subjectName(rule.subjectId)} (${rule.classId?.let { "class ${names.className(it)}" } ?: allClasses}): not in ${slotList(rule.slots, names)}"
+    override fun ruleText(
+        rule: ConstraintRule,
+        kind: ConstraintKind,
+        names: RuleNames,
+    ) = when (rule) {
+        is ConstraintRule.ClassMaxPeriodsPerDay -> {
+            "${scope(rule.scope, names)}: at most ${periods(rule.limit)} per day"
+        }
+
+        is ConstraintRule.ClassMinPeriodsPerDay -> {
+            "${scope(rule.scope, names)}: at least ${periods(rule.limit)} per day"
+        }
+
+        is ConstraintRule.ClassNoGaps -> {
+            "${scope(rule.scope, names)}: no free periods"
+        }
+
+        is ConstraintRule.TeacherMaxPeriodsPerDay -> {
+            "Teacher ${names.teacherShortCode(rule.teacherId)}: at most ${periods(rule.limit)} per day"
+        }
+
+        is ConstraintRule.TeacherMaxGapsPerDay -> {
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Teacher $teacher: at most ${rule.limit} ${if (rule.limit == 1) "free period" else "free periods"} per day"
+        }
+
+        is ConstraintRule.SubjectMaxPerDayInClass -> {
+            val subject = rule.subjectId?.let(names.subjectName) ?: everySubject
+
+            "${scope(rule.scope, names)}: $subject at most ${periods(rule.limit)} per day"
+        }
+
+        is ConstraintRule.SubjectDoublePeriodsInClass -> {
+            "Class ${names.className(rule.classId)}: ${names.subjectName(rule.subjectId)} as double periods" +
+                if (rule.acrossBreaks) " (also across breaks)" else ""
+        }
+
+        is ConstraintRule.ClassExcludedSlots -> {
+            "Class ${names.className(rule.classId)}: not in ${slotList(rule.slots, names)}"
+        }
+
+        is ConstraintRule.TeacherExcludedSlots -> {
+            val teacher = names.teacherShortCode(rule.teacherId)
+
+            "Teacher $teacher: ${if (kind == ConstraintKind.SOFT) "free" else "not in"} ${slotList(rule.slots, names)}"
+        }
+
+        is ConstraintRule.SubjectExcludedSlots -> {
+            val classes = rule.classId?.let { "class ${names.className(it)}" } ?: allClasses
+
+            "${names.subjectName(rule.subjectId)} ($classes): not in ${slotList(rule.slots, names)}"
+        }
     }
 
-    override fun fixationText(className: String, subjectName: String, teacherShortCode: String) = "$className $subjectName: $teacherShortCode"
+    override fun fixationText(
+        className: String,
+        subjectName: String,
+        teacherShortCode: String,
+    ) = "$className $subjectName: $teacherShortCode"
 
-    override fun invalidityReason(reason: FixationInvalidity) = when (reason) {
-        FixationInvalidity.NOT_IN_CURRICULUM -> "the subject is no longer in the class's curriculum"
-        FixationInvalidity.NOT_QUALIFIED -> "the teacher is no longer qualified for the subject"
-        FixationInvalidity.EXCEEDS_LOAD -> "the fixed periods exceed the teaching load"
-    }
+    override fun invalidityReason(reason: FixationInvalidity) =
+        when (reason) {
+            FixationInvalidity.NOT_IN_CURRICULUM -> "the subject is no longer in the class's curriculum"
+            FixationInvalidity.NOT_QUALIFIED -> "the teacher is no longer qualified for the subject"
+            FixationInvalidity.EXCEEDS_LOAD -> "the fixed periods exceed the teaching load"
+        }
 }

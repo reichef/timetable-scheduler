@@ -1,8 +1,8 @@
 package timetablescheduler.adapters.persistence.account
 
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import timetablescheduler.adapters.persistence.PostgresTestBase
 import timetablescheduler.adapters.persistence.school.ExposedSchoolRepository
-import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import timetablescheduler.domain.account.InterfaceLanguage
 import timetablescheduler.domain.account.Role
 import timetablescheduler.domain.account.UserAccount
@@ -18,7 +18,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UserAccountRepositoryIT : PostgresTestBase() {
-
     private val schools = ExposedSchoolRepository()
     private val accounts = ExposedUserAccountRepository()
     private val credentials = ExposedPasswordCredentialRepository()
@@ -26,8 +25,10 @@ class UserAccountRepositoryIT : PostgresTestBase() {
 
     private fun newSchool(name: String): School = (School.create(name) as ValidationResult.Valid).value
 
-    private fun newPlanner(username: String, school: School): UserAccount =
-        (UserAccount.create(username, Role.PLANNER, setOf(school.id)) as ValidationResult.Valid).value
+    private fun newPlanner(
+        username: String,
+        school: School,
+    ): UserAccount = (UserAccount.create(username, Role.PLANNER, setOf(school.id)) as ValidationResult.Valid).value
 
     @Test
     fun `stores and loads an account with its schools`() {
@@ -196,9 +197,10 @@ class UserAccountRepositoryIT : PostgresTestBase() {
             accounts.insert(newPlanner("mueller", nord))
         }
 
-        val rejected = runCatching {
-            inTransaction { TransactionManager.current().exec("UPDATE user_account SET preferred_language = 'fr'") }
-        }
+        val rejected =
+            runCatching {
+                inTransaction { TransactionManager.current().exec("UPDATE user_account SET preferred_language = 'fr'") }
+            }
 
         assertTrue(rejected.isFailure)
     }

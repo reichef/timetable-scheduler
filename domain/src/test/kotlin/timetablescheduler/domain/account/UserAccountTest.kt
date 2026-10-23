@@ -11,7 +11,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class UserAccountTest {
-
     private val gymnasiumNord = SchoolId.new()
     private val realschuleSued = SchoolId.new()
 
@@ -36,9 +35,10 @@ class UserAccountTest {
 
     @Test
     fun `rejects username longer than 60 characters`() {
-        val errors = assertIs<ValidationResult.Invalid>(
-            UserAccount.create("a".repeat(61), Role.PLANNER, setOf(gymnasiumNord)),
-        ).errors
+        val errors =
+            assertIs<ValidationResult.Invalid>(
+                UserAccount.create("a".repeat(61), Role.PLANNER, setOf(gymnasiumNord)),
+            ).errors
         assertTrue(ValidationError.OutOfRange(UserAccount.FIELD_USERNAME, 3, 60) in errors)
     }
 
@@ -71,11 +71,12 @@ class UserAccountTest {
     fun `deactivating the only active planner of a school leaves it uncovered`() {
         val mueller = planner(setOf(realschuleSued))
 
-        val uncovered = PlannerCoverage.schoolsLeftWithoutActivePlanner(
-            before = mueller,
-            after = mueller.deactivated(),
-            activePlannersOfSchool = { setOf(mueller.id) },
-        )
+        val uncovered =
+            PlannerCoverage.schoolsLeftWithoutActivePlanner(
+                before = mueller,
+                after = mueller.deactivated(),
+                activePlannersOfSchool = { setOf(mueller.id) },
+            )
 
         assertEquals(setOf(realschuleSued), uncovered)
     }
@@ -87,7 +88,10 @@ class UserAccountTest {
         val unassigned = (mueller.withRoleAndSchools(Role.PLANNER, setOf(gymnasiumNord)) as ValidationResult.Valid).value
         val onlyMueller: (SchoolId) -> Set<AccountId> = { setOf(mueller.id) }
 
-        assertEquals(setOf(gymnasiumNord, realschuleSued), PlannerCoverage.schoolsLeftWithoutActivePlanner(mueller, downgraded, onlyMueller))
+        assertEquals(
+            setOf(gymnasiumNord, realschuleSued),
+            PlannerCoverage.schoolsLeftWithoutActivePlanner(mueller, downgraded, onlyMueller),
+        )
         assertEquals(setOf(realschuleSued), PlannerCoverage.schoolsLeftWithoutActivePlanner(mueller, unassigned, onlyMueller))
     }
 
@@ -96,11 +100,12 @@ class UserAccountTest {
         val mueller = planner(setOf(gymnasiumNord))
         val weber = planner(setOf(gymnasiumNord))
 
-        val uncovered = PlannerCoverage.schoolsLeftWithoutActivePlanner(
-            before = mueller,
-            after = mueller.deactivated(),
-            activePlannersOfSchool = { setOf(mueller.id, weber.id) },
-        )
+        val uncovered =
+            PlannerCoverage.schoolsLeftWithoutActivePlanner(
+                before = mueller,
+                after = mueller.deactivated(),
+                activePlannersOfSchool = { setOf(mueller.id, weber.id) },
+            )
 
         assertTrue(uncovered.isEmpty())
     }

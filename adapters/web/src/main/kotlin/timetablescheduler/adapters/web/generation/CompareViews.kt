@@ -28,12 +28,19 @@ import timetablescheduler.domain.scheduling.solution.TimetableDiff
  * FR-020: the alternatives of a generation in a table sortable by every objective and a chart of two selected
  * objectives ([xKey], [yKey], defaulting to the first two), each point linking to its alternative.
  */
-suspend fun ApplicationCall.respondComparison(details: GenerationDetails, xKey: String?, yKey: String?, sortKey: String?, descending: Boolean) {
+suspend fun ApplicationCall.respondComparison(
+    details: GenerationDetails,
+    xKey: String?,
+    yKey: String?,
+    sortKey: String?,
+    descending: Boolean,
+) {
     val texts = texts
     val generation = details.generation
     val columns = objectiveColumns(generation, details.names, texts, details.alternatives)
     val x = columns.firstOrNull { it.key == xKey } ?: columns[0]
     val y = columns.firstOrNull { it.key == yKey } ?: columns[1]
+
     respondPage(texts.generations.compareTitle) {
         form(action = comparePath(generation), method = FormMethod.get) {
             listOf("x" to (texts.generations.xAxis to x), "y" to (texts.generations.yAxis to y)).forEach { (field, labelled) ->
@@ -55,9 +62,10 @@ suspend fun ApplicationCall.respondComparison(details: GenerationDetails, xKey: 
             button { +texts.generations.showChart }
         }
         if (details.alternatives.isNotEmpty()) {
-            val points = details.alternatives.mapIndexed { index, alternative ->
-                ChartPoint(index + 1, x.valueOf(alternative), y.valueOf(alternative), alternativePath(generation, alternative))
-            }
+            val points =
+                details.alternatives.mapIndexed { index, alternative ->
+                    ChartPoint(index + 1, x.valueOf(alternative), y.valueOf(alternative), alternativePath(generation, alternative))
+                }
             tradeOffChart(points, x.title, y.title, texts.generations.chartCaption(x.title, y.title))
         }
         alternativeTable(details, columns, columns.firstOrNull { it.key == sortKey }, descending, texts) { key, direction ->
@@ -68,7 +76,11 @@ suspend fun ApplicationCall.respondComparison(details: GenerationDetails, xKey: 
 }
 
 /** FR-020: two alternatives side by side for one class, teacher or room; cells that differ are highlighted. */
-suspend fun ApplicationCall.respondDiff(comparison: AlternativeComparison, view: TimetableView, entityId: String?) {
+suspend fun ApplicationCall.respondDiff(
+    comparison: AlternativeComparison,
+    view: TimetableView,
+    entityId: String?,
+) {
     val texts = texts
     val generation = comparison.generation
     val names = comparison.names
