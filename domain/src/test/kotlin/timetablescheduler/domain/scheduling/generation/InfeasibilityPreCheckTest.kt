@@ -4,6 +4,7 @@ import timetablescheduler.domain.common.SchoolId
 import timetablescheduler.domain.scheduling.TestSchool
 import timetablescheduler.domain.scheduling.constraint.ClassScope
 import timetablescheduler.domain.scheduling.constraint.ConstraintRule
+import timetablescheduler.domain.scheduling.constraint.SchedulingConstraint
 import timetablescheduler.domain.scheduling.constraint.TeacherFixation
 import timetablescheduler.domain.scheduling.constraint.TeacherFixationId
 import timetablescheduler.domain.scheduling.constraint.hard
@@ -20,7 +21,7 @@ class InfeasibilityPreCheckTest {
     private val teacher = school.teacher(8, setOf(math))
     private val class5a = school.schoolClass(math to 6)
 
-    private fun contradictionsOf(vararg constraints: timetablescheduler.domain.scheduling.constraint.SchedulingConstraint) =
+    private fun contradictionsOf(vararg constraints: SchedulingConstraint) =
         InfeasibilityPreCheck.contradictionsOf(school.problem().copy(constraints = constraints.toList()))
 
     @Test
@@ -71,5 +72,16 @@ class InfeasibilityPreCheckTest {
             listOf(excluded.id),
             InfeasibilityPreCheck.contradictionsOf(problem.copy(constraints = listOf(excluded), fixations = listOf(fixation))),
         )
+    }
+
+    @Test
+    fun `hard subject exclusions leaving fewer slots than a course needs are named, for the class they name only`() {
+        val threeSlots = setOf(school.slot(MONDAY, 0), school.slot(MONDAY, 1), school.slot(TUESDAY, 0))
+        val class5b = school.schoolClass(math to 4)
+        val forEveryClass = hard(ConstraintRule.SubjectExcludedSlots(math, null, threeSlots))
+        val forClass5b = hard(ConstraintRule.SubjectExcludedSlots(math, class5b, threeSlots))
+
+        // 8 slots − 3 excluded = 5: too few for the 6 math periods of 5a, enough for the 4 of 5b
+        assertEquals(listOf(forEveryClass.id), contradictionsOf(forEveryClass, forClass5b))
     }
 }

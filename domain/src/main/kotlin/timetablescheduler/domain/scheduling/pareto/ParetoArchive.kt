@@ -62,6 +62,7 @@ class ParetoArchive<T>(
         kept.removeAll(dominated)
         kept += offered
         val pruned = if (kept.size > capacity) listOf(removeMostCrowded()) else emptyList()
+
         return ArchiveChange(admitted = offered in kept, evicted = (dominated + pruned).map { it.item }.filterNot { it === item })
     }
 
@@ -87,6 +88,7 @@ class ParetoArchive<T>(
     private fun removeMostCrowded(): ParetoEntry<T> {
         val distances = DoubleArray(kept.size)
         val objectiveCount = kept.first().objectives.size
+
         for (objective in 0 until objectiveCount) {
             val order = kept.indices.sortedBy { kept[it].objectives[objective] }
             val range = kept[order.last()].objectives[objective] - kept[order.first()].objectives[objective]
@@ -100,6 +102,7 @@ class ParetoArchive<T>(
                 distances[order[position]] += gap / range
             }
         }
+
         val mostCrowded = kept.indices.reversed().minBy { distances[it] }
         return kept.removeAt(mostCrowded)
     }

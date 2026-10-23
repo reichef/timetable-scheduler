@@ -4,6 +4,7 @@ import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.common.SubjectId
 import timetablescheduler.domain.common.TeacherId
 import timetablescheduler.domain.scheduling.DaySlot
+import timetablescheduler.domain.scheduling.solution.CourseKey
 
 /** Which classes a class-related constraint applies to (FR-013b). */
 sealed interface ClassScope {
@@ -75,7 +76,9 @@ sealed interface ConstraintRule {
         val subjectId: SubjectId,
         val classId: SchoolClassId?,
         val slots: Set<DaySlot>,
-    ) : ConstraintRule
+    ) : ConstraintRule {
+        fun appliesTo(course: CourseKey): Boolean = course.subjectId == subjectId && (classId == null || course.classId == classId)
+    }
 }
 
 /** The catalogue type of a rule, as stored and named in the interface. */

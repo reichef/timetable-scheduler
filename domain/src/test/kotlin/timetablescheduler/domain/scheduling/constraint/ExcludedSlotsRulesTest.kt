@@ -2,6 +2,7 @@ package timetablescheduler.domain.scheduling.constraint
 
 import timetablescheduler.domain.scheduling.DaySlot
 import timetablescheduler.domain.scheduling.TestSchool
+import timetablescheduler.domain.scheduling.solution.CourseKey
 import timetablescheduler.domain.validation.ValidationError
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.SATURDAY
@@ -19,6 +20,16 @@ class ExcludedSlotsRulesTest {
     private val class5a = school.schoolClass(math to 4, art to 2)
     private val class5b = school.schoolClass(math to 4)
     private val mondayFirst = school.slot(MONDAY, 0)
+
+    @Test
+    fun `a subject exclusion applies to the subject in every class, or only in the class it names`() {
+        val everyClass = ConstraintRule.SubjectExcludedSlots(math, null, setOf(mondayFirst))
+        val onlyClass5b = ConstraintRule.SubjectExcludedSlots(math, class5b, setOf(mondayFirst))
+        val courses = listOf(CourseKey(class5a, math), CourseKey(class5b, math), CourseKey(class5a, art))
+
+        assertEquals(listOf(true, true, false), courses.map(everyClass::appliesTo))
+        assertEquals(listOf(false, true, false), courses.map(onlyClass5b::appliesTo))
+    }
 
     @Test
     fun `a class lesson in an excluded slot counts once`() {

@@ -43,9 +43,7 @@ object InfeasibilityPreCheck {
 
             is ConstraintRule.SubjectExcludedSlots -> {
                 val available = weekSlots.count { it !in rule.slots }
-                problem.courses().any { (course, periods) ->
-                    course.subjectId == rule.subjectId && (rule.classId == null || course.classId == rule.classId) && periods > available
-                }
+                problem.courses().any { (course, periods) -> rule.appliesTo(course) && periods > available }
             }
 
             else -> {

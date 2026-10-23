@@ -1,5 +1,6 @@
 package timetablescheduler.domain.scheduling.constraint
 
+import timetablescheduler.domain.common.SchoolClassId
 import timetablescheduler.domain.scheduling.DaySlot
 import timetablescheduler.domain.scheduling.problem.SchedulingProblem
 import timetablescheduler.domain.scheduling.solution.CourseKey
@@ -73,15 +74,14 @@ object RuleViolations {
             }
 
             is ConstraintRule.SubjectExcludedSlots -> {
-                val inScope = lessons.filter { it.subjectId == rule.subjectId && (rule.classId == null || it.classId == rule.classId) }
                 val periods =
                     problem
                         .courses()
-                        .filterKeys {
-                            it.subjectId == rule.subjectId && (rule.classId == null || it.classId == rule.classId)
-                        }.values
+                        .filterKeys(rule::appliesTo)
+                        .values
                         .sum()
-                inExcludedSlots(inScope, rule.slots, periods)
+
+                inExcludedSlots(lessons.filter { rule.appliesTo(it.course) }, rule.slots, periods)
             }
         }
     }
@@ -95,7 +95,7 @@ object RuleViolations {
 
     private fun classPeriods(
         problem: SchedulingProblem,
-        classId: timetablescheduler.domain.common.SchoolClassId,
+        classId: SchoolClassId,
     ) = problem.schoolClass(classId)?.curriculum?.sumOf { it.periodsPerWeek } ?: 0
 
     /** Periods above [limit] on each day; the latest lessons of a day are the excess ones. */
@@ -135,6 +135,7 @@ object RuleViolations {
     ): RuleViolation {
         var count = 0
         val involved = mutableListOf<LessonAssignment>()
+
         lessons.groupBy { it.daySlot.day }.values.forEach { dayLessons ->
             val indices = dayLessons.map { week.teachingIndex(it.daySlot) }.filter { it >= 0 }.distinct()
             if (indices.size < 2) {
@@ -146,6 +147,7 @@ object RuleViolations {
                 involved += dayLessons
             }
         }
+
         val opportunities = week.days.sumOf { (week.teachingSlotsOn(it) - 2).coerceAtLeast(0) }
         return RuleViolation(count, involved, opportunities.coerceAtLeast(1))
     }
@@ -163,6 +165,7 @@ object RuleViolations {
         week: WeekPositions,
     ): RuleViolation {
         val singles = mutableListOf<LessonAssignment>()
+
         lessons.filter { it.course == course }.groupBy { it.daySlot.day }.values.forEach { dayLessons ->
             val ordered = dayLessons.sortedBy { week.teachingIndex(it.daySlot) }
             var position = 0
@@ -176,6 +179,7 @@ object RuleViolations {
                 }
             }
         }
+
         val required = problem.requiredPeriods(course)
         val violations = (singles.size - required % 2).coerceAtLeast(0)
         return RuleViolation(violations, if (violations > 0) singles else emptyList(), required.coerceAtLeast(1))
@@ -206,7 +210,7 @@ private class WeekPositions(
             .flatMap { day ->
                 day.slots.mapIndexed { index, slot -> DaySlot(day.day, slot.slotId) to index }
             }.toMap()
-    private val breakFree: Map<DayOfWeek, List<SlotKind>> = problem.days.associate { day -> day.day to day.slots.map { it.kind } }
+    private val slotKinds: Map<DayOfWeek, List<SlotKind>> = problem.days.associate { day -> day.day to day.slots.map { it.kind } }
     private val teachingCounts: Map<DayOfWeek, Int> = problem.days.associate { it.day to it.teachingSlots.size }
 
     fun teachingIndex(daySlot: DaySlot): Int = teachingIndex[daySlot] ?: -1
@@ -224,7 +228,7 @@ private class WeekPositions(
         }
         val from = fullIndex[first] ?: return false
         val to = fullIndex[second] ?: return false
-        val between = breakFree[first.day].orEmpty().subList(from + 1, to)
+        val between = slotKinds[first.day].orEmpty().subList(from + 1, to)
         return acrossBreaks || between.none { it == SlotKind.BREAK }
     }
 }
